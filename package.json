@@ -1,0 +1,15 @@
+{
+  "name": "slayers-alert-system",
+  "version": "5.0.0",
+  "description": "The Slayers Alert System by Rex Roz — CRT + QMR automated trading alerts",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
