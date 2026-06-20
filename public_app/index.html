@@ -4,34 +4,78 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>The Slayers — Signal Center</title>
-<meta name="theme-color" content="#000000">
+<meta name="theme-color" content="#020403">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Slayers">
 <link rel="manifest" href="/app/manifest.json">
 <link rel="apple-touch-icon" href="/app/icon-192.png">
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  body { margin: 0; background: #000; font-family: -apple-system, Helvetica, Arial, sans-serif; }
-  #app { max-width: 480px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+  html, body { margin: 0; background: #020403; font-family: -apple-system, Helvetica, Arial, sans-serif; overflow-x: hidden; }
+
+  /* ===== FIXED FLOWING BACKGROUND — sits behind everything, never wiped by re-renders ===== */
+  #bg { position: fixed; inset: 0; overflow: hidden; z-index: 0; pointer-events: none; }
+  #bg .blob { position: absolute; border-radius: 50%; filter: blur(46px); }
+  #bg .b1 { width: 380px; height: 380px; background: radial-gradient(circle, #3ECF8E55 0%, transparent 70%); top: -100px; left: -120px; animation: drift1 14s ease-in-out infinite; }
+  #bg .b2 { width: 320px; height: 320px; background: radial-gradient(circle, #0A2818aa 0%, transparent 70%); top: 220px; right: -140px; animation: drift2 18s ease-in-out infinite; }
+  #bg .b3 { width: 280px; height: 280px; background: radial-gradient(circle, #1FA86666 0%, transparent 70%); bottom: -80px; left: -60px; animation: drift3 16s ease-in-out infinite; }
+  #bg .b4 { width: 240px; height: 240px; background: radial-gradient(circle, #E8B35533 0%, transparent 70%); bottom: 140px; right: -60px; animation: drift1 20s ease-in-out infinite reverse; }
+  #bg .grain { position: absolute; inset: 0; opacity: 0.035; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23n)'/%3E%3C/svg%3E"); }
+  @keyframes drift1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(40px,30px) scale(1.15); } }
+  @keyframes drift2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-30px,40px) scale(1.1); } }
+  @keyframes drift3 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(25px,-35px) scale(1.2); } }
+
+  /* ===== FLOATING EMBERS ===== */
+  .ember { position: absolute; width: 3px; height: 3px; border-radius: 99px; background: #3ECF8E; box-shadow: 0 0 6px #3ECF8E; opacity: 0; animation: float-up linear infinite; }
+  @keyframes float-up { 0% { transform: translateY(0) translateX(0); opacity: 0; } 10% { opacity: 0.7; } 90% { opacity: 0.4; } 100% { transform: translateY(-100vh) translateX(20px); opacity: 0; } }
+
+  #app { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+
   .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; border-radius: 99px; padding: 4px 10px; border: 1px solid; }
-  .panel { background: #0B0F14; border: 1px solid #1B2430; border-radius: 16px; padding: 18px; margin-bottom: 14px; }
-  .heading { font-weight: 900; text-transform: uppercase; letter-spacing: -0.5px; color: #F2F4F3; }
-  .row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; }
-  .glow-mint { text-shadow: 0 0 18px rgba(62,207,142,0.4), 0 0 40px rgba(62,207,142,0.2); }
-  .ticker-track { display: inline-block; white-space: nowrap; animation: scrollTicker 22s linear infinite; }
-  @keyframes scrollTicker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-  .navbtn { flex: 1; padding: 14px 0; background: none; border: none; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; color: #7C8A87; }
+
+  /* ===== GLASS CARD ===== */
+  .panel { position: relative; background: rgba(13,22,17,0.55); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border: 1px solid rgba(62,207,142,0.18); border-radius: 18px; padding: 20px; margin-bottom: 14px; box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04); }
+
+  .mono { font-family: ui-monospace, 'SF Mono', 'Roboto Mono', monospace; font-weight: 700; letter-spacing: -0.3px; }
+  .heading { font-weight: 900; text-transform: uppercase; letter-spacing: -0.5px; color: #EDF5EF; }
+  .row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; }
+  .glow-mint { text-shadow: 0 0 18px rgba(62,207,142,0.5), 0 0 40px rgba(62,207,142,0.25); }
+  .grad-text { background: linear-gradient(135deg, #3ECF8E 0%, #8FFFD0 50%, #3ECF8E 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+
+  .live-dot { position: relative; width: 8px; height: 8px; }
+  .live-dot::before, .live-dot::after { content: ''; position: absolute; inset: 0; border-radius: 99px; background: #3ECF8E; }
+  .live-dot::before { animation: pulseRing 2s ease-out infinite; }
+  @keyframes pulseRing { 0% { transform: scale(1); opacity: 0.7; } 100% { transform: scale(3.4); opacity: 0; } }
+
+  .navbtn { flex: 1; padding: 14px 0; background: none; border: none; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; color: #76897E; position: relative; }
   .navbtn.active { color: #3ECF8E; }
   .navbtn svg { width: 19px; height: 19px; }
-  .signal-card { cursor: pointer; }
-  .skeleton { background: linear-gradient(90deg, #0B0F14 25%, #141a21 50%, #0B0F14 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 12px; }
+  .nav-underline { position: absolute; top: 0; height: 2px; background: #3ECF8E; box-shadow: 0 0 8px #3ECF8E; border-radius: 2px; transition: left 0.3s cubic-bezier(.4,0,.2,1), width 0.3s cubic-bezier(.4,0,.2,1); }
+
+  .signal-card { cursor: pointer; transition: transform 0.15s ease, border-color 0.15s ease; }
+  .signal-card:active { transform: scale(0.98); }
+
+  .skeleton { background: linear-gradient(90deg, rgba(13,22,17,0.4) 25%, rgba(62,207,142,0.08) 50%, rgba(13,22,17,0.4) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 16px; }
   @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+  .count-up { animation: countFade 0.6s ease; }
+  @keyframes countFade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
   a { text-decoration: none; }
   button { font-family: inherit; }
 </style>
 </head>
 <body>
+<div id="bg">
+  <div class="blob b1"></div>
+  <div class="blob b2"></div>
+  <div class="blob b3"></div>
+  <div class="blob b4"></div>
+  <div class="grain"></div>
+  <div id="embers"></div>
+</div>
 <div id="app"></div>
 <script src="/app/app.js"></script>
 </body>
