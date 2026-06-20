@@ -290,7 +290,43 @@ if (getCode()) {
 }
 setInterval(() => { if (getCode()) fetchAll(); }, 60000); // refresh every 60s, only if logged in
 
-// ===== SERVICE WORKER =====
+// ===== SERVICE WORKER + PUSH NOTIFICATIONS =====
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/app/service-worker.js').catch(e => console.error('SW failed', e));
+  navigator.serviceWorker.register('/app/service-worker.js')
+    .then(reg => { setTimeout(() => trySubscribePush(reg), 1500); })
+    .catch(e => console.error('SW failed', e));
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
+
+async function trySubscribePush(reg) {
+  if (!('PushManager' in window) || !getCode()) return;
+  try {
+    const existing = await reg.pushManager.getSubscription();
+    if (existing) return; // already subscribed on this device
+
+    const keyRes = await fetch(withCode('/api/vapid-key'));
+    const keyData = await keyRes.json();
+    if (!keyData.enabled || !keyData.key) return; // push not configured server-side yet
+
+    if (Notification.permission === 'denied') return;
+    const perm = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
+    if (perm !== 'granted') return;
+
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(keyData.key)
+    });
+    await fetch(withCode('/api/subscribe'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sub)
+    });
+    console.log('Push notifications enabled for this device.');
+  } catch (e) {
+    console.error('Push subscribe failed', e);
+  }
 }
