@@ -45,11 +45,15 @@ let state = { tab: 'signals', selected: null, signals: [], active: [], briefing:
 
 // ===== DATA FETCHING =====
 async function fetchAll() {
+  const TIMEOUT_MS = 10000;
+  const withTimeout = (p) => Promise.race([
+    p, new Promise((_, rej) => setTimeout(() => rej(new Error('Request timed out')), TIMEOUT_MS))
+  ]);
   try {
-    const [sigRes, activeRes, briefRes, statsRes] = await Promise.all([
+    const [sigRes, activeRes, briefRes, statsRes] = await withTimeout(Promise.all([
       fetch(withCode('/api/signals?limit=20')), fetch(withCode('/api/active')),
       fetch(withCode('/api/briefing')), fetch(withCode('/api/stats'))
-    ]);
+    ]));
     if (sigRes.status === 401 || activeRes.status === 401 || briefRes.status === 401 || statsRes.status === 401) {
       clearCode();
       state.loading = false;
@@ -60,8 +64,10 @@ async function fetchAll() {
     state.active = (await activeRes.json()).trades || [];
     state.briefing = (await briefRes.json()).pairs || [];
     state.stats = await statsRes.json();
+    state.fetchError = null;
   } catch (e) {
     console.error('Fetch error', e);
+    state.fetchError = e.message || 'Connection error';
   }
   state.loading = false;
   render();
@@ -232,7 +238,8 @@ function render() {
     content.innerHTML = `<div class="skeleton" style="height:200px;margin-bottom:14px"></div><div class="skeleton" style="height:200px"></div>`;
   } else if (state.tab === 'signals') {
     content.innerHTML = `<div class="heading" style="font-size:18px">TODAY'S SIGNALS</div><div style="height:14px"></div>` +
-      (state.signals.length ? state.signals.map(signalCard).join('') : emptyState('No signals yet. The bot scans every 30 minutes — check back soon.'));
+      (state.fetchError ? emptyState('Connection problem: ' + state.fetchError + '. Pull down or reopen the app to retry.') :
+       state.signals.length ? state.signals.map(signalCard).join('') : emptyState('No signals yet. The bot scans every 30 minutes — check back soon.'));
   } else if (state.tab === 'briefing') {
     content.innerHTML = briefingScreen();
   } else if (state.tab === 'stats') {
@@ -317,11 +324,16 @@ let swRegistration = null;
 let pushStatus = 'unknown'; // 'unknown' | 'available' | 'subscribed' | 'denied' | 'unsupported'
 
 async function checkPushStatus() {
-  if (!('PushManager' in window) || !swRegistration) { pushStatus = 'unsupported'; render(); return; }
-  if (Notification.permission === 'denied') { pushStatus = 'denied'; render(); return; }
-  const existing = await swRegistration.pushManager.getSubscription();
-  pushStatus = existing ? 'subscribed' : 'available';
-  render();
+  try {
+    if (!('PushManager' in window) || !swRegistration) { pushStatus = 'unsupported'; render(); return; }
+    if (Notification.permission === 'denied') { pushStatus = 'denied'; render(); return; }
+    const existing = await swRegistration.pushManager.getSubscription();
+    pushStatus = existing ? 'subscribed' : 'available';
+    render();
+  } catch (e) {
+    console.error('checkPushStatus failed', e);
+    pushStatus = 'unsupported';
+  }
 }
 
 // Called directly from a button tap — iOS requires this to be a real user gesture, not automatic
@@ -346,6 +358,6 @@ async function enablePush() {
     render();
   } catch (e) {
     console.error('Push subscribe failed', e);
-    alert('Could not enable notifications. Try again.');
+    alert('Could not enable notifications: ' + (e.message || 'unknown error') + '. Screenshot this and send it.');
   }
 }
