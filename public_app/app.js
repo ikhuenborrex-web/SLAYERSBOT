@@ -2,6 +2,15 @@
 const BLACK='#000000', PANEL='#0B0F14', BORDER='#1B2430', MINT='#3ECF8E', MINT_DIM='#1F4A38',
       GOLD='#F0B742', GOLD_DIM='#4A3A1A', RED='#F3677A', WHITE='#F2F4F3', GREY='#7C8A87';
 
+// ===== ACCESS CODE MANAGEMENT =====
+function getCode() { return localStorage.getItem('slayersAccessCode') || ''; }
+function saveCode(c) { localStorage.setItem('slayersAccessCode', c); }
+function clearCode() { localStorage.removeItem('slayersAccessCode'); }
+function withCode(url) {
+  const code = getCode();
+  return url + (url.includes('?') ? '&' : '?') + 'code=' + encodeURIComponent(code);
+}
+
 const ICONS = {
   bolt: '<path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>',
@@ -38,8 +47,15 @@ let state = { tab: 'signals', selected: null, signals: [], active: [], briefing:
 async function fetchAll() {
   try {
     const [sigRes, activeRes, briefRes, statsRes] = await Promise.all([
-      fetch('/api/signals?limit=20'), fetch('/api/active'), fetch('/api/briefing'), fetch('/api/stats')
+      fetch(withCode('/api/signals?limit=20')), fetch(withCode('/api/active')),
+      fetch(withCode('/api/briefing')), fetch(withCode('/api/stats'))
     ]);
+    if (sigRes.status === 401 || activeRes.status === 401 || briefRes.status === 401 || statsRes.status === 401) {
+      clearCode();
+      state.loading = false;
+      renderLogin('Your access code has expired or is no longer valid. Enter your current code to continue.');
+      return;
+    }
     state.signals = (await sigRes.json()).signals || [];
     state.active = (await activeRes.json()).trades || [];
     state.briefing = (await briefRes.json()).pairs || [];
@@ -89,7 +105,7 @@ function detailPage(s) {
   const tierColor = s.tier === 'ELITE' ? MINT : GOLD;
   const criteriaList = (s.criteria || []).map(c => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0">${icon('check', MINT, 15)}<span style="color:${WHITE};font-size:13.5px">${c}</span></div>`).join('');
   const chartHtml = s.chartUrl
-    ? `<img src="${s.chartUrl}" style="width:100%;display:block;border-radius:14px" alt="Signal chart">`
+    ? `<img src="${withCode(s.chartUrl)}" style="width:100%;display:block;border-radius:14px" alt="Signal chart">`
     : `<div style="height:170px;display:flex;align-items:center;justify-content:center;color:${GREY};font-size:12px;border:1px solid ${BORDER};border-radius:14px">Chart unavailable</div>`;
   return `
   <div>
@@ -221,9 +237,58 @@ window.setTab = (t) => { state.tab = t; render(); };
 window.openDetail = (id) => { state.selected = state.signals.find(s => s.id === id); render(); window.scrollTo(0,0); };
 window.closeDetail = () => { state.selected = null; render(); };
 
+// ===== LOGIN SCREEN =====
+function renderLogin(errorMsg) {
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center">
+      <div style="font-weight:900;font-size:28px;letter-spacing:-1px;text-transform:uppercase;margin-bottom:6px">
+        <span style="color:${WHITE}">THE </span><span class="glow-mint" style="color:${MINT}">SLAYERS</span>
+      </div>
+      <div style="color:${GREY};font-size:12px;margin-bottom:32px">Signal Center</div>
+      <div style="width:100%;max-width:300px">
+        <div style="color:${WHITE};font-size:14px;font-weight:700;margin-bottom:10px">Enter your access code</div>
+        <input id="codeInput" type="text" placeholder="SLAY-XXXXXX" autocapitalize="characters" autocomplete="off"
+          style="width:100%;background:${PANEL};border:1px solid ${BORDER};border-radius:12px;padding:14px;color:${WHITE};font-size:16px;text-align:center;letter-spacing:2px;margin-bottom:14px;outline:none"/>
+        ${errorMsg ? `<div style="color:${RED};font-size:12.5px;margin-bottom:14px">${errorMsg}</div>` : ''}
+        <button id="loginBtn" style="width:100%;background:${MINT};border:none;border-radius:99px;padding:15px 0;color:${BLACK};font-weight:800;font-size:14px;cursor:pointer">Unlock</button>
+        <div id="loginStatus" style="color:${GREY};font-size:11.5px;margin-top:14px"></div>
+      </div>
+      <div style="color:${GREY};font-size:11px;margin-top:40px">Don't have a code? Message Rexroz on Telegram.</div>
+    </div>`;
+  document.getElementById('loginBtn').onclick = attemptLogin;
+  document.getElementById('codeInput').addEventListener('keypress', e => { if (e.key === 'Enter') attemptLogin(); });
+}
+
+async function attemptLogin() {
+  const input = document.getElementById('codeInput');
+  const status = document.getElementById('loginStatus');
+  const code = input.value.trim().toUpperCase();
+  if (!code) return;
+  status.textContent = 'Checking...';
+  saveCode(code);
+  try {
+    const res = await fetch(withCode('/api/stats'));
+    if (res.status === 401) {
+      clearCode();
+      renderLogin('That code is not valid. Double-check and try again.');
+      return;
+    }
+    state.loading = true;
+    render();
+    fetchAll();
+  } catch (e) {
+    status.textContent = 'Connection error. Try again.';
+  }
+}
+
 // ===== BOOT =====
-fetchAll();
-setInterval(fetchAll, 60000); // refresh every 60s
+if (getCode()) {
+  fetchAll();
+} else {
+  renderLogin();
+}
+setInterval(() => { if (getCode()) fetchAll(); }, 60000); // refresh every 60s, only if logged in
 
 // ===== SERVICE WORKER =====
 if ('serviceWorker' in navigator) {
