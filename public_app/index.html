@@ -49,7 +49,7 @@
   .live-dot::before { animation: pulseRing 2s ease-out infinite; }
   @keyframes pulseRing { 0% { transform: scale(1); opacity: 0.7; } 100% { transform: scale(3.4); opacity: 0; } }
 
-  .navbtn { flex: 1; padding: 14px 0; background: none; border: none; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; color: #76897E; position: relative; }
+  .navbtn { flex: 1; padding: 14px 0 calc(14px + env(safe-area-inset-bottom)) 0; background: none; border: none; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; color: #76897E; position: relative; }
   .navbtn.active { color: #3ECF8E; }
   .navbtn svg { width: 19px; height: 19px; }
   .nav-underline { position: absolute; top: 0; height: 2px; background: #3ECF8E; box-shadow: 0 0 8px #3ECF8E; border-radius: 2px; transition: left 0.3s cubic-bezier(.4,0,.2,1), width 0.3s cubic-bezier(.4,0,.2,1); }
