@@ -206,6 +206,14 @@ function render() {
         <span style="color:${WHITE}">THE </span><span class="glow-mint" style="color:${MINT}">SLAYERS</span>
       </div>
       <div style="color:${GREY};font-size:11px;margin-top:4px;margin-bottom:14px">Signal Center · v8.2</div>
+      ${pushStatus === 'available' ? `
+        <button onclick="enablePush()" style="width:100%;background:${MINT_DIM};border:1px solid ${MINT}66;border-radius:12px;padding:12px;color:${MINT};font-weight:700;font-size:12.5px;cursor:pointer;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px">
+          🔔 Tap to enable push notifications
+        </button>` : ''}
+      ${pushStatus === 'denied' ? `
+        <div style="width:100%;background:${GOLD_DIM};border:1px solid ${GOLD}66;border-radius:12px;padding:12px;color:${GOLD};font-weight:600;font-size:11.5px;margin-bottom:14px;text-align:center">
+          Notifications blocked. Enable in iPhone Settings → Notifications → Slayers.
+        </div>` : ''}
     </div>
     <div style="border-top:1px solid ${BORDER};border-bottom:1px solid ${BORDER};padding:10px 0;overflow:hidden;white-space:nowrap;margin-bottom:16px">
       <div class="ticker-track">${[...ticker, ...ticker].map(t => `<span style="color:${MINT};font-size:10.5px;font-weight:700;letter-spacing:0.5px;margin-right:28px">${t}</span>`).join('')}</div>
@@ -235,6 +243,7 @@ function render() {
 // ===== ACTIONS (exposed globally for inline onclick) =====
 window.setTab = (t) => { state.tab = t; render(); };
 window.openDetail = (id) => { state.selected = state.signals.find(s => s.id === id); render(); window.scrollTo(0,0); };
+window.enablePush = enablePush;
 window.closeDetail = () => { state.selected = null; render(); };
 
 // ===== LOGIN SCREEN =====
@@ -293,7 +302,7 @@ setInterval(() => { if (getCode()) fetchAll(); }, 60000); // refresh every 60s, 
 // ===== SERVICE WORKER + PUSH NOTIFICATIONS =====
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/app/service-worker.js')
-    .then(reg => { setTimeout(() => trySubscribePush(reg), 1500); })
+    .then(reg => { swRegistration = reg; checkPushStatus(); })
     .catch(e => console.error('SW failed', e));
 }
 
@@ -304,29 +313,39 @@ function urlBase64ToUint8Array(base64String) {
   return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
 }
 
-async function trySubscribePush(reg) {
-  if (!('PushManager' in window) || !getCode()) return;
-  try {
-    const existing = await reg.pushManager.getSubscription();
-    if (existing) return; // already subscribed on this device
+let swRegistration = null;
+let pushStatus = 'unknown'; // 'unknown' | 'available' | 'subscribed' | 'denied' | 'unsupported'
 
+async function checkPushStatus() {
+  if (!('PushManager' in window) || !swRegistration) { pushStatus = 'unsupported'; render(); return; }
+  if (Notification.permission === 'denied') { pushStatus = 'denied'; render(); return; }
+  const existing = await swRegistration.pushManager.getSubscription();
+  pushStatus = existing ? 'subscribed' : 'available';
+  render();
+}
+
+// Called directly from a button tap — iOS requires this to be a real user gesture, not automatic
+async function enablePush() {
+  if (!swRegistration || !getCode()) return;
+  try {
     const keyRes = await fetch(withCode('/api/vapid-key'));
     const keyData = await keyRes.json();
-    if (!keyData.enabled || !keyData.key) return; // push not configured server-side yet
+    if (!keyData.enabled || !keyData.key) { alert('Push notifications are not configured on the server yet.'); return; }
 
-    if (Notification.permission === 'denied') return;
-    const perm = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
-    if (perm !== 'granted') return;
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { pushStatus = 'denied'; render(); return; }
 
-    const sub = await reg.pushManager.subscribe({
+    const sub = await swRegistration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(keyData.key)
     });
     await fetch(withCode('/api/subscribe'), {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sub)
     });
-    console.log('Push notifications enabled for this device.');
+    pushStatus = 'subscribed';
+    render();
   } catch (e) {
     console.error('Push subscribe failed', e);
+    alert('Could not enable notifications. Try again.');
   }
 }
