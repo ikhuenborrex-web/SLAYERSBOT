@@ -629,7 +629,7 @@ async function tgSendChart(instId,interval,lines,caption,saveForApp){
 async function tgQMRPreAlert(id,tf,qmr,htfBias,earlyEntry,wickRatio,aggSL,aggTP1,aggTP2){const bear=qmr.type==='BEARISH',p=qmr.qmLevel>10?2:5,zone=bear?'PREMIUM - Sell Zone':'DISCOUNT - Buy Zone',slDist=Math.abs(earlyEntry-aggSL),rr1=slDist>0?(Math.abs(aggTP1-earlyEntry)/slDist).toFixed(1):'--',rr2=slDist>0?(Math.abs(aggTP2-earlyEntry)/slDist).toFixed(1):'2.5',slLabel=bear?'above protected high':'below protected low';let htfLine='';if(htfBias&&htfBias!=='NEUTRAL'){const agrees=(bear&&htfBias==='BEARISH')||((!bear)&&htfBias==='BULLISH');htfLine='\n'+(agrees?'\uD83D\uDD25 HTF Aligned: Weekly '+htfBias+' - HIGH PROBABILITY':'\u26A0\uFE0F Counter-trend: Weekly '+htfBias);}const tier=qmr.criteria.score>=4?'\uD83D\uDC8E ELITE SETUP':'\uD83D\uDFE1 VALID SETUP';await tgSend('\u26A1 EARLY QMR ENTRY \u2014 '+tier+'\n'+'='.repeat(28)+'\n\uD83D\uDCCA '+id+' \u00B7 '+tf+' \u00B7 '+zone+'\n'+(bear?'\uD83D\uDD34 BEARISH QM (AGGRESSIVE)':'\uD83D\uDFE2 BULLISH QM (AGGRESSIVE)')+htfLine+'\n\n\u26A1 Aggressive Entry: '+earlyEntry.toFixed(p)+' (sweep close)\n\uD83D\uDEAB SL:    '+aggSL.toFixed(p)+' ('+slLabel+') \u2014 '+slDist.toFixed(p)+'pts\n\uD83C\uDFAF TP1:    '+aggTP1.toFixed(p)+' (1:'+rr1+'R)\n\uD83C\uDFAF Full TP2: '+aggTP2.toFixed(p)+' (1:'+rr2+'R)\n\n\uD83C\uDFD4\uFE0F Head: '+qmr.head.toFixed(p)+'\n\uD83D\uDD04 Wick rejection: '+(wickRatio*100).toFixed(0)+'% \u2014 genuine sweep\n\n\uD83D\uDD25 Criteria: '+qmr.criteria.score+'/4\n'+qmr.criteria.factors.map(f=>'\u2705 '+f).join('\n')+(qmr.dailyPOI?'\n\uD83C\uDFDB\uFE0F '+qmr.dailyPOI+' \u2014 HTF confluence':'')+(qmr.rsiDivergence?'\n\uD83D\uDD25 '+qmr.rsiDivergence+' on 4H':'')+'\n\n\u23F3 Standard QMR confirmation pending at QM level: '+qmr.qmLevel.toFixed(p)+'\n'+'='.repeat(28)+'\n\u2014 The Slayers Model by Rexroz');}
 async function tgQMR(id,tf,qmr,htfBias,sessWarn,adrWarn){const bear=qmr.type==='BEARISH',p=qmr.qmLevel>10?2:5,zone=bear?'PREMIUM - Sell Zone':'DISCOUNT - Buy Zone',entry=qmr.qmLevel,sl=qmr.retestSL!=null?qmr.retestSL:(bear?qmr.head+qmr.atr*0.1:qmr.head-qmr.atr*0.1),slDist=Math.abs(entry-sl),dol=qmr.drawOnLiquidity,tp1=dol?dol.price:(bear?entry-slDist*3:entry+slDist*3),rr1=slDist>0?(Math.abs(tp1-entry)/slDist).toFixed(1):'--',td=qmr.structuralTP2,tp2=td?td.price:(bear?entry-slDist*2.5:entry+slDist*2.5),rr2=td?td.rr:(slDist>0?(Math.abs(tp2-entry)/slDist).toFixed(1):'2.5'),dolLabel=dol?dol.label:'Draw on Liquidity',slLabel=bear?'above protected high':'below protected low';let htfLine='';if(htfBias&&htfBias!=='NEUTRAL'){const agrees=(bear&&htfBias==='BEARISH')||((!bear)&&htfBias==='BULLISH');htfLine='\n'+(agrees?'\uD83D\uDD25 HTF Aligned: Weekly '+htfBias+' - HIGH PROBABILITY':'\u26A0\uFE0F Counter-trend: Weekly '+htfBias);}const tier=qmr.criteria.score>=4?'\uD83D\uDC8E ELITE SETUP':'\uD83D\uDFE1 VALID SETUP';let msg='\uD83D\uDD04 QMR SIGNAL \u2014 '+tier+'\n'+'='.repeat(28)+'\n\uD83D\uDCCA '+id+' \u00B7 '+tf+' \u00B7 '+zone+'\n'+(bear?'\uD83D\uDD34 BEARISH QM':'\uD83D\uDFE2 BULLISH QM')+htfLine+'\n\n\uD83D\uDCCD '+(qmr.refinedEntry?'4H Zone: ':'Entry: ')+entry.toFixed(p)+' (QM Level)\n'+(qmr.refinedEntry?'\uD83C\uDFAF Refined Entry: '+qmr.refinedEntry.price.toFixed(p)+' ('+qmr.refinedEntry.source+')\n\u2192 Enter at refined level for better R\n':'')+'\uD83D\uDEAB SL:    '+sl.toFixed(p)+' ('+slLabel+')\n\uD83C\uDFAF '+dolLabel+': '+tp1.toFixed(p)+' (1:'+rr1+'R)\n\uD83C\uDFAF Next Structure: '+tp2.toFixed(p)+' (1:'+rr2+'R)\n\n\uD83C\uDFD4\uFE0F Head: '+qmr.head.toFixed(p)+'\n\n\uD83D\uDD25 Criteria: '+qmr.criteria.score+'/4\n'+qmr.criteria.factors.map(f=>'\u2705 '+f).join('\n')+(qmr.dailyPOI?'\n\uD83C\uDFDB\uFE0F '+qmr.dailyPOI+' \u2014 HTF confluence':'')+(qmr.rsiDivergence?'\n\uD83D\uDD25 '+qmr.rsiDivergence+' on 4H':'')+'\n\n';if(qmr.counterTrend)msg+='\u26A0\uFE0F COUNTER-TREND \u2014 potential trend reversal. Reduce size.\n\n';const riskRec=qmr.criteria.score>=4?'1% (ELITE)':'0.5% (VALID)';msg+='\uD83D\uDCB0 Recommended risk: '+riskRec+'\n\n';if(sessWarn)msg+='\u23F0 Outside prime session hours\n\n';if(adrWarn)msg+='\u26A0\uFE0F '+adrWarn+'% of avg daily range already used \u2014 TP may need 1-2 sessions\n\n';msg+='\uD83D\uDCB0 Calc position size: https://slayerbotcalculator.netlify.app/#'+id+','+entry.toFixed(p)+','+sl.toFixed(p)+'\n\n\u26A1 Price at QM level. Look for confirmation candle before entering.\n\u2014 The Slayers Model by Rexroz';await tgSend(msg);}
 async function tgMultiTFConfluence(id,qmr1H,qmr4H){const bear=qmr1H.type==='BEARISH',p=qmr1H.qmLevel>10?2:5,zone=bear?'PREMIUM - Sell Zone':'DISCOUNT - Buy Zone',entry=qmr1H.qmLevel,sl=qmr1H.retestSL!=null?qmr1H.retestSL:(bear?qmr1H.head+qmr1H.atr*0.1:qmr1H.head-qmr1H.atr*0.1),slDist=Math.abs(entry-sl),dol=qmr1H.drawOnLiquidity,tp1=dol?dol.price:(bear?entry-slDist*3:entry+slDist*3),tp2=qmr1H.structuralTP2?qmr1H.structuralTP2.price:(bear?entry-slDist*2.5:entry+slDist*2.5),rr1=slDist>0?(Math.abs(tp1-entry)/slDist).toFixed(1):'--',rr2=slDist>0?(Math.abs(tp2-entry)/slDist).toFixed(1):'2.5',dolLabel=dol?dol.label:'Draw on Liquidity',slLabel=bear?'above protected high':'below protected low';await tgSend('\uD83D\uDD25\uD83D\uDD04 MULTI-TF CONFLUENCE - HIGHEST PROBABILITY\n'+'='.repeat(28)+'\n\uD83D\uDCCA '+id+' \u00B7 1H + 4H \u00B7 '+zone+'\n'+(bear?'\uD83D\uDD34 BEARISH QM':'\uD83D\uDFE2 BULLISH QM')+'\n\n\u2705 1H QMR level: '+qmr1H.qmLevel.toFixed(p)+'\n\u2705 4H QMR level: '+qmr4H.qmLevel.toFixed(p)+'\n\u2705 Both timeframes aligned\n\n\uD83D\uDCCD '+(qmr.refinedEntry?'4H Zone: ':'Entry: ')+entry.toFixed(p)+' (QM Level)\n'+(qmr.refinedEntry?'\uD83C\uDFAF Refined Entry: '+qmr.refinedEntry.price.toFixed(p)+' ('+qmr.refinedEntry.source+')\n\u2192 Enter at refined level for better R\n':'')+'\uD83D\uDEAB SL:    '+sl.toFixed(p)+' ('+slLabel+')\n\uD83C\uDFAF '+dolLabel+': '+tp1.toFixed(p)+' (1:'+rr1+'R)\n\uD83C\uDFAF Next Structure: '+tp2.toFixed(p)+' (1:'+rr2+'R)\n\n\uD83D\uDD25 1H Score: '+qmr1H.criteria.score+'/4 | 4H Score: '+qmr4H.criteria.score+'/4\n\n'+(qmr1H.dailyPOI?'\uD83C\uDFDB\uFE0F '+qmr1H.dailyPOI+' \u2014 HTF confluence\n\n':'')+(qmr1H.rsiDivergence?'\uD83D\uDD25 '+qmr1H.rsiDivergence+' on 4H\n\n':'')+(qmr1H.counterTrend?'\u26A0\uFE0F COUNTER-TREND \u2014 potential trend reversal. Reduce size.\n\n':'')+'\uD83D\uDCB0 Calc position size: https://slayerbotcalculator.netlify.app/#'+id+','+entry.toFixed(p)+','+sl.toFixed(p)+'\n\n\u26A1 BOTH TIMEFRAMES CONFIRMED. Highest conviction setup.\n\u2014 The Slayers Model by Rexroz');}
-async function tgQMRUpdate(trade,level){const isB=trade.type==='BULLISH',p=trade.dec;const icons={be:'\u26A1 MOVE TO BREAKEVEN',tp1:'\u2705 TP1 HIT!',tp2:'\uD83D\uDCB0 FULL TARGET HIT!',sl:'\uD83D\uDEAB STOP LOSS HIT',be_close:'\u2705 TRADE CLOSED - TP1 SECURED',be_sl:'\u2696\uFE0F CLOSED AT BREAKEVEN',trail:'\uD83D\uDD39 TRAILING STOP ACTIVE'};const msgs={be:'Trade moved 1:1 in your favour.\nMove SL to entry: '+trade.qmLevel.toFixed(p)+'\nTrade is now risk-free.',tp1:'\uD83C\uDFAF Draw on Liquidity: '+trade.tp1.toFixed(p)+' reached.\nClose 50% of your position now.\nMove SL to entry and let the rest run to TP2.',tp2:'\uD83C\uDFAF Next Structure: '+trade.tp2.toFixed(p)+' reached.\nClose trade - full profit taken!',sl:'SL: '+trade.sl.toFixed(p)+' triggered.\nTrade closed. Stay disciplined, next setup coming.',be_close:'TP1 was secured. Price returned to entry.\nRemainder closed at breakeven.\nTP1 profit is yours. \u2705 Recorded as WIN.',be_sl:'Price returned to entry after the breakeven move.\nTrade closed flat \u2014 no loss taken.\nCapital protected. Wait for the next setup.',trail:'Trailing stop is now active.\nSL will follow price as it moves in your favour.\nLocking in gains beyond TP1.'};await tgSend(icons[level]+'\n'+'='.repeat(28)+'\n\uD83D\uDCCA '+trade.instName+' \u00B7 '+trade.tf+' | '+(isB?'BUY':'SELL')+' QMR\n\n'+msgs[level]+'\n\n\u2014 The Slayers Model by Rexroz');}
+async function tgQMRUpdate(trade,level){const isB=trade.type==='BULLISH',p=trade.dec;const icons={be:'\u26A1 MOVE TO BREAKEVEN',tp1:'\u2705 TP1 HIT!',tp2:'\uD83D\uDCB0 FULL TARGET HIT!',sl:'\uD83D\uDEAB STOP LOSS HIT',be_close:'\u2705 TRADE CLOSED - TP1 SECURED',be_sl:'\u2696\uFE0F CLOSED AT BREAKEVEN',trail:'\uD83D\uDD39 TRAILING STOP ACTIVE'};const msgs={be:'Trade moved 1:1 in your favour.\nMove SL to entry: '+trade.qmLevel.toFixed(p)+'\nTrade is now risk-free.',tp1:'\uD83C\uDFAF Draw on Liquidity: '+trade.tp1.toFixed(p)+' reached.\nClose 50% of your position now.\nSL moved to entry zone (buffer) \u2014 partial profit locked.\nLet the rest run to TP2.',tp2:'\uD83C\uDFAF Next Structure: '+trade.tp2.toFixed(p)+' reached.\nClose trade - full profit taken!',sl:'SL: '+trade.sl.toFixed(p)+' triggered.\nTrade closed. Stay disciplined, next setup coming.',be_close:'TP1 was secured. Remainder hit the buffer stop.\nPartial profit locked \u2014 TP1 + buffer gain banked.\u2705',be_sl:'Price returned to entry after the breakeven move.\nTrade closed flat \u2014 no loss taken.\nCapital protected. Wait for the next setup.',trail:'Trailing stop is now active.\nSL will follow price as it moves in your favour.\nLocking in gains beyond TP1.'};await tgSend(icons[level]+'\n'+'='.repeat(28)+'\n\uD83D\uDCCA '+trade.instName+' \u00B7 '+trade.tf+' | '+(isB?'BUY':'SELL')+' QMR\n\n'+msgs[level]+'\n\n\u2014 The Slayers Model by Rexroz');}
 async function tgBiasFlip(id,oldBias,newBias){await tgSend('\uD83D\uDD04 WEEKLY BIAS FLIPPED - '+id+'\n'+'='.repeat(28)+'\n\n\uD83D\uDCCA '+id+'\n'+(oldBias==='BULLISH'?'\uD83D\uDFE2':'\uD83D\uDD34')+' Previous: '+oldBias+'\n'+(newBias==='BULLISH'?'\uD83D\uDFE2':'\uD83D\uDD34')+' New Bias: '+newBias+'\n\n\u26A0\uFE0F Institutional direction has shifted. Adjust your bias accordingly.\n'+(newBias==='BEARISH'?'Look for sell setups in premium only.':'Look for buy setups in discount only.')+'\n\n\u2014 The Slayers Model by Rexroz');}
 
 // Sends ONE bundled message for all bias flips that happened in a single scan
@@ -813,15 +813,17 @@ async function checkQMRTrades(instId,price,cHigh,cLow){
     // 2. TP1 hit — requires minimum 2 hours trade age to prevent immediate trigger
     if(!t.tp1Fired&&duration!==null&&duration>=120&&(isB?hi>=t.tp1:lo<=t.tp1)){
       t.tp1Fired=true;t.tp1Time=Date.now();t.openTime=t.openTime||t.tp1Time;
+      // Move SL to entry + 0.3R buffer — protects profit while giving room to breathe
+      var slDist=Math.abs(t.qmLevel-(t.origSL||t.sl));
+      var buffer=slDist*0.3;
+      if(isB){t.sl=t.qmLevel-buffer;}else{t.sl=t.qmLevel+buffer;}
+      t.beFired=true;
       await tgQMRUpdate(t,'tp1');try{const[pt,pb]=pushTextFor('tp1',t);sendPushToTrackers(t.sigId,pt,pb,'tp1');}catch(e){}
-      tradeHistory.push({instId:t.instId,type:t.type,tf:t.tf,outcome:'TP1',rMultiple:computeR(t,t.tp1),time:new Date().toISOString(),duration:t.openTime?Math.round((Date.now()-t.openTime)/60000):null});
-      dailyOutcomeLog.push({id:t.instId,name:t.instName,tf:t.tf,type:t.type,outcome:'TP1',time:new Date().toISOString()});
-      // Same-candle check: if this candle also touches entry (SL moved to entry),
-      // fire be_close immediately rather than waiting for next scan
-      if(t.beFired&&(isB?lo<=t.sl:hi>=t.sl)){
+      // Same-candle check: if this candle also touches buffer SL, close remainder immediately
+      if(isB?lo<=t.sl:hi>=t.sl){
         t.slFired=true;
         await tgQMRUpdate(t,'be_close');try{const[pt,pb]=pushTextFor('be_close',t);sendPushToTrackers(t.sigId,pt,pb,'be_close');}catch(e){}
-        const winR=computeR(t,t.tp2);
+        const winR=computeR(t,t.tp1);
         tradeHistory.push({instId:t.instId,type:t.type,tf:t.tf,outcome:'WIN',rMultiple:winR,time:new Date().toISOString(),duration});
         updateMemberStats(t.sigId,'WIN',winR);
         autoJournalEntry(t,'WIN',winR,duration);
@@ -829,15 +831,9 @@ async function checkQMRTrades(instId,price,cHigh,cLow){
         dailyOutcomeLog.push({id:t.instId,name:t.instName,tf:t.tf,type:t.type,outcome:'WIN',time:new Date().toISOString()});
         lossStreak=0;winStreak++;
         if(winStreak===3)await tgSend('\uD83D\uDD25 3 wins in a row. System is performing. Stay disciplined.\n\u2014 The Slayers Model by Rexroz');
-        markFeedOutcome(t.sigId,t.tp1Fired?'WIN':t.beFired?'BE':'SL');
+        markFeedOutcome(t.sigId,'WIN');
         clearAggBanner(t.sigId);delete trackedTrades[t.sigId];activeQMRTrades.splice(i,1);saveState();continue;
       }
-    }
-
-    // 3. Breakeven trigger (price first reaches 1:1 profit)
-    if(!t.beFired&&(isB?price>=t.beLevel:price<=t.beLevel)){
-      t.beFired=true;t.sl=t.qmLevel;t.beTime=Date.now();
-      await tgQMRUpdate(t,'be');try{const[pt,pb]=pushTextFor('be',t);sendPushToTrackers(t.sigId,pt,pb,'be');}catch(e){}
     }
 
     // 4. Auto-trailing stop (after TP1, dynamically move SL)
@@ -899,9 +895,9 @@ async function checkQMRTrades(instId,price,cHigh,cLow){
       }
       t.slFired=true;
       if(t.tp1Fired){
-        // TP1 was already banked — this is a be_close (remainder comes back to entry)
+        // TP1 was already banked — remainder hit buffer, record as TP1 achievement
         await tgQMRUpdate(t,'be_close');
-        const winR=computeR(t,t.tp2);
+        const winR=computeR(t,t.tp1);
         tradeHistory.push({instId:t.instId,type:t.type,tf:t.tf,outcome:'WIN',rMultiple:winR,time:new Date().toISOString(),duration});
         updateMemberStats(t.sigId,'WIN',winR);
         autoJournalEntry(t,'WIN',winR,duration);
@@ -1333,10 +1329,10 @@ function pushTextFor(level,trade){
   const p=trade.dec,name=trade.instName||trade.instId;
   const map={
     be:['\u26A1 Moved to Breakeven',name+' \u2014 SL now at entry, trade is risk-free.'],
-    tp1:['\u2705 TP1 Hit',name+' \u2014 close 50%, move SL to entry.'],
+    tp1:['\u2705 TP1 Hit',name+' \u2014 close 50%, buffer SL active.'],
     tp2:['\uD83D\uDCB0 Full Target Hit',name+' \u2014 take full profit.'],
     sl:['\uD83D\uDEAB Stop Loss Hit',name+' \u2014 trade closed.'],
-    be_close:['\u2705 Closed \u2014 TP1 Secured',name+' \u2014 price returned to entry, TP1 profit banked.'],
+    be_close:['\u2705 Closed \u2014 TP1 Secured',name+' \u2014 remainder hit buffer, partial profit banked.'],
     be_sl:['\u2696\uFE0F Closed at Breakeven',name+' \u2014 no loss taken.'],
     trail:['\uD83D\uDD39 Trailing Active',name+' \u2014 SL now trails behind price.']
   };
