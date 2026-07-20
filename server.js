@@ -1096,6 +1096,12 @@ async function runScan(manual=false){
             const rr1_q=slDistForRR>0?Math.abs(tp1_q-entryForRR)/slDistForRR:0;
             if(rr1_q<1.2){log('QMR suppressed (weak TP1 reward '+rr1_q.toFixed(2)+'R from '+(earlyRefined?'refined':'zone')+' entry): '+inst.id+' '+qmr.type);continue;}
             qmr.structuralTP2=slD_q>0?findStructuralTP2(c,qmr.type,qmr.qmLevel,slD_q,tp1_q):null;
+            // Cap structural TP2 at 2.5R — prevents TP2 being too far if structure is beyond 2.5R
+            if(qmr.structuralTP2){
+              const maxTP2Price=qmr.type==='BULLISH'?qmr.qmLevel+slD_q*2.5:qmr.qmLevel-slD_q*2.5;
+              const isOver=qmr.type==='BULLISH'?qmr.structuralTP2.price>maxTP2Price:qmr.structuralTP2.price<maxTP2Price;
+              if(isOver){qmr.structuralTP2.price=maxTP2Price;qmr.structuralTP2.rr='2.5';}
+            }
             if(isWeekend()&&inst.id!=='BTCUSD')continue;
             if(tf==='1h'&&!inKillzone(inst.id)){log('QMR outside killzone (alerting with session warning): '+inst.id+' '+qmr.type);}
             if(tf==='4h'&&!isPairInSession(inst.id)){log('QMR 4H suppressed (pair not in session): '+inst.id+' '+qmr.type);continue;}
