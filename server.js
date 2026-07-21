@@ -333,6 +333,7 @@ async function loadState(){
     tradeHistory=(tradeHistory||[]).filter(t=>t.instId!=='EURGBP');
     dailyOutcomeLog=(dailyOutcomeLog||[]).filter(t=>t.id!=='EURGBP');
     appSignalFeed=(appSignalFeed||[]).filter(s=>s.pair!=='EURGBP');
+    if(tradeHistory.length!==st?.tradeHistory?.length||appSignalFeed.length!==st?.appSignalFeed?.length)saveState();
     if(tradeHistory.length!==st?.tradeHistory?.length)saveState();
   }catch(e){log('loadState error (starting fresh): '+e.message);}
 }
