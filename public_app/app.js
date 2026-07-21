@@ -232,10 +232,10 @@ function setupPTR(sc){
 // ===== STATE =====
 var state={
   tab:'overview',selected:null,showCalc:false,
-  signals:[],active:[],confluence:[],stats:null,myStats:null,
+  signals:[],active:[],confluence:[],stats:null,myStats:null,detailedStats:null,
   journal:[],news:[],settings:null,notifPrefs:{},botHistory:[],
   loading:true,
-  filter:{pair:'',dir:'',tf:''},
+  filter:{pair:'',dir:'',tf:'',minScore:0,dateFrom:'',dateTo:'',sort:'time'},
   journalFilter:'all',
   journalPairFilter:'all',
   journalDirFilter:'all',
@@ -246,6 +246,8 @@ var state={
   articles:[],
   showOnboarding:false,
   onboardingStep:-1,
+  showFilters:false,
+  statsTab:'overview',
 };
 
 // ===== DATA FETCHING =====
@@ -253,12 +255,20 @@ async function fetchAll(){
   var TIMEOUT_MS=10000;
   var withTimeout=function(p){return Promise.race([p,new Promise(function(_,rej){setTimeout(function(){rej(new Error('Request timed out'));},TIMEOUT_MS);})]);};
   try{
-    var [sigRes,activeRes,confluRes,statsRes,myStatsRes,journalRes,newsRes,newsFeedRes,settingsRes,tradeHistRes]=await withTimeout(Promise.all([
-      fetch(withCode('/api/signals?limit=20')),fetch(withCode('/api/active')),
+    var sigUrl='/api/signals?limit=20';
+    if(state.filter.pair)sigUrl+='&pair='+encodeURIComponent(state.filter.pair);
+    if(state.filter.dir)sigUrl+='&dir='+encodeURIComponent(state.filter.dir);
+    if(state.filter.tf)sigUrl+='&tf='+encodeURIComponent(state.filter.tf);
+    if(state.filter.minScore>0)sigUrl+='&minScore='+state.filter.minScore;
+    if(state.filter.dateFrom)sigUrl+='&dateFrom='+encodeURIComponent(state.filter.dateFrom);
+    if(state.filter.dateTo)sigUrl+='&dateTo='+encodeURIComponent(state.filter.dateTo);
+    if(state.filter.sort!=='time')sigUrl+='&sort='+state.filter.sort;
+    var [sigRes,activeRes,confluRes,statsRes,detailedStatsRes,myStatsRes,journalRes,newsRes,newsFeedRes,settingsRes,tradeHistRes,weekSumRes]=await withTimeout(Promise.all([
+      fetch(sigUrl),fetch(withCode('/api/active')),
       fetch(withCode('/api/confluence')),fetch(withCode('/api/stats')),
-      fetch(withCode('/api/member/stats')),fetch(withCode('/api/journal')),
+      fetch(withCode('/api/stats/detailed')),fetch(withCode('/api/member/stats')),fetch(withCode('/api/journal')),
       fetch(withCode('/api/news')),fetch(withCode('/api/news-feed')),fetch(withCode('/api/settings')),
-      fetch(withCode('/api/trade-history'))
+      fetch(withCode('/api/trade-history')),fetch(withCode('/api/weekly-summary'))
     ]));
     if(sigRes.status===401){clearCode();state.loading=false;renderLogin('Your access code has expired or is no longer valid.');return;}
     var j=function(r){return r.json().catch(function(){return{};});};
@@ -266,6 +276,7 @@ async function fetchAll(){
     state.active=(await j(activeRes)).trades||[];
     state.confluence=(await j(confluRes)).pairs||[];
     state.stats=await j(statsRes);
+    state.detailedStats=await j(detailedStatsRes);
     if(myStatsRes.status===200){var myData=await j(myStatsRes);state.myStats=myData.myStats||null;state.notifPrefs=myData.notifPrefs||{};}
     state.journal=(await j(journalRes)).entries||[];
     state.news=(await j(newsRes)).events||[];
@@ -277,6 +288,7 @@ async function fetchAll(){
     })();
     var sData=await j(settingsRes);state.settings=sData.settings||null;
     var histRes=await j(tradeHistRes);state.botHistory=histRes.outcomes||[];
+    var weekSum=await j(weekSumRes);state.weeklySummary=weekSum.summary||null;
     state.fetchError=null;
   }catch(e){console.error('Fetch error',e);state.fetchError=e.message||'Connection error';}
   state.loading=false;render();
@@ -673,21 +685,76 @@ function journalScreen(){
     chipsHtml+='<span onclick="setJournalFilter(\''+filterChips[i]+'\')" style="font-size:10px;font-weight:600;padding:5px 12px;border-radius:4px;cursor:pointer;background:'+(active?C.limeSoft:'rgba(255,255,255,0.03)')+';color:'+(active?C.lime:C.text2)+';border:0.5px solid '+(active?C.limeBorder:'rgba(255,255,255,0.05)')+'">'+label+'</span>';
   }
 
+  // Performance dashboard
+  var ds=state.detailedStats||{};
+  function perfTabBtn(label,key){var a=state.statsTab===key;return'<span onclick="state.statsTab=\''+key+'\';render()" style="font-size:10px;font-weight:600;padding:5px 14px;border-radius:4px;cursor:pointer;background:'+(a?C.limeSoft:'rgba(255,255,255,0.03)')+';color:'+(a?C.lime:C.text2)+';border:0.5px solid '+(a?C.limeBorder:'rgba(255,255,255,0.05)')+'">'+label+'</span>';}
+  var perfContent='';
+  if(state.statsTab==='overview'){
+    perfContent=equityChart(entries)+rBarChart(entries)+
+    heatmapCard('Your Trades',entries,function(e){return e.createdAt?e.createdAt.slice(0,10):'';},function(e){return e.outcome;})+
+    heatmapCard('Bot Trades',state.botHistory,function(o){return o.time?o.time.slice(0,10):'';},function(o){return o.outcome;});
+  }else if(state.statsTab==='pairs'&&ds.byPair){
+    var pairRows='';
+    var sortedPairs=Object.keys(ds.byPair).sort(function(a,b){return ds.byPair[b].total-ds.byPair[a].total;});
+    for(var pi=0;pi<sortedPairs.length;pi++){
+      var p=ds.byPair[sortedPairs[pi]];
+      var pwr=p.wins+p.losses?Math.round(p.wins/(p.wins+p.losses)*100):0;
+      pairRows+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid rgba(255,255,255,0.04);font-size:12px">'+
+        '<span style="font-weight:600;color:'+C.white+'">'+sortedPairs[pi]+'</span>'+
+        '<span style="color:'+C.lime+'">'+p.wins+'W</span>'+
+        '<span style="color:'+C.red+'">'+p.losses+'L</span>'+
+        '<span style="color:'+(pwr>=50?C.lime:C.red)+'">'+pwr+'%</span>'+
+        '<span style="color:'+C.text2+'">'+(p.totalR>=0?'+':'')+p.totalR.toFixed(1)+'R</span></div>';
+    }
+    perfContent='<div class="card" style="padding:4px 16px;animation-delay:0s">'+
+      '<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:10px;color:'+C.text2+';font-weight:600;text-transform:uppercase">'+
+      '<span>Pair</span><span>Wins</span><span>Losses</span><span>WR</span><span>Total R</span></div>'+pairRows+'</div>';
+  }else if(state.statsTab==='days'&&ds.byDay){
+    var dayRows='',dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    for(var di=0;di<dayNames.length;di++){
+      var dk=dayNames[di],dc=ds.byDay.counts[dk]||0,dw=ds.byDay.wins[dk]||0;
+      var dwr=dc?Math.round(dw/dc*100):0;
+      dayRows+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid rgba(255,255,255,0.04);font-size:12px">'+
+        '<span style="font-weight:600;color:'+C.white+'">'+dk+'</span>'+
+        '<span style="color:'+C.text2+'">'+dc+' trades</span>'+
+        '<span style="color:'+C.lime+'">'+dw+' wins</span>'+
+        '<span style="color:'+(dwr>=50?C.lime:C.red)+'">'+dwr+'%</span></div>';
+    }
+    perfContent='<div class="card" style="padding:4px 16px;animation-delay:0s">'+
+      '<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:10px;color:'+C.text2+';font-weight:600;text-transform:uppercase">'+
+      '<span>Day</span><span>Count</span><span>Wins</span><span>WR</span></div>'+dayRows+'</div>';
+  }
+  // Weekly summary
+  var wsHtml='';
+  var ws=state.weeklySummary;
+  if(ws&&ws.total>0){
+    var wsBar='\u2588'.repeat(Math.round(ws.wr/10))+'\u2591'.repeat(10-Math.round(ws.wr/10));
+    wsHtml='<div class="card" style="border-color:'+C.limeBorder+';padding:14px 16px;animation-delay:0s">'+
+      '<div style="font-size:11px;font-weight:700;color:'+C.text2+';letter-spacing:0.5px;text-transform:uppercase;margin-bottom:8px">\uD83D\uDCCA This Week</div>'+
+      '<div style="display:flex;justify-content:space-around;margin-bottom:8px">'+
+      '<div style="text-align:center"><div style="font-size:18px;font-weight:800;color:'+C.lime+'">'+ws.total+'</div><div style="font-size:9px;color:'+C.text2+'">Trades</div></div>'+
+      '<div style="text-align:center"><div style="font-size:18px;font-weight:800;color:'+C.lime+'">'+(ws.wr||0)+'%</div><div style="font-size:9px;color:'+C.text2+'">Win Rate</div></div>'+
+      '<div style="text-align:center"><div style="font-size:18px;font-weight:800;color:'+(ws.totalR>=0?C.lime:C.red)+'">'+(ws.totalR>=0?'+':'')+(ws.totalR||0).toFixed(1)+'R</div><div style="font-size:9px;color:'+C.text2+'">Total R</div></div></div>'+
+      '<div style="font-size:10px;font-family:monospace;color:'+C.lime+'">'+wsBar+'</div>'+
+      '<div style="display:flex;gap:12px;margin-top:6px;font-size:10px;color:'+C.text2+'">'+
+      '<span>\u2705 '+ws.tp+' wins</span><span>\u274C '+ws.sl+' losses</span><span>\u2696\uFE0F '+ws.be+' BE</span></div></div>';
+  }
+
   return '<div style="display:flex;align-items:center;justify-content:space-between;padding-top:12px;margin-bottom:14px">'+
     '<div style="font-size:18px;font-weight:600;letter-spacing:-0.3px;color:'+C.white+'">Journal</div>'+
     '<div style="display:flex;gap:8px;align-items:center">'+
     '<span onclick="window.open(withCode(\'/api/journal\'),\'_blank\')" style="font-size:10px;font-weight:600;color:'+C.text2+';cursor:pointer">Export</span>'+
     '<button onclick="toggleEntryForm()" style="background:'+C.lime+';border:none;border-radius:8px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#000;font-weight:800;font-size:18px;line-height:1">+</button>'+
     '</div></div>'+
+    wsHtml+
     '<div class="card" style="padding:16px 20px;border-color:'+C.limeBorder+';animation-delay:0s">'+
     '<div style="display:flex;justify-content:space-around">'+
     '<div style="text-align:center"><div style="display:flex;align-items:baseline;justify-content:center;gap:1px"><div class="count-up" style="font-size:22px;font-weight:800;color:'+C.lime+';letter-spacing:-0.5px" data-target="'+wr+'">0</div><span style="font-size:12px;font-weight:700;color:'+C.lime+'">%</span></div><div style="font-size:9px;color:'+C.text2+';font-weight:500;margin-top:2px">Win Rate</div></div>'+
     '<div style="text-align:center"><div style="display:flex;align-items:baseline;justify-content:center;gap:1px"><span style="font-size:12px;font-weight:700;color:'+(totalR>=0?C.lime:C.red)+'">'+(totalR>=0?'+':'-')+'</span><div class="count-up" style="font-size:22px;font-weight:800;color:'+(totalR>=0?C.lime:C.red)+';letter-spacing:-0.5px" data-target="'+Math.abs(totalR||0)+'" data-dur="800">0</div><span style="font-size:12px;font-weight:700;color:'+(totalR>=0?C.lime:C.red)+'">R</span></div><div style="font-size:9px;color:'+C.text2+';font-weight:500;margin-top:2px">Total R</div></div>'+
     '<div style="text-align:center"><div class="count-up" style="font-size:22px;font-weight:800;color:'+C.white+';letter-spacing:-0.5px" data-target="'+entries.length+'">0</div><div style="font-size:9px;color:'+C.text2+';font-weight:500;margin-top:2px">Trades</div></div>'+
     '<div style="text-align:center"><div class="count-up" style="font-size:22px;font-weight:800;color:'+C.red+';letter-spacing:-0.5px" data-target="'+losses.length+'">0</div><div style="font-size:9px;color:'+C.text2+';font-weight:500;margin-top:2px">Losses</div></div></div></div>'+
-    equityChart(entries)+rBarChart(entries)+
-    heatmapCard('Your Trades',entries,function(e){return e.createdAt?e.createdAt.slice(0,10):'';},function(e){return e.outcome;})+
-    heatmapCard('Bot Trades',state.botHistory,function(o){return o.time?o.time.slice(0,10):'';},function(o){return o.outcome;})+
+    '<div style="display:flex;gap:6px;margin-bottom:8px">'+perfTabBtn('Overview','overview')+perfTabBtn('By Pair','pairs')+perfTabBtn('By Day','days')+'</div>'+
+    perfContent+
     '<div class="card" style="display:flex;justify-content:space-around;padding:14px 10px;animation-delay:0.1s">'+
     '<div style="text-align:center"><div style="font-size:9px;color:'+C.text2+';font-weight:500">\uD83D\uDD25 Win Streak</div>'+
     '<div style="font-size:20px;font-weight:800;color:'+C.lime+';letter-spacing:-0.5px;margin-top:2px">'+(streakInfo.winStreak??0)+'</div></div>'+
@@ -914,6 +981,7 @@ function calendarScreen(){
 function settingsScreen(){
   var s=state.settings||{};
   var prefs=state.notifPrefs||{};
+  var alertFilters=s.alertFilters||{};
   var notifItems=[
     ['Signal Alerts','signalAlerts','New ELITE/STRONG signals'],
     ['Trade Updates','tradeUpdates','TP1, BE, trail, SL hits'],
@@ -940,6 +1008,23 @@ function settingsScreen(){
     '<div class="setting-row"><div><div class="label" style="color:'+C.white+'">Sound Alerts</div><div class="hint">Play sound on new signals</div></div>'+
     '<div class="toggle on" onclick="this.classList.toggle(\'on\')"></div></div>'+
     notifToggles+'</div>'+
+    '<div style="font-size:11px;font-weight:700;color:'+C.text2+';padding:6px 4px 4px;letter-spacing:0.5px;text-transform:uppercase">Alert Filters</div>'+
+    '<div class="card" style="padding:4px 16px;animation-delay:0.06s">'+
+    '<div class="setting-row"><div><div class="label" style="color:'+C.white+'">Min RR Threshold</div><div class="hint">Only alert if RR ≥ this value</div></div>'+
+    '<select onchange="saveAlertFilter(\'minRR\',parseFloat(this.value))" style="background:'+C.bg+';border:0.5px solid '+C.border+';border-radius:6px;padding:6px 8px;color:'+C.white+';font-size:11px;outline:none">'+
+    '<option value="1.2"'+(alertFilters.minRR===1.2?' selected':'')+'>1.2R</option>'+
+    '<option value="1.5"'+(alertFilters.minRR===1.5?' selected':'')+'>1.5R</option>'+
+    '<option value="2.0"'+(alertFilters.minRR===2.0?' selected':'')+'>2.0R</option>'+
+    '<option value="3.0"'+(alertFilters.minRR===3.0?' selected':'')+'>3.0R</option></select></div>'+
+    '<div class="setting-row"><div><div class="label" style="color:'+C.white+'">Min Score</div><div class="hint">Only alert if score ≥ this</div></div>'+
+    '<select onchange="saveAlertFilter(\'minScore\',parseInt(this.value))" style="background:'+C.bg+';border:0.5px solid '+C.border+';border-radius:6px;padding:6px 8px;color:'+C.white+';font-size:11px;outline:none">'+
+    '<option value="0"'+(alertFilters.minScore===0?' selected':'')+'>Any</option>'+
+    '<option value="1"'+(alertFilters.minScore===1?' selected':'')+'>1+</option>'+
+    '<option value="2"'+(alertFilters.minScore===2?' selected':'')+'>2+</option>'+
+    '<option value="3"'+(alertFilters.minScore===3?' selected':'')+'>3+</option>'+
+    '<option value="4"'+(alertFilters.minScore===4?' selected':'')+'>4+ (ELITE)</option></select></div>'+
+    '<div class="setting-row" style="border-bottom:none"><div><div class="label" style="color:'+C.white+'">Session Only</div><div class="hint">Only scan during London/NY hours</div></div>'+
+    '<div class="toggle '+(alertFilters.sessionOnly?'on':'')+'" onclick="saveAlertFilter(\'sessionOnly\','+(!alertFilters.sessionOnly)+')"></div></div></div>'+
     '<div style="font-size:11px;font-weight:700;color:'+C.text2+';padding:6px 4px 4px;letter-spacing:0.5px;text-transform:uppercase">About</div>'+
     '<div class="card" style="padding:4px 16px;animation-delay:0.1s">'+
     '<div class="setting-row"><div><div class="label" style="color:'+C.white+'">Version</div><div class="hint">Build '+new Date().toISOString().slice(0,10)+'</div></div>'+
@@ -957,6 +1042,14 @@ async function toggleNotifPref(key,newVal){
   prefs[key]=newVal;state.notifPrefs=prefs;render();
   try{await fetch(withCode('/api/member/notif-prefs'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({notifPrefs:prefs})});}
   catch(e){console.error('Notif save failed',e);}
+}
+async function saveAlertFilter(key,val){
+  var settings=Object.assign({},state.settings);
+  settings.alertFilters=Object.assign({},settings.alertFilters||{});
+  settings.alertFilters[key]=val;
+  state.settings=settings;render();
+  try{await fetch(withCode('/api/settings'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({settings:{alertFilters:settings.alertFilters}})});}
+  catch(e){console.error('Alert filter save failed',e);}
 }
 
 // ===== NEWS SCREEN =====
@@ -1108,6 +1201,31 @@ function overviewScreen(){
   var statsHtml=statsOverview();
   var tradesHtml='';
   for(var i=0;i<myActive.length;i++)tradesHtml+=activeTradeWidget(myActive[i]);
+  // Signal filter bar
+  var filterIcon=state.showFilters?'\u25B2':'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="20" y2="12"/><line x1="12" y1="18" x2="20" y2="18"/></svg>';
+  var filterBar='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'+
+    '<div class="section-h" style="color:'+C.white+';margin-bottom:0;padding-top:0">Recent Signals</div>'+
+    '<span onclick="state.showFilters=!state.showFilters;render()" style="font-size:10px;color:'+C.text2+';cursor:pointer;padding:6px">'+filterIcon+'</span></div>';
+  var filterOpts='';
+  if(state.showFilters){
+    filterOpts='<div class="card" style="padding:10px 14px;animation-delay:0s;margin-bottom:8px">'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px">'+
+      '<input placeholder="Pair (e.g. EUR)" value="'+esc(state.filter.pair)+'" oninput="state.filter.pair=this.value.toUpperCase();fetchAll()" style="background:rgba(255,255,255,0.04);border:0.5px solid rgba(255,255,255,0.08);border-radius:6px;padding:8px;color:'+C.white+';font-size:11px;outline:none">'+
+      '<select onchange="state.filter.tf=this.value;fetchAll()" style="background:rgba(255,255,255,0.04);border:0.5px solid rgba(255,255,255,0.08);border-radius:6px;padding:8px;color:'+C.white+';font-size:11px;outline:none">'+
+      '<option value="">All TF</option><option value="1H"'+(state.filter.tf==='1H'?' selected':'')+'>1H</option><option value="4H"'+(state.filter.tf==='4H'?' selected':'')+'>4H</option></select>'+
+      '<select onchange="state.filter.dir=this.value;fetchAll()" style="background:rgba(255,255,255,0.04);border:0.5px solid rgba(255,255,255,0.08);border-radius:6px;padding:8px;color:'+C.white+';font-size:11px;outline:none">'+
+      '<option value="">All Directions</option><option value="BULLISH"'+(state.filter.dir==='BULLISH'?' selected':'')+'>Buy</option><option value="BEARISH"'+(state.filter.dir==='BEARISH'?' selected':'')+'>Sell</option></select>'+
+      '<select onchange="state.filter.minScore=parseInt(this.value);fetchAll()" style="background:rgba(255,255,255,0.04);border:0.5px solid rgba(255,255,255,0.08);border-radius:6px;padding:8px;color:'+C.white+';font-size:11px;outline:none">'+
+      '<option value="0">Min Score</option><option value="1"'+(state.filter.minScore===1?' selected':'')+'>1+</option><option value="2"'+(state.filter.minScore===2?' selected':'')+'>2+</option><option value="3"'+(state.filter.minScore===3?' selected':'')+'>3+</option><option value="4"'+(state.filter.minScore===4?' selected':'')+'>4+</option></select></div>'+
+      '<div style="display:flex;gap:6px;align-items:center">'+
+      '<input type="date" value="'+state.filter.dateFrom+'" onchange="state.filter.dateFrom=this.value;fetchAll()" style="flex:1;background:rgba(255,255,255,0.04);border:0.5px solid rgba(255,255,255,0.08);border-radius:6px;padding:6px;color:'+C.text2+';font-size:10px;outline:none">'+
+      '<span style="color:'+C.text2+';font-size:10px">to</span>'+
+      '<input type="date" value="'+state.filter.dateTo+'" onchange="state.filter.dateTo=this.value;fetchAll()" style="flex:1;background:rgba(255,255,255,0.04);border:0.5px solid rgba(255,255,255,0.08);border-radius:6px;padding:6px;color:'+C.text2+';font-size:10px;outline:none"></div>'+
+      '<div style="margin-top:6px"><select onchange="state.filter.sort=this.value;fetchAll()" style="width:100%;background:rgba(255,255,255,0.04);border:0.5px solid rgba(255,255,255,0.08);border-radius:6px;padding:6px;color:'+C.white+';font-size:11px;outline:none">'+
+      '<option value="time"'+(state.filter.sort==='time'?' selected':'')+'>Sort by Time</option>'+
+      '<option value="score"'+(state.filter.sort==='score'?' selected':'')+'>Sort by Score</option>'+
+      '<option value="rr"'+(state.filter.sort==='rr'?' selected':'')+'>Sort by RR</option></select></div></div>';
+  }
   var signalsHtml='';
   var signalCount=0;
   if(state.signals.length){
@@ -1116,7 +1234,8 @@ function overviewScreen(){
       if(s.outcome||(s.isTracked&&!activeSigIds[s.id]))continue;
       signalCount++;signalsHtml+=signalCard(s);
     }
-    if(signalCount)signalsHtml='<div class="section-h" style="color:'+C.white+'">Recent Signals</div>'+signalsHtml;
+    if(signalCount)signalsHtml=filterBar+filterOpts+signalsHtml;
+    else if(signalCount===0&&state.showFilters)signalsHtml=filterBar+filterOpts+'<div style="text-align:center;padding:24px;color:'+C.text2+';font-size:12px">No signals match your filters</div>';
   }
   var emptyHtml='';
   if(!myActive.length&&!signalCount)emptyHtml=emptyState(state.fetchError?'Connection problem: '+state.fetchError:'No signals yet. Waiting for the next scan...');

@@ -213,6 +213,7 @@ let trackedTrades={}; // { signalId: [code, code, ...] }
 let chartCounter=0;
 let lastBriefingSnapshot=[];
 let lastBriefingTime=null;
+let weeklySummaryData=null;
 let saveTimer=null;
 function saveState(){
   // debounce: collapse rapid calls into one write
@@ -223,7 +224,7 @@ function saveState(){
       weeklyCache,prevWeeklyCache,recentQMRFires,qmr4HCache,suppressedPairs:[...suppressedPairs],
       lastBriefing,lastEOD,lastWeeklySummary,lastMonthlyRecap,pairPerformance,
       dailyAlertLog,dailyOutcomeLog,
-      qmrSeen:[...qmrSeen],earlyEntryCache,appSignalFeed,lastBriefingSnapshot,lastBriefingTime,pushSubscriptions,memberCodes,trackedTrades,memberStats,
+      qmrSeen:[...qmrSeen],earlyEntryCache,appSignalFeed,lastBriefingSnapshot,lastBriefingTime,      pushSubscriptions,memberCodes,trackedTrades,memberStats,weeklySummaryData,
       savedAt:Date.now()
     };
     const json=JSON.stringify(state);
@@ -328,6 +329,7 @@ async function loadState(){
     if(Array.isArray(st.memberCodes))memberCodes=st.memberCodes;
     if(st.trackedTrades&&typeof st.trackedTrades==='object')trackedTrades=st.trackedTrades;
     if(st.memberStats&&typeof st.memberStats==='object')memberStats=st.memberStats;
+    if(st.weeklySummaryData)weeklySummaryData=st.weeklySummaryData;
     const ageMin=st.savedAt?Math.round((Date.now()-st.savedAt)/60000):'?';
     log('State restored: '+activeQMRTrades.length+' active trades, '+tradeHistory.length+' history ('+ageMin+'m old)');
     tradeHistory=(tradeHistory||[]).filter(t=>t.instId!=='EURGBP');
@@ -348,6 +350,8 @@ function parseC(json){
   return json.values.map(v=>({dt:v.datetime,open:parseFloat(v.open),high:parseFloat(v.high),low:parseFloat(v.low),close:parseFloat(v.close)})).reverse();
 }
 function getSess(){const h=new Date().getUTCHours(),l=h>=LON_S&&h<LON_E,n=h>=NY_S&&h<NY_E;return l&&n?'London/NY Overlap':l?'London':n?'New York':'CLOSED';}
+function isSessionActive(){const h=new Date().getUTCHours();return h>=LON_S&&h<NY_E;}
+const MIN_RR=1.5;
 function isWeekend(){const d=new Date().getUTCDay(),h=new Date().getUTCHours();return d===6||(d===0&&h<22);}
 function isPairInSession(id){const s=PAIR_SESSIONS[id];if(!s)return true;const h=new Date().getUTCHours();if(s.e===24)return true;return h>=s.s&&h<s.e;}
 
@@ -538,15 +542,46 @@ function checkPremiumDiscount(c,type,qmLevel){
 function calcFibLevels(high,low){
   if(!high||!low||high<=low)return null;
   const r=high-low;
-  return{p236:high-r*0.236,p382:high-r*0.382,p50:high-r*0.5,p618:high-r*0.618,p786:high-r*0.786};
+  return{p236:high-r*0.236,p382:high-r*0.382,p50:high-r*0.5,p618:high-r*0.618,p786:high-r*0.786,p886:high-r*0.886};
 }
 function getFibDepth(price,high,low,type){
-  if(!high||!low||high<=low)return{zone:'UNKNOWN',level:null};
+  if(!high||!low||high<=low)return{zone:'UNKNOWN',level:null,score:0};
   const r=high-low,pct=type==='BULLISH'?(high-price)/r:(price-low)/r;
-  if(pct>=0.786)return{zone:'DEEP',level:'78.6%'};
-  if(pct>=0.618)return{zone:'STRONG',level:'61.8%'};
-  if(pct>=0.5)return{zone:'MODERATE',level:'50.0%'};
-  return{zone:'WEAK',level:null};
+  if(pct>=0.886)return{zone:'EXTREME',level:'88.6%',score:4};
+  if(pct>=0.786)return{zone:'DEEP',level:'78.6%',score:3};
+  if(pct>=0.702)return{zone:'DEEP_PLUS',level:'70.2%',score:2.5};
+  if(pct>=0.618)return{zone:'STRONG',level:'61.8%',score:2};
+  if(pct>=0.5)return{zone:'MODERATE',level:'50.0%',score:1};
+  return{zone:'WEAK',level:null,score:0};
+}
+function calcFibConfluence(price,type,weeklyLvls,dailyLvls){
+  let totalScore=0,zones=[],labels=[];
+  const checks=[
+    {lvls:weeklyLvls,label:'Weekly'},{lvls:dailyLvls,label:'Daily'}
+  ];
+  for(const c of checks){
+    if(!c.lvls||!c.lvls.high||!c.lvls.low||c.lvls.high<=c.lvls.low)continue;
+    const fd=getFibDepth(price,c.lvls.high,c.lvls.low,type);
+    if(fd.score>0){
+      totalScore+=fd.score;
+      zones.push(fd.zone);
+      labels.push(c.label+' '+fd.level);
+    }
+    const levels=calcFibLevels(c.lvls.high,c.lvls.low);
+    if(!levels)continue;
+    const tolerance=(c.lvls.high-c.lvls.low)*0.01;
+    const exacts=[];
+    for(const [key,p] of Object.entries(levels)){
+      const pct=type==='BULLISH'?(c.lvls.high-price)/(c.lvls.high-c.lvls.low):(price-c.lvls.low)/(c.lvls.high-c.lvls.low);
+      const lvlPct={'p236':23.6,'p382':38.2,'p50':50,'p618':61.8,'p786':78.6,'p886':88.6}[key]||0;
+      if(Math.abs(price-p)<=tolerance){exacts.push(lvlPct);}
+    }
+    if(exacts.length>1){
+      totalScore+=exacts.length;
+      labels.push(c.label+' confluence: '+exacts.join('/')+'%');
+    }
+  }
+  return{score:totalScore,zones:zones.length?zones.join(','):'NONE',labels};
 }
 function isLevelAlreadySeen(instId,type,qmLevel,variant){
   for(const key of qmrSeen){
@@ -595,7 +630,7 @@ function detectQMR(c){
   return results;
 }
 function checkSweepRejection(c,headIdx,type){const sc=c[headIdx],range=sc.high-sc.low;if(range<=0)return{valid:false,ratio:0,entryPrice:sc.close};let ratio;if(type==='BEARISH'){const bodyTop=Math.max(sc.open,sc.close);ratio=(sc.high-bodyTop)/range;}else{const bodyBottom=Math.min(sc.open,sc.close);ratio=(bodyBottom-sc.low)/range;}return{valid:ratio>=0.60,ratio,entryPrice:sc.close};}
-function detectQMREarly(c){if(c.length<35)return[];const{sH,sL}=findSwings(c);if(sH.length<3||sL.length<3)return[];const cp=c[c.length-1].close,atr=calcATR(c,14),adr=calcADR(c,14),results=[];for(let h=sH.length-1;h>=1;h--){const head=sH[h],hh1=sH[h-1];if(head.p<=hh1.p||head.i<c.length-5)continue;const hlC=sL.filter(l=>l.i>hh1.i&&l.i<head.i);if(!hlC.length)continue;const hl=hlC[hlC.length-1];if(!c.slice(head.i+1,Math.min(c.length,head.i+13)).some(x=>x.close<hl.p))continue;if(!(cp<=hl.p*1.008&&cp>=hl.p*0.992))continue;if(!checkPremiumDiscount(c,'BEARISH',hl.p))continue;const crit=validateQMRCriteria(c,'BEARISH',head,hl,atr,sH,sL);if(!crit.valid)continue;const obs=detectOB(c),fvgs=detectFVG(c),obN=obs.bear.find(z=>Math.abs((z.top+z.bottom)/2-hl.p)<atr*2.0),fvN=fvgs.bear.find(z=>Math.abs((z.top+z.bottom)/2-hl.p)<atr*2.0);if(!obN&&!fvN)continue;if(obN)crit.factors.push('Reclaimed OB');else crit.factors.push('FVG at QM');const wickCheck=checkSweepRejection(c,head.i,'BEARISH');if(!wickCheck.valid)continue;crit.factors.push('Wick '+(wickCheck.ratio*100).toFixed(0)+'%');let trueHigh=head.p;for(let k=head.i;k<c.length;k++){if(c[k].high>trueHigh)trueHigh=c[k].high;}const retestSL=trueHigh+atr*0.25,entryPrice=wickCheck.entryPrice,slDist=Math.abs(entryPrice-retestSL),rawTp1=entryPrice-slDist*3,tp1=adr>0?Math.max(rawTp1,entryPrice-adr*0.5):rawTp1,rr=slDist>0?Math.abs(entryPrice-tp1)/slDist:0;if(rr<1.2)continue;results.push({type:'BEARISH',qmLevel:hl.p,head:head.p,headIdx:head.i,cp,atr,criteria:crit,retestSL,entryPrice,slDist,tp1,tp2:entryPrice-slDist*2.5,rr,wickRatio:wickCheck.ratio});break;}for(let l=sL.length-1;l>=1;l--){const head=sL[l],ll1=sL[l-1];if(head.p>=ll1.p||head.i<c.length-5)continue;const lhC=sH.filter(h=>h.i>ll1.i&&h.i<head.i);if(!lhC.length)continue;const lh=lhC[lhC.length-1];if(!c.slice(head.i+1,Math.min(c.length,head.i+13)).some(x=>x.close>lh.p))continue;if(!(cp>=lh.p*0.992&&cp<=lh.p*1.008))continue;if(!checkPremiumDiscount(c,'BULLISH',lh.p))continue;const crit=validateQMRCriteria(c,'BULLISH',head,lh,atr,sH,sL);if(!crit.valid)continue;const obs=detectOB(c),fvgs=detectFVG(c),obN=obs.bull.find(z=>Math.abs((z.top+z.bottom)/2-lh.p)<atr*2.0),fvN=fvgs.bull.find(z=>Math.abs((z.top+z.bottom)/2-lh.p)<atr*2.0);if(!obN&&!fvN)continue;if(obN)crit.factors.push('Reclaimed OB');else crit.factors.push('FVG at QM');const wickCheck=checkSweepRejection(c,head.i,'BULLISH');if(!wickCheck.valid)continue;crit.factors.push('Wick '+(wickCheck.ratio*100).toFixed(0)+'%');let trueLow=head.p;for(let k=head.i;k<c.length;k++){if(c[k].low<trueLow)trueLow=c[k].low;}const retestSL=trueLow-atr*0.25,entryPrice=wickCheck.entryPrice,slDist=Math.abs(entryPrice-retestSL),rawTp1=entryPrice+slDist*3,tp1=adr>0?Math.min(rawTp1,entryPrice+adr*0.5):rawTp1,rr=slDist>0?Math.abs(entryPrice-tp1)/slDist:0;if(rr<1.2)continue;results.push({type:'BULLISH',qmLevel:lh.p,head:head.p,headIdx:head.i,cp,atr,criteria:crit,retestSL,entryPrice,slDist,tp1,tp2:entryPrice+slDist*2.5,rr,wickRatio:wickCheck.ratio});break;}return results;}
+function detectQMREarly(c){if(c.length<35)return[];const{sH,sL}=findSwings(c);if(sH.length<3||sL.length<3)return[];const cp=c[c.length-1].close,atr=calcATR(c,14),adr=calcADR(c,14),results=[];for(let h=sH.length-1;h>=1;h--){const head=sH[h],hh1=sH[h-1];if(head.p<=hh1.p||head.i<c.length-5)continue;const hlC=sL.filter(l=>l.i>hh1.i&&l.i<head.i);if(!hlC.length)continue;const hl=hlC[hlC.length-1];if(!c.slice(head.i+1,Math.min(c.length,head.i+13)).some(x=>x.close<hl.p))continue;if(!(cp<=hl.p*1.008&&cp>=hl.p*0.992))continue;if(!checkPremiumDiscount(c,'BEARISH',hl.p))continue;const crit=validateQMRCriteria(c,'BEARISH',head,hl,atr,sH,sL);if(!crit.valid)continue;const obs=detectOB(c),fvgs=detectFVG(c),obN=obs.bear.find(z=>Math.abs((z.top+z.bottom)/2-hl.p)<atr*2.0),fvN=fvgs.bear.find(z=>Math.abs((z.top+z.bottom)/2-hl.p)<atr*2.0);if(!obN&&!fvN)continue;if(obN)crit.factors.push('Reclaimed OB');else crit.factors.push('FVG at QM');const wickCheck=checkSweepRejection(c,head.i,'BEARISH');if(!wickCheck.valid)continue;crit.factors.push('Wick '+(wickCheck.ratio*100).toFixed(0)+'%');let trueHigh=head.p;for(let k=head.i;k<c.length;k++){if(c[k].high>trueHigh)trueHigh=c[k].high;}const retestSL=trueHigh+atr*0.25,entryPrice=wickCheck.entryPrice,slDist=Math.abs(entryPrice-retestSL),rawTp1=entryPrice-slDist*3,tp1=adr>0?Math.max(rawTp1,entryPrice-adr*0.5):rawTp1,rr=slDist>0?Math.abs(entryPrice-tp1)/slDist:0;if(rr<MIN_RR)continue;results.push({type:'BEARISH',qmLevel:hl.p,head:head.p,headIdx:head.i,cp,atr,criteria:crit,retestSL,entryPrice,slDist,tp1,tp2:entryPrice-slDist*2.5,rr,wickRatio:wickCheck.ratio});break;}for(let l=sL.length-1;l>=1;l--){const head=sL[l],ll1=sL[l-1];if(head.p>=ll1.p||head.i<c.length-5)continue;const lhC=sH.filter(h=>h.i>ll1.i&&h.i<head.i);if(!lhC.length)continue;const lh=lhC[lhC.length-1];if(!c.slice(head.i+1,Math.min(c.length,head.i+13)).some(x=>x.close>lh.p))continue;if(!(cp>=lh.p*0.992&&cp<=lh.p*1.008))continue;if(!checkPremiumDiscount(c,'BULLISH',lh.p))continue;const crit=validateQMRCriteria(c,'BULLISH',head,lh,atr,sH,sL);if(!crit.valid)continue;const obs=detectOB(c),fvgs=detectFVG(c),obN=obs.bull.find(z=>Math.abs((z.top+z.bottom)/2-lh.p)<atr*2.0),fvN=fvgs.bull.find(z=>Math.abs((z.top+z.bottom)/2-lh.p)<atr*2.0);if(!obN&&!fvN)continue;if(obN)crit.factors.push('Reclaimed OB');else crit.factors.push('FVG at QM');const wickCheck=checkSweepRejection(c,head.i,'BULLISH');if(!wickCheck.valid)continue;crit.factors.push('Wick '+(wickCheck.ratio*100).toFixed(0)+'%');let trueLow=head.p;for(let k=head.i;k<c.length;k++){if(c[k].low<trueLow)trueLow=c[k].low;}const retestSL=trueLow-atr*0.25,entryPrice=wickCheck.entryPrice,slDist=Math.abs(entryPrice-retestSL),rawTp1=entryPrice+slDist*3,tp1=adr>0?Math.min(rawTp1,entryPrice+adr*0.5):rawTp1,rr=slDist>0?Math.abs(entryPrice-tp1)/slDist:0;if(rr<MIN_RR)continue;results.push({type:'BULLISH',qmLevel:lh.p,head:head.p,headIdx:head.i,cp,atr,criteria:crit,retestSL,entryPrice,slDist,tp1,tp2:entryPrice+slDist*2.5,rr,wickRatio:wickCheck.ratio});break;}return results;}
 function findDrawOnLiquidity(c,type,entryPrice,atr){const tol=0.001,minDist=atr*3;const eqH=[],eqL=[];for(let i=0;i<c.length-4;i++){for(let j=i+3;j<c.length;j++){if(Math.abs(c[j].high-c[i].high)/c[i].high<tol){eqH.push(c[i].high);break;}}for(let j=i+3;j<c.length;j++){if(Math.abs(c[j].low-c[i].low)/c[i].low<tol){eqL.push(c[i].low);break;}}}if(type==='BULLISH'){const t=eqH.filter(h=>h>entryPrice+minDist).sort((a,b)=>a-b);return t.length?{price:t[0],label:'Buy Side Liquidity'}:null;}const t=eqL.filter(l=>l<entryPrice-minDist).sort((a,b)=>b-a);return t.length?{price:t[0],label:'Sell Side Liquidity'}:null;}
 function findStructuralTP2(c,type,entryPrice,slDist,tp1Price){if(slDist<=0)return null;const minT=type==='BULLISH'?entryPrice+slDist*2.5:entryPrice-slDist*2.5,maxT=type==='BULLISH'?entryPrice+slDist*3:entryPrice-slDist*3,tol=0.001;const eqH=[],eqL=[],swH=[],swL=[];for(let i=0;i<c.length-4;i++){for(let j=i+3;j<c.length;j++){if(Math.abs(c[j].high-c[i].high)/c[i].high<tol){eqH.push(c[i].high);break;}}for(let j=i+3;j<c.length;j++){if(Math.abs(c[j].low-c[i].low)/c[i].low<tol){eqL.push(c[i].low);break;}}}for(let i=3;i<c.length-3;i++){if(c[i].high>c[i-1].high&&c[i].high>c[i-2].high&&c[i].high>c[i+1].high&&c[i].high>c[i+2].high)swH.push(c[i].high);if(c[i].low<c[i-1].low&&c[i].low<c[i-2].low&&c[i].low<c[i+1].low&&c[i].low<c[i+2].low)swL.push(c[i].low);}if(type==='BULLISH'){const cands=[...eqH,...swH].filter(h=>h>tp1Price&&h>=minT&&h<=maxT).sort((a,b)=>a-b);if(cands.length)return{price:cands[0],rr:((cands[0]-entryPrice)/slDist).toFixed(1)};return{price:entryPrice+slDist*2.5,rr:'2.5'};}const cands=[...eqL,...swL].filter(l=>l<tp1Price&&l<=minT&&l>=maxT).sort((a,b)=>b-a);if(cands.length)return{price:cands[0],rr:((entryPrice-cands[0])/slDist).toFixed(1)};return{price:entryPrice-slDist*2.5,rr:'2.5'};}
 
@@ -804,6 +839,7 @@ async function tgWeeklySummary(){suppressedPairs.clear();const total=tradeHistor
     pp.wins=Math.round(pp.wins*0.5);
     pp.losses=Math.round(pp.losses*0.5);
   }
+  weeklySummaryData={total,tp,sl,be,wr,totalR:__weekTrades.reduce((a,t)=>a+(typeof t.rMultiple==='number'?t.rMultiple:0),0),winners:__weekTrades.filter(t=>t.outcome==='WIN'||t.outcome==='TP1'||t.outcome==='TP2').length,losers:__weekTrades.filter(t=>t.outcome==='SL').length,best:__weekTrades.reduce((a,t)=>(typeof t.rMultiple==='number'&&t.rMultiple>a)?t.rMultiple:a,0),avgDur:__weekTrades.filter(t=>t.duration!=null).reduce((a,t)=>a+t.duration,0)/(__weekTrades.filter(t=>t.duration!=null).length||1),pairs:Object.fromEntries(__weekTrades.filter(t=>t.outcome!=='BE'&&t.outcome!=='INVALIDATED').reduce((m,t)=>{if(!m.has(t.instId))m.set(t.instId,{wins:0,losses:0,total:0});const e=m.get(t.instId);e.total++;(t.outcome==='WIN'||t.outcome==='TP1'||t.outcome==='TP2')?e.wins++:e.losses++;return m;},new Map())),time:new Date().toISOString()};
   saveState();
 }
 
@@ -1079,8 +1115,8 @@ async function runScan(manual=false){
     await tgBiasFlipBundle(biasFlips);
   }
 
-  // QMR scan
-  if(manual||scanCount%2===0){
+  // QMR scan — only during active sessions
+  if(!manual&&!isSessionActive()){log('Scan skipped (outside session hours)');}else if(manual||scanCount%2===0){
     for(const inst of QMR_INSTS){
       const dce=dailyCache[inst.id];
       if(!dce||Date.now()-dce.ts>26*60*60*1000){
@@ -1118,7 +1154,7 @@ async function runScan(manual=false){
             const entryForRR=earlyRefined?earlyRefined.price:qmr.qmLevel;
             const slDistForRR=Math.abs(entryForRR-sl_q);
             const rr1_q=slDistForRR>0?Math.abs(tp1_q-entryForRR)/slDistForRR:0;
-            if(rr1_q<1.2){log('QMR suppressed (weak TP1 reward '+rr1_q.toFixed(2)+'R from '+(earlyRefined?'refined':'zone')+' entry): '+inst.id+' '+qmr.type);continue;}
+            if(rr1_q<MIN_RR){log('QMR suppressed (weak TP1 reward '+rr1_q.toFixed(2)+'R from '+(earlyRefined?'refined':'zone')+' entry): '+inst.id+' '+qmr.type);continue;}
             qmr.structuralTP2=slD_q>0?findStructuralTP2(c,qmr.type,qmr.qmLevel,slD_q,tp1_q):null;
             // Cap structural TP2 at 2.5R — prevents TP2 being too far if structure is beyond 2.5R
             if(qmr.structuralTP2){
@@ -1142,18 +1178,22 @@ async function runScan(manual=false){
               // instObj already defined above
               const dailyPOI=checkDailyPOI(inst.id,qmr.type,qmr.qmLevel);
               if(dailyPOI)qmr.dailyPOI=dailyPOI;
-              // Fib zone check — boosts quality for signals at key HTF levels
+              // ICT-style multi-TF fib confluence scoring
               const wLvls=weeklyCache[inst.id]?.lvls;
-              let fibZone='WEAK';
-              if(wLvls&&wLvls.high&&wLvls.low){
-                const fd=getFibDepth(qmr.qmLevel,wLvls.high,wLvls.low,qmr.type);
-                fibZone=fd.zone;
-                if(fd.level){
-                  qmr.criteria.factors.push(fd.level+' '+(qmr.type==='BULLISH'?'Discount':'Premium'));
-                  if(fd.zone==='STRONG'||fd.zone==='DEEP')qmr.criteria.score++;
+              const dce=dailyCache[inst.id];
+              const dLvls=dce&&dce.c&&dce.c.length>10?getWLvls(dce.c):null;
+              const fibConfluence=calcFibConfluence(qmr.qmLevel,qmr.type,wLvls,dLvls);
+              let fibZone=fibConfluence.zones;
+              let fibScore=fibConfluence.score;
+              if(fibScore>0){
+                for(const lbl of fibConfluence.labels){
+                  qmr.criteria.factors.push(lbl+' '+(qmr.type==='BULLISH'?'Discount':'Premium'));
                 }
+                if(fibScore>=2)qmr.criteria.score+=Math.min(Math.floor(fibScore),3);
+                if(fibScore>=4)qmr.criteria.factors.push('STRONG FIB CONFLUENCE');
               }
               qmr.fibZone=fibZone;
+              qmr.fibScore=fibScore;
               const counterTrend=htfBias!=='NEUTRAL'&&qmr.type!==htfBias;
               if(counterTrend){
                 const dTrend=getDailyTrend(inst.id),dFlip=dTrend!=='RANGING'&&dTrend===qmr.type;
@@ -1471,11 +1511,27 @@ app.get('/api/signals',(req,res)=>{
   const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
   const myCode=req.query.code||req.headers['x-access-code'];
   const limit=Math.min(parseInt(req.query.limit)||20,50);
-  const out=appSignalFeed.slice(0,limit).map(s=>{
+  const pairFilter=req.query.pair?req.query.pair.toUpperCase():null;
+  const tfFilter=req.query.tf?req.query.tf.toUpperCase():null;
+  const dirFilter=req.query.dir?req.query.dir.toUpperCase():null;
+  const minScore=parseInt(req.query.minScore)||0;
+  const dateFrom=req.query.dateFrom?new Date(req.query.dateFrom):null;
+  const dateTo=req.query.dateTo?new Date(req.query.dateTo):null;
+  const sort=req.query.sort||'time';
+  let filtered=appSignalFeed;
+  if(pairFilter)filtered=filtered.filter(s=>s.pair&&s.pair.toUpperCase().includes(pairFilter));
+  if(tfFilter)filtered=filtered.filter(s=>s.tf===tfFilter);
+  if(dirFilter)filtered=filtered.filter(s=>s.type===dirFilter);
+  if(minScore>0)filtered=filtered.filter(s=>(s.score||0)>=minScore);
+  if(dateFrom)filtered=filtered.filter(s=>new Date(s.time)>=dateFrom);
+  if(dateTo)filtered=filtered.filter(s=>new Date(s.time)<=dateTo);
+  if(sort==='score')filtered=[...filtered].sort((a,b)=>(b.score||0)-(a.score||0));
+  else if(sort==='rr')filtered=[...filtered].sort((a,b)=>((b.aggTp1&&b.aggEntry?Math.abs(b.aggTp1-b.aggEntry)/(b.aggSl?Math.abs(b.aggEntry-b.aggSl):1):0)-((a.aggTp1&&a.aggEntry?Math.abs(a.aggTp1-a.aggEntry)/(a.aggSl?Math.abs(a.aggEntry-a.aggSl):1):0))));
+  const out=filtered.slice(0,limit).map(s=>{
     var isDual=s.dualEntry;
     return {...s,chartUrl:s.chartFile?'/api/chart/'+s.chartFile:null,aggChartUrl:s.aggChartFile?'/api/chart/'+s.aggChartFile:null,consChartUrl:s.consChartFile?'/api/chart/'+s.consChartFile:null,isTracked:isDual?false:!!(trackedTrades[s.id]&&trackedTrades[s.id].includes(myCode)),isTrackedAgg:isDual?!!(trackedTrades[s.id+'-agg']&&trackedTrades[s.id+'-agg'].includes(myCode)):false,isTrackedCons:isDual?!!(trackedTrades[s.id+'-cons']&&trackedTrades[s.id+'-cons'].includes(myCode)):false};
   });
-  res.json({signals:out,count:out.length});
+  res.json({signals:out,count:out.length,total:filtered.length});
 });
 app.get('/api/vapid-key',(req,res)=>{
   const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
@@ -1579,8 +1635,8 @@ app.get('/api/settings',(req,res)=>{
   if(codeCheck!=='ok')return res.status(401).json({error:'Invalid or expired access code',reason:codeCheck});
   const code=req.query.code||req.headers['x-access-code'];
   const member=memberCodes.find(m=>m.code===code);
-  const defaults={theme:'dark',defaultTF:'4H',defaultRisk:0.5,quoteCurrency:'USD',soundAlerts:true,notifPrefs:{}};
-  const settings=member&&member.settings?{...defaults,...member.settings,notifPrefs:member.notifPrefs||{}}:defaults;
+  const defaults={theme:'dark',defaultTF:'4H',defaultRisk:0.5,quoteCurrency:'USD',soundAlerts:true,notifPrefs:{},alertFilters:{minRR:1.2,minScore:0,enabledPairs:'ALL',sessionOnly:false}};
+  const settings=member&&member.settings?{...defaults,...member.settings,notifPrefs:member.notifPrefs||{},alertFilters:member.settings?.alertFilters||defaults.alertFilters}:defaults;
   res.json({settings});
 });
 app.post('/api/settings',(req,res)=>{
@@ -1614,6 +1670,59 @@ app.get('/api/stats',(req,res)=>{
   const totalR=Math.round(hist.reduce((a,t)=>a+(typeof t.rMultiple==='number'?t.rMultiple:0),0)*10)/10;
   let best=null;for(const t of hist){if(typeof t.rMultiple==='number'&&(!best||t.rMultiple>best.rMultiple))best=t;}
   res.json({totalSignals:hist.length,wins:wins.length,losses:losses.length,breakevens:bes.length,winRate:wr,totalR,bestTrade:best,winStreak,lossStreak});
+});
+app.get('/api/stats/detailed',(req,res)=>{
+  const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:'Invalid or expired access code',reason:codeCheck});
+  const hist=tradeHistory.filter(t=>t.outcome&&t.outcome!=='INVALIDATED');
+  // Per-pair breakdown
+  const byPair={};
+  for(const t of hist){
+    const k=t.instId||'UNKNOWN';
+    if(!byPair[k])byPair[k]={wins:0,losses:0,bes:0,totalR:0,total:0};
+    byPair[k].total++;
+    if(t.outcome==='WIN'||t.outcome==='TP1'||t.outcome==='TP2')byPair[k].wins++;
+    else if(t.outcome==='SL')byPair[k].losses++;
+    else if(t.outcome==='BE')byPair[k].bes++;
+    if(typeof t.rMultiple==='number')byPair[k].totalR+=t.rMultiple;
+  }
+  // Per-day-of-week breakdown
+  const byDay={Sun:0,Mon:0,Tue:0,Wed:0,Thu:0,Fri:0,Sat:0};
+  const byDayWin={Sun:0,Mon:0,Tue:0,Wed:0,Thu:0,Fri:0,Sat:0};
+  for(const t of hist){
+    if(!t.time)continue;
+    const day=new Date(t.time).toLocaleDateString('en',{weekday:'short'});
+    if(byDay[day]!==undefined){byDay[day]++;if(t.outcome==='WIN'||t.outcome==='TP1'||t.outcome==='TP2')byDayWin[day]++;}
+  }
+  // Per-TF breakdown
+  const byTF={};
+  for(const t of hist){
+    const k=t.tf||'UNKNOWN';
+    if(!byTF[k])byTF[k]={wins:0,losses:0,total:0};
+    byTF[k].total++;
+    if(t.outcome==='WIN'||t.outcome==='TP1'||t.outcome==='TP2')byTF[k].wins++;
+    else if(t.outcome==='SL')byTF[k].losses++;
+  }
+  // Equity curve (cumulative R)
+  const equity=[];let cumR=0;
+  for(const t of hist.slice().sort((a,b)=>(a.time||'').localeCompare(b.time||''))){
+    cumR+=typeof t.rMultiple==='number'?t.rMultiple:0;
+    equity.push({time:t.time,r:cumR});
+  }
+  // R multiple distribution
+  const rDist={under0:0,r0_1:0,r1_2:0,r2_3:0,r3plus:0};
+  for(const t of hist){
+    const r=typeof t.rMultiple==='number'?t.rMultiple:0;
+    if(r<0)rDist.under0++;
+    else if(r<=1)rDist.r0_1++;
+    else if(r<=2)rDist.r1_2++;
+    else if(r<=3)rDist.r2_3++;
+    else rDist.r3plus++;
+  }
+  res.json({byPair,byDay:{counts:byDay,wins:byDayWin},byTF,equity:equity.slice(-100),rDist,weeklySummary:weeklySummaryData});
+});
+app.get('/api/weekly-summary',(req,res)=>{
+  const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:'Invalid or expired access code',reason:codeCheck});
+  res.json({summary:weeklySummaryData});
 });
 app.get('/api/member/stats',(req,res)=>{
   const codeCheck=checkMemberCode(req);
