@@ -248,6 +248,7 @@ var state={
   onboardingStep:-1,
   showFilters:false,showJournalCustomize:false,
   statsTab:'overview',
+  scalpSignals:[],scalpActive:[],scalpStats:null,scalpPulse:[],
 };
 
 // ===== DATA FETCHING =====
@@ -263,13 +264,14 @@ async function fetchAll(){
     if(state.filter.dateFrom)sigUrl+='&dateFrom='+encodeURIComponent(state.filter.dateFrom);
     if(state.filter.dateTo)sigUrl+='&dateTo='+encodeURIComponent(state.filter.dateTo);
     if(state.filter.sort!=='time')sigUrl+='&sort='+state.filter.sort;
-    var [sigRes,activeRes,confluRes,statsRes,detailedStatsRes,myStatsRes,journalRes,newsRes,newsFeedRes,settingsRes,tradeHistRes,weekSumRes,scalpRes]=await withTimeout(Promise.all([
+    var [sigRes,activeRes,confluRes,statsRes,detailedStatsRes,myStatsRes,journalRes,newsRes,newsFeedRes,settingsRes,tradeHistRes,weekSumRes,scalpRes,scalpActiveRes,scalpStatsRes,scalpPulseRes]=await withTimeout(Promise.all([
       fetch(withCode(sigUrl)),fetch(withCode('/api/active')),
       fetch(withCode('/api/confluence')),fetch(withCode('/api/stats')),
       fetch(withCode('/api/stats/detailed')),fetch(withCode('/api/member/stats')),fetch(withCode('/api/journal')),
       fetch(withCode('/api/news')),fetch(withCode('/api/news-feed')),fetch(withCode('/api/settings')),
       fetch(withCode('/api/trade-history')),fetch(withCode('/api/weekly-summary')),
-      fetch(withCode('/api/scalp'))
+      fetch(withCode('/api/scalp')),
+      fetch(withCode('/api/scalp/active')),fetch(withCode('/api/scalp/stats')),fetch(withCode('/api/scalp/pulse'))
     ]));
     if(sigRes.status===401){clearCode();state.loading=false;renderLogin('Your access code has expired or is no longer valid.');return;}
     var j=function(r){return r.json().catch(function(){return{};});};
@@ -291,6 +293,9 @@ async function fetchAll(){
     var histRes=await j(tradeHistRes);state.botHistory=histRes.outcomes||[];
     var weekSum=await j(weekSumRes);state.weeklySummary=weekSum.summary||null;
     var scalpData=await j(scalpRes);state.scalpSignals=scalpData.signals||[];
+    var scalpActiveData=await j(scalpActiveRes);state.scalpActive=scalpActiveData.trades||[];
+    var scalpStatsData=await j(scalpStatsRes);state.scalpStats=scalpStatsData;
+    var scalpPulseData=await j(scalpPulseRes);state.scalpPulse=scalpPulseData.pairs||[];
     state.fetchError=null;
   }catch(e){console.error('Fetch error',e);state.fetchError=e.message||'Connection error';}
   state.loading=false;render();
@@ -892,23 +897,82 @@ window.setNewsFilter=function(f){state.newsFilter=f;render();};
 // ===== SCALP SCREEN =====
 function scalpScreen(){
   var signals=state.scalpSignals||[];
+  var active=state.scalpActive||[];
+  var stats=state.scalpStats;
+  var pulse=state.scalpPulse||[];
   var h=new Date().getUTCHours();
   var session='CLOSED';
   if((h===7||(h>7&&h<10)||h===10))session='LONDON';
   else if((h===13||(h>13&&h<16)||h===16))session='NY';
-  var sessionColor=session==='LONDON'?C.lime:session==='NY'?C.red:C.text2;
+  var sessionColor=session==='LONDON'?'#A3E635':session==='NY'?'#EF4444':'#8E8E93';
   var sessionLabel=session==='LONDON'?'London Open':session==='NY'?'New York Open':'Market Closed';
   var icon=session==='LONDON'?'\uD83C\uDDEC\uD83C\uDDE7':session==='NY'?'\uD83C\uDDFA\uD83C\uDDF8':'\uD83D\uDD34';
-  var headerHtml='<div style="display:flex;justify-content:space-between;align-items:center;padding-top:0;margin-bottom:18px">'+
-    '<div style="font-size:15px;font-weight:800;color:#FFF;letter-spacing:-0.01em">Scalp <span style="font-size:11px;font-weight:400;color:'+C.text2+'">\u00B7 Session Breakout + FVG</span></div>'+
+
+  // Header
+  var html='<div style="display:flex;justify-content:space-between;align-items:center;padding-top:0;margin-bottom:14px">'+
+    '<div style="font-size:15px;font-weight:800;color:#FFF;letter-spacing:-0.01em">Scalp <span style="font-size:11px;font-weight:400;color:#8E8E93">\u00B7 Session Breakout + FVG</span></div>'+
     '<div style="display:flex;align-items:center;gap:6px">'+
     '<div style="width:8px;height:8px;border-radius:99px;background:'+sessionColor+'"></div>'+
     '<span style="font-size:11px;font-weight:600;color:'+sessionColor+'">'+icon+' '+sessionLabel+'</span></div></div>';
-  if(!signals.length){
-    if(session==='CLOSED')return headerHtml+'<div style="margin-top:30px;text-align:center;padding:40px;color:'+C.text2+';font-size:12px">No active session. Scalp signals appear during London (7-10 UTC) and New York (13-16 UTC).</div>';
-    return headerHtml+'<div style="margin-top:30px;text-align:center;padding:40px;color:'+C.text2+';font-size:12px">Waiting for a breakout with FVG + deep Fib confluence...<br><span style="font-size:10px;color:'+C.text3+'">Checking every 30 min during '+session+' session</span></div>';
+
+  // Market pulse — daily direction for each scalp pair
+  if(pulse.length){
+    html+='<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;scrollbar-width:none">';
+    for(var i=0;i<pulse.length;i++){
+      var p=pulse[i];
+      var isUp=p.direction==='BULLISH';
+      var dirColor=isUp?'#A3E635':'#EF4444';
+      var dirIcon=isUp?'\u25B2':'\u25BC';
+      html+='<div style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:99px;background:rgba(255,255,255,0.04);border:0.5px solid rgba(255,255,255,0.06);flex-shrink:0">'+
+        '<span style="font-size:11px;font-weight:700;color:#FFF">'+p.id+'</span>'+
+        '<span style="font-size:10px;font-weight:700;color:'+dirColor+'">'+dirIcon+'</span>'+
+        '<span style="font-size:9px;color:#8E8E93">Daily</span></div>';
+    }
+    html+='</div>';
   }
-  var html='';
+
+  // Stats card
+  if(stats&&stats.total>0){
+    var wrColor=stats.winRate>=60?'#A3E635':stats.winRate>=40?'#FBBF24':'#EF4444';
+    html+='<div class="card" style="padding:12px 16px;margin-bottom:14px;animation-delay:0s">'+
+      '<div style="display:flex;justify-content:space-between;margin-bottom:6px">'+
+      '<span style="font-size:11px;font-weight:700;color:#FFF">Scalp Performance</span>'+
+      '<span style="font-size:9px;color:#8E8E93">'+stats.total+' trades</span></div>'+
+      '<div style="display:flex;gap:16px">'+
+      '<div><span style="font-size:10px;color:#8E8E93">Win Rate</span><br><span style="font-size:20px;font-weight:800;color:'+wrColor+'">'+stats.winRate+'%</span></div>'+
+      '<div><span style="font-size:10px;color:#8E8E93">Total R</span><br><span style="font-size:20px;font-weight:800;color:'+(stats.totalR>=0?'#A3E635':'#EF4444')+'">'+(stats.totalR>=0?'+':'')+stats.totalR+'R</span></div>'+
+      '<div><span style="font-size:10px;color:#8E8E93">W / L</span><br><span style="font-size:18px;font-weight:700;color:#FFF">'+stats.wins+'<span style="color:#A3E635;font-size:12px">W</span> / '+stats.losses+'<span style="color:#EF4444;font-size:12px">L</span></span></div>'+
+      '</div></div>';
+  }
+
+  // Active trades
+  if(active.length){
+    html+='<div class="section-h" style="margin-bottom:8px;color:#FFF;font-size:12px">Active Scalp Trades <span style="font-size:10px;color:#A3E635;font-weight:400">('+active.length+')</span></div>';
+    for(var i=0;i<active.length;i++){
+      var t=active[i];
+      var isB=t.type==='BULLISH';
+      var dec=t.pair==='NAS100'?2:t.pair==='USDJPY'||t.pair==='GBPJPY'?3:5;
+      var fmt=function(v){return v==null?'--':v.toFixed(dec);};
+      var dur=Math.round((Date.now()-t.openTime)/60000);
+      html+='<div class="card" style="padding:12px 16px;margin-bottom:6px;animation-delay:0.02s">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+
+        '<div style="display:flex;align-items:center;gap:6px">'+
+        '<span style="font-size:12px;font-weight:700;color:#FFF">'+t.name+'</span>'+
+        '<span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px;background:'+(isB?'rgba(163,230,53,0.15)':'rgba(239,68,68,0.15)')+';color:'+(isB?'#A3E635':'#EF4444')+'">'+(isB?'BUY':'SELL')+'</span></div>'+
+        '<span style="font-size:9px;color:#8E8E93">'+(dur>=60?Math.floor(dur/60)+'h '+dur%60+'m':dur+'m')+'</span></div>'+
+        '<div style="display:flex;gap:12px;font-size:10px;color:#8E8E93">'+
+        '<span>Entry: <b style="color:#FFF">'+fmt(t.entry)+'</b></span>'+
+        '<span>SL: <b style="color:#EF4444">'+fmt(t.sl)+'</b></span>'+
+        '<span>TP2: <b style="color:#A3E635">'+fmt(t.tp2)+'</b></span></div></div>';
+    }
+  }
+
+  // Signal cards
+  if(!signals.length){
+    if(session==='CLOSED')return html+'<div style="margin-top:20px;text-align:center;padding:40px;color:#8E8E93;font-size:12px">No active session. Scalp signals appear during London (7-10 UTC) and New York (13-16 UTC).</div>';
+    return html+'<div style="margin-top:20px;text-align:center;padding:40px;color:#8E8E93;font-size:12px">Waiting for a breakout with FVG + deep Fib confluence...<br><span style="font-size:10px;color:#636366">Checking every 30 min during '+session+' session</span></div>';
+  }
+  html+='<div class="section-h" style="margin-bottom:8px;color:#FFF;font-size:12px">Recent Signals</div>';
   for(var i=0;i<signals.length;i++){
     var s=signals[i];
     var isBuy=s.type==='BULLISH'||s.type==='BUY';
@@ -918,32 +982,35 @@ function scalpScreen(){
     var rr=slDist>0?((Math.abs(s.tp2-s.entry)/slDist).toFixed(1)):'--';
     var sessionTag=s.session==='LONDON'?'\uD83C\uDDEC\uD83C\uDDE7':' \uD83C\uDDFA\uD83C\uDDF8';
     var fibColors={'61.8':'#3B82F6','70.2':'#8B5CF6','78.6':'#EC4899'};
-    var fibColor=fibColors[s.fib]||C.lime;
+    var fibColor=fibColors[s.fib]||'#A3E635';
     var timeStr=s.time?new Date(s.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'';
+    var tracked=state.trackedIds&&state.trackedIds[s.id];
     html+='<div class="card" style="padding:14px 16px;animation-delay:'+(i*0.04)+'s">'+
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+
       '<div style="display:flex;align-items:center;gap:6px">'+
       '<span style="font-size:13px;font-weight:800;color:#FFF">'+(s.name||s.pair)+'</span>'+
-      '<span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px;background:'+(isBuy?C.limeSoft:C.redSoft)+';color:'+(isBuy?C.lime:C.red)+'">'+(isBuy?'BUY':'SELL')+'</span>'+
-      '<span style="font-size:9px;color:'+C.text2+'">'+sessionTag+' '+s.session+'</span></div>'+
-      '<div style="font-size:9px;color:'+C.text2+'">'+timeStr+'</div></div>'+
+      '<span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px;background:'+(isBuy?'rgba(163,230,53,0.15)':'rgba(239,68,68,0.15)')+';color:'+(isBuy?'#A3E635':'#EF4444')+'">'+(isBuy?'BUY':'SELL')+'</span>'+
+      '<span style="font-size:9px;color:#8E8E93">'+sessionTag+' '+s.session+'</span></div>'+
+      '<div style="display:flex;align-items:center;gap:6px">'+
+      '<span style="font-size:9px;color:#8E8E93">'+timeStr+'</span>'+
+      '<span onclick="trackScalp(\''+s.id+'\')" style="font-size:9px;font-weight:600;padding:3px 8px;border-radius:4px;cursor:pointer;background:'+(tracked?'rgba(163,230,53,0.15)':'rgba(255,255,255,0.06)')+';color:'+(tracked?'#A3E635':'#8E8E93')+'">'+(tracked?'\u2705 Tracked':'Track')+'</span></div></div>'+
       '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">'+
-      '<div><div style="font-size:8px;color:'+C.text3+';text-transform:uppercase">Entry</div><div style="font-size:15px;font-weight:700;color:#FFF">'+fmt(s.entry)+'</div></div>'+
-      '<div><div style="font-size:8px;color:'+C.text3+';text-transform:uppercase">SL</div><div style="font-size:13px;font-weight:600;color:'+C.red+'">'+fmt(s.sl)+'</div></div>'+
-      '<div><div style="font-size:8px;color:'+C.text3+';text-transform:uppercase">TP2</div><div style="font-size:13px;font-weight:600;color:'+C.lime+'">'+fmt(s.tp2)+'</div></div></div>'+
+      '<div><div style="font-size:8px;color:#636366;text-transform:uppercase">Entry</div><div style="font-size:15px;font-weight:700;color:#FFF">'+fmt(s.entry)+'</div></div>'+
+      '<div><div style="font-size:8px;color:#636366;text-transform:uppercase">SL</div><div style="font-size:13px;font-weight:600;color:#EF4444">'+fmt(s.sl)+'</div></div>'+
+      '<div><div style="font-size:8px;color:#636366;text-transform:uppercase">TP2</div><div style="font-size:13px;font-weight:600;color:#A3E635">'+fmt(s.tp2)+'</div></div></div>'+
       '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px">'+
-      '<div style="display:flex;align-items:center;gap:4px"><span style="font-size:10px;color:'+C.text2+'">Score</span><span style="font-size:13px;font-weight:800;color:'+C.white+'">'+s.score+'/5</span></div>'+
-      '<div style="display:flex;align-items:center;gap:4px"><span style="font-size:10px;color:'+C.text2+'">RR</span><span style="font-size:13px;font-weight:700;color:'+C.lime+'">1:'+rr+'</span></div>'+
-      '<div style="display:flex;align-items:center;gap:4px"><span style="font-size:10px;color:'+C.text2+'">Fib</span><span style="font-size:11px;font-weight:700;color:'+fibColor+'">'+s.fib+'%</span></div>'+
-      (s.volRatio>1?'<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:'+C.limeSoft+';color:'+C.lime+'">Volume '+(s.volRatio*100).toFixed(0)+'%</span>':'')+
+      '<div style="display:flex;align-items:center;gap:4px"><span style="font-size:10px;color:#8E8E93">Score</span><span style="font-size:13px;font-weight:800;color:#FFF">'+s.score+'/5</span></div>'+
+      '<div style="display:flex;align-items:center;gap:4px"><span style="font-size:10px;color:#8E8E93">RR</span><span style="font-size:13px;font-weight:700;color:#A3E635">1:'+rr+'</span></div>'+
+      '<div style="display:flex;align-items:center;gap:4px"><span style="font-size:10px;color:#8E8E93">Fib</span><span style="font-size:11px;font-weight:700;color:'+fibColor+'">'+s.fib+'%</span></div>'+
+      (s.volRatio>1?'<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(163,230,53,0.12);color:#A3E635">Volume '+(s.volRatio*100).toFixed(0)+'%</span>':'')+
       '</div>'+
       '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">'+
-      '<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(59,130,246,0.15);color:#60A5FA">Range: '+fmt(s.rangeHigh)+' / '+fmt(s.rangeLow)+'</span>'+
-      '<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(139,92,246,0.15);color:#A78BFA">FVG: '+fmt(s.fvgBottom)+' - '+fmt(s.fvgTop)+'</span></div>'+
+      '<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(59,130,246,0.12);color:#60A5FA">Range: '+fmt(s.rangeHigh)+' / '+fmt(s.rangeLow)+'</span>'+
+      '<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(139,92,246,0.12);color:#A78BFA">FVG: '+fmt(s.fvgBottom)+' - '+fmt(s.fvgTop)+'</span></div>'+
       (s.chartUrl?'<div class="chart-container" style="margin-top:6px;border-radius:6px;overflow:hidden;max-height:180px;cursor:pointer" onclick="window.open(\''+s.chartUrl+'\',\'_blank\')"><img src="'+s.chartUrl+'" style="width:100%;height:auto;display:block" loading="lazy"></div>':'')+
       '</div>';
   }
-  return headerHtml+html;
+  return html;
 }
 
 // ===== SETTINGS SCREEN =====
@@ -1288,6 +1355,17 @@ window.toggleTrack=async function(signalId,currentlyTracking){
     }
     render();
   }catch(e){console.error('Track toggle failed',e);}
+};
+window.trackScalp=async function(signalId){
+  try{
+    var sig=null;
+    for(var i=0;i<state.scalpSignals.length;i++)if(state.scalpSignals[i].id===signalId){sig=state.scalpSignals[i];break;}
+    var currentlyTracking=sig&&sig.isTracked;
+    if(currentlyTracking){await fetch(withCode('/api/track/'+encodeURIComponent(signalId)),{method:'DELETE'});}
+    else{await fetch(withCode('/api/track'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({signalId:signalId})});}
+    if(sig)sig.isTracked=!currentlyTracking;
+    render();
+  }catch(e){}
 };
 
 // ===== LOGIN =====

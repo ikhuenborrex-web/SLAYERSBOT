@@ -189,6 +189,7 @@ function getDailyMsg(pool){return pool[Math.floor(Date.now()/86400000)%pool.leng
 // State
 let weeklyCache={},prevWeeklyCache={},qmrSeen=new Set();
 let scalpSignals=[],scalpSeen=new Set();
+let activeScalpTrades=[],scalpTradeHistory=[];
 let activeQMRTrades=[],lastBriefing=null,lastEOD=null,lastWeeklySummary=null,lastMonthlyRecap=null;
 let earlyEntryCache={}; // {pair+type+level: {entryPrice,sl,tp1,tp2,wickRatio}}
 let pairPerformance={}; // {instId:{wins,losses}} — accumulates across all weeks, never cleared
@@ -231,7 +232,7 @@ function saveState(){
       weeklyCache,prevWeeklyCache,recentQMRFires,qmr4HCache,suppressedPairs:[...suppressedPairs],
       lastBriefing,lastEOD,lastWeeklySummary,lastMonthlyRecap,pairPerformance,
       dailyAlertLog,dailyOutcomeLog,
-      qmrSeen:[...qmrSeen],earlyEntryCache,appSignalFeed,lastBriefingSnapshot,lastBriefingTime,      pushSubscriptions,memberCodes,trackedTrades,memberStats,weeklySummaryData,scalpSignals,
+      qmrSeen:[...qmrSeen],earlyEntryCache,appSignalFeed,lastBriefingSnapshot,lastBriefingTime,      pushSubscriptions,memberCodes,trackedTrades,memberStats,weeklySummaryData,scalpSignals,activeScalpTrades,scalpTradeHistory,
       savedAt:Date.now()
     };
     const json=JSON.stringify(state);
@@ -338,6 +339,8 @@ async function loadState(){
     if(st.memberStats&&typeof st.memberStats==='object')memberStats=st.memberStats;
     if(st.weeklySummaryData)weeklySummaryData=st.weeklySummaryData;
     if(Array.isArray(st.scalpSignals))scalpSignals=st.scalpSignals;
+    if(Array.isArray(st.activeScalpTrades))activeScalpTrades=st.activeScalpTrades;
+    if(Array.isArray(st.scalpTradeHistory))scalpTradeHistory=st.scalpTradeHistory;
     const ageMin=st.savedAt?Math.round((Date.now()-st.savedAt)/60000):'?';
     log('State restored: '+activeQMRTrades.length+' active trades, '+tradeHistory.length+' history ('+ageMin+'m old)');
     tradeHistory=(tradeHistory||[]).filter(t=>t.instId!=='EURGBP');
@@ -1063,6 +1066,39 @@ async function checkQMRTrades(instId,price,cHigh,cLow){
     }
   }
 }
+function checkScalpTrades(instId,cHigh,cLow){
+  const hi=cHigh||0,lo=cLow||0;
+  for(let i=activeScalpTrades.length-1;i>=0;i--){
+    const t=activeScalpTrades[i];if(t.pair!==instId||t.closed)continue;
+    const isB=t.type==='BULLISH';
+    if(isB?hi>=t.tp2:lo<=t.tp2){
+      t.closed=true;
+      const r=Math.abs(t.tp2-t.entry)/Math.abs(t.entry-t.sl);
+      scalpTradeHistory.push({pair:t.pair,type:t.type,outcome:'WIN',r,entry:t.entry,sl:t.sl,tp2:t.tp2,session:t.session,openTime:t.openTime,closeTime:Date.now()});
+      activeScalpTrades.splice(i,1);saveState();
+      log('Scalp WIN: '+t.pair+' '+t.type+' R='+r.toFixed(2));
+    }else if(isB?lo<=t.sl:hi>=t.sl){
+      t.closed=true;
+      const r=-Math.abs(t.tp2-t.entry)/Math.abs(t.entry-t.sl);
+      scalpTradeHistory.push({pair:t.pair,type:t.type,outcome:'LOSS',r,entry:t.entry,sl:t.sl,tp2:t.tp2,session:t.session,openTime:t.openTime,closeTime:Date.now()});
+      activeScalpTrades.splice(i,1);saveState();
+      log('Scalp LOSS: '+t.pair+' '+t.type+' R='+r.toFixed(2));
+    }
+  }
+}
+function getScalpStats(){
+  const hist=scalpTradeHistory||[];
+  const wins=hist.filter(t=>t.outcome==='WIN').length;
+  const losses=hist.filter(t=>t.outcome==='LOSS').length;
+  const totalR=hist.reduce((s,t)=>s+(t.r||0),0);
+  const byPair={};
+  for(const t of hist){
+    if(!byPair[t.pair])byPair[t.pair]={wins:0,losses:0,totalR:0};
+    byPair[t.pair][t.outcome==='WIN'?'wins':'losses']++;byPair[t.pair].totalR+=t.r||0;
+  }
+  const equity=[...hist].reduce((acc,t)=>{const last=acc.length?acc[acc.length-1].r:0;acc.push({t:new Date(t.closeTime).toISOString().slice(0,10),r:last+(t.r||0)});return acc;},[]);
+  return{wins,losses,total:wins+losses,winRate:((wins+losses)?Math.round(wins/(wins+losses)*100):0),totalR:Math.round(totalR*100)/100,byPair,equity};
+}
 
 // When an aggressive trade closes, remove the pending banner on its card
 function clearAggBanner(sigId){
@@ -1473,9 +1509,13 @@ async function runScan(manual=false){
                 chartFile,time:new Date().toISOString()
               });
               if(scalpSignals.length>50)scalpSignals=scalpSignals.slice(0,50);
+              activeScalpTrades.push({sigId:'SCALP-'+inst.id+'-'+Date.now(),pair:inst.id,name:inst.name,type:signal.type,entry:signal.entry,sl:signal.sl,tp2:signal.tp2,session:signal.session,openTime:Date.now(),closed:false});
               log(`Scalp signal: ${inst.id} ${signal.type} ${signal.session} score=${signal.score} fib=${signal.fib} RR=${signal.rr}`);
             }
           }
+          const scHigh=Math.max(...sc.slice(-3).map(x=>x.high));
+          const scLow=Math.min(...sc.slice(-3).map(x=>x.low));
+          checkScalpTrades(inst.id,scHigh,scLow);
           await sleep(DELAY_MS);
         }catch(e){log('Scalp '+inst.id+': '+e.message);await sleep(DELAY_MS);}
       }
@@ -1658,6 +1698,23 @@ app.get('/api/scalp',(req,res)=>{
   const limit=Math.min(parseInt(req.query.limit)||20,50);
   const sorted=[...scalpSignals].sort((a,b)=>new Date(b.time)-new Date(a.time));
   res.json({signals:sorted.slice(0,limit).map(s=>({...s,chartUrl:s.chartFile?'/api/chart/'+s.chartFile:null})),count:Math.min(limit,sorted.length),total:scalpSignals.length});
+});
+app.get('/api/scalp/active',(req,res)=>{
+  const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
+  res.json({trades:activeScalpTrades.filter(t=>!t.closed),count:activeScalpTrades.filter(t=>!t.closed).length});
+});
+app.get('/api/scalp/stats',(req,res)=>{
+  const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
+  res.json(getScalpStats());
+});
+app.get('/api/scalp/pulse',(req,res)=>{
+  const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
+  const pulse=SCALP_INSTS.map(inst=>{
+    const dc=dailyCache[inst.id];let dir='NEUTRAL',price=null;
+    if(dc&&dc.c&&dc.c.length){const last=dc.c[dc.c.length-1];dir=last.close>last.open?'BULLISH':'BEARISH';price=last.close;}
+    return{id:inst.id,name:inst.name,direction:dir,price};
+  });
+  res.json({pairs:pulse});
 });
 app.get('/api/vapid-key',(req,res)=>{
   const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
