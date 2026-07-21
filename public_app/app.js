@@ -930,23 +930,22 @@ function scalpScreen(){
     html+='</div>';
   }
 
-  // Stats card
-  if(stats&&stats.total>0){
-    var wrColor=stats.winRate>=60?'#A3E635':stats.winRate>=40?'#FBBF24':'#EF4444';
-    html+='<div class="card" style="padding:12px 16px;margin-bottom:14px;animation-delay:0s">'+
-      '<div style="display:flex;justify-content:space-between;margin-bottom:6px">'+
-      '<span style="font-size:11px;font-weight:700;color:#FFF">Scalp Performance</span>'+
-      '<span style="font-size:9px;color:#8E8E93">'+stats.total+' trades</span></div>'+
-      '<div style="display:flex;gap:16px">'+
-      '<div><span style="font-size:10px;color:#8E8E93">Win Rate</span><br><span style="font-size:20px;font-weight:800;color:'+wrColor+'">'+stats.winRate+'%</span></div>'+
-      '<div><span style="font-size:10px;color:#8E8E93">Total R</span><br><span style="font-size:20px;font-weight:800;color:'+(stats.totalR>=0?'#A3E635':'#EF4444')+'">'+(stats.totalR>=0?'+':'')+stats.totalR+'R</span></div>'+
-      '<div><span style="font-size:10px;color:#8E8E93">W / L</span><br><span style="font-size:18px;font-weight:700;color:#FFF">'+stats.wins+'<span style="color:#A3E635;font-size:12px">W</span> / '+stats.losses+'<span style="color:#EF4444;font-size:12px">L</span></span></div>'+
-      '</div></div>';
-  }
+  // Stats card (always visible)
+  var st=stats||{winRate:0,totalR:0,wins:0,losses:0,total:0};
+  var wrColor=st.winRate>=60?'#A3E635':st.winRate>=40?'#FBBF24':'#EF4444';
+  html+='<div class="card" style="padding:12px 16px;margin-bottom:14px;animation-delay:0s">'+
+    '<div style="display:flex;justify-content:space-between;margin-bottom:6px">'+
+    '<span style="font-size:11px;font-weight:700;color:#FFF">Scalp Performance</span>'+
+    '<span style="font-size:9px;color:#8E8E93">'+st.total+' trades</span></div>'+
+    '<div style="display:flex;gap:16px">'+
+    '<div><span style="font-size:10px;color:#8E8E93">Win Rate</span><br><span style="font-size:20px;font-weight:800;color:'+wrColor+'">'+st.winRate+'%</span></div>'+
+    '<div><span style="font-size:10px;color:#8E8E93">Total R</span><br><span style="font-size:20px;font-weight:800;color:'+(st.totalR>=0?'#A3E635':'#EF4444')+'">'+(st.totalR>=0?'+':'')+st.totalR+'R</span></div>'+
+    '<div><span style="font-size:10px;color:#8E8E93">W / L</span><br><span style="font-size:18px;font-weight:700;color:#FFF">'+st.wins+'<span style="color:#A3E635;font-size:12px">W</span> / '+st.losses+'<span style="color:#EF4444;font-size:12px">L</span></span></div>'+
+    '</div></div>';
 
-  // Active trades
+  // Active trades (always visible)
+  html+='<div class="section-h" style="margin-bottom:8px;color:#FFF;font-size:12px">Active Scalp Trades <span style="font-size:10px;color:#A3E635;font-weight:400">('+active.length+')</span></div>';
   if(active.length){
-    html+='<div class="section-h" style="margin-bottom:8px;color:#FFF;font-size:12px">Active Scalp Trades <span style="font-size:10px;color:#A3E635;font-weight:400">('+active.length+')</span></div>';
     for(var i=0;i<active.length;i++){
       var t=active[i];
       var isB=t.type==='BULLISH';
@@ -964,6 +963,8 @@ function scalpScreen(){
         '<span>SL: <b style="color:#EF4444">'+fmt(t.sl)+'</b></span>'+
         '<span>TP2: <b style="color:#A3E635">'+fmt(t.tp2)+'</b></span></div></div>';
     }
+  }else{
+    html+='<div class="card" style="padding:20px 16px;margin-bottom:14px;text-align:center;color:#636366;font-size:11px">No active scalp trades</div>';
   }
 
   // Signal cards
