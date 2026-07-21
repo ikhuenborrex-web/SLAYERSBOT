@@ -197,7 +197,7 @@ let scanCount=0,lastScanTime=null,alertLog=[];
 let tradeHistory=[],dailyAlertLog=[],dailyOutcomeLog=[],newsCache=[],lastNewsFetch=0;
 let winStreak=0,lossStreak=0,qmr4HCache={},recentQMRFires={};
 let suppressedPairs=new Set(); // pairs auto-suppressed due to poor win rate
-const STATE_FILE='/tmp/slayers_state.json'; // fallback only — used if Redis isn't configured
+const STATE_FILE=process.env.STATE_FILE_PATH||'/tmp/slayers_state.json';
 let redis=null;
 try{
   if(process.env.UPSTASH_REDIS_REST_URL&&process.env.UPSTASH_REDIS_REST_TOKEN){
@@ -205,10 +205,12 @@ try{
     redis=new Redis({url:process.env.UPSTASH_REDIS_REST_URL,token:process.env.UPSTASH_REDIS_REST_TOKEN});
     console.log('Redis persistence enabled — state now survives every deploy.');
   }else{
-    console.log('WARNING: Redis not configured (UPSTASH_REDIS_REST_URL/TOKEN missing). Falling back to ephemeral file storage — state will be lost on next deploy.');
+    console.log('WARNING: Redis not configured (UPSTASH_REDIS_REST_URL/TOKEN missing). Falling back to file storage at '+STATE_FILE);
+    console.log('TIP: Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN for cross-deploy persistence,');
+    console.log('      or mount a Render Disk and set STATE_FILE_PATH to a path on that disk.');
   }
 }catch(e){
-  console.log('WARNING: Redis client failed to initialize ('+e.message+'). Falling back to ephemeral file storage.');
+  console.log('WARNING: Redis client failed to initialize ('+e.message+'). Falling back to file storage at '+STATE_FILE);
   redis=null;
 }
 const CHARTS_DIR='/tmp/slayers_charts';
@@ -236,15 +238,20 @@ function saveState(){
       savedAt:Date.now()
     };
     const json=JSON.stringify(state);
+    // Always write to file
+    try{
+      const dir=STATE_FILE.substring(0,STATE_FILE.lastIndexOf('/'));
+      if(dir&&!fs.existsSync(dir))fs.mkdirSync(dir,{recursive:true});
+      fs.writeFileSync(STATE_FILE,json);
+    }catch(e){log('saveState file error: '+e.message);}
+    // Also try Redis if available
     if(redis){
       try{
         await redis.set('slayers:state',json);
-        return;
       }catch(e){
-        log('Redis save failed ('+e.message+'), falling back to file this time.');
+        log('Redis save failed ('+e.message+') — file save already completed.');
       }
     }
-    try{fs.writeFileSync(STATE_FILE,json);}catch(e){log('saveState file fallback error: '+e.message);}
   },1500);
 }
 function refine1HEntry(c,qmrType,zoneLevel,zoneSL){
@@ -302,14 +309,14 @@ function computeR(t,exitPrice){
 }
 async function loadState(){
   try{
-    let raw=null;
+    let raw=null,src='none';
     if(redis){
       try{
         const fromRedis=await redis.get('slayers:state');
-        if(fromRedis)raw=typeof fromRedis==='string'?fromRedis:JSON.stringify(fromRedis);
+        if(fromRedis){raw=typeof fromRedis==='string'?fromRedis:JSON.stringify(fromRedis);src='Redis';}
       }catch(e){log('Redis load failed ('+e.message+'), trying file fallback.');}
     }
-    if(!raw&&fs.existsSync(STATE_FILE))raw=fs.readFileSync(STATE_FILE,'utf8');
+    if(!raw&&fs.existsSync(STATE_FILE)){raw=fs.readFileSync(STATE_FILE,'utf8');src=STATE_FILE;}
     if(!raw){log('No saved state — starting fresh');return;}
     const st=JSON.parse(raw);
     if(Array.isArray(st.activeQMRTrades))activeQMRTrades=st.activeQMRTrades;
@@ -343,7 +350,7 @@ async function loadState(){
     if(Array.isArray(st.scalpTradeHistory))scalpTradeHistory=st.scalpTradeHistory;
     if(Array.isArray(st.scalpSeen))scalpSeen=new Set(st.scalpSeen);
     const ageMin=st.savedAt?Math.round((Date.now()-st.savedAt)/60000):'?';
-    log('State restored: '+activeQMRTrades.length+' active trades, '+tradeHistory.length+' history ('+ageMin+'m old)');
+    log('State restored from '+src+': '+activeQMRTrades.length+' active trades, '+tradeHistory.length+' history ('+ageMin+'m old)');
     tradeHistory=(tradeHistory||[]).filter(t=>t.instId!=='EURGBP');
     dailyOutcomeLog=(dailyOutcomeLog||[]).filter(t=>t.id!=='EURGBP');
     appSignalFeed=(appSignalFeed||[]).filter(s=>s.pair!=='EURGBP');
