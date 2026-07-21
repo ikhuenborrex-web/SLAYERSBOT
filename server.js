@@ -1079,55 +1079,62 @@ function checkScalpTrades(instId,cHigh,cLow){
   for(let i=activeScalpTrades.length-1;i>=0;i--){
     const t=activeScalpTrades[i];if(t.pair!==instId||t.closed)continue;
     const isB=t.type==='BULLISH';
-    const rFull=Math.abs(t.tp2-t.entry)/Math.abs(t.entry-t.origSL);
+    const slDist=Math.abs(t.entry-t.origSL);
     const didHitTP1=isB?hi>=t.tp1:lo<=t.tp1;
     const didHitTP2=isB?hi>=t.tp2:lo<=t.tp2;
     const didHitSL=isB?lo<=t.sl:hi>=t.sl;
     const didHitBE=isB?lo<=t.beLevel:hi>=t.beLevel;
 
-    // TP1 → move SL to break-even
+    // TP1 → record +1R immediately, move SL to BE, keep remainder open
     if(!t.tp1Fired&&didHitTP1){
       t.tp1Fired=true;
+      t.tp1Time=Date.now();
       t.sl=t.beLevel;
-      log('Scalp TP1: '+t.pair+' '+t.type+' — SL moved to BE');
-      try{sendPushToTrackers(t.sigId,'\u26A1 Scalp TP1 '+t.pair,t.name+' — SL moved to entry, trade is risk-free.','scalp_tp1');}catch(e){}
+      const tp1R=slDist>0?Math.abs(t.tp1-t.entry)/slDist:1;
+      const durMin=t.openTime?Math.round((Date.now()-t.openTime)/60000):null;
+      scalpTradeHistory.push({pair:t.pair,type:t.type,outcome:'TP1',r:tp1R,entry:t.entry,sl:t.origSL,tp2:t.tp1,session:t.session,openTime:t.openTime,closeTime:Date.now()});
+      saveState();
+      log('Scalp TP1: '+t.pair+' '+t.type+' +'+tp1R.toFixed(2)+'R booked, SL moved to BE');
+      try{scalpJournalEntry(t,'TP1',tp1R,durMin,[t.session,'Score '+t.score+'/5','TP1 booked']);}catch(e){}
+      try{sendPushToTrackers(t.sigId,'\u2705 Scalp '+tp1R.toFixed(1)+'R Banked '+t.pair,t.name+' — TP1 hit, +'+tp1R.toFixed(2)+'R secured. Remainder running with BE SL.','scalp_tp1');}catch(e){}
       // Don't continue — check if TP2 also hit in same candle
     }
 
-    // TP2 (check before BE — TP2 wins if both hit in same candle)
+    // TP2 — remainder closes here
     if(!t.tp2Fired&&didHitTP2){
       t.tp2Fired=true;t.closed=true;
-      scalpTradeHistory.push({pair:t.pair,type:t.type,outcome:'WIN',r:rFull,entry:t.entry,sl:t.origSL,tp2:t.tp2,session:t.session,openTime:t.openTime,closeTime:Date.now()});
+      const remR=slDist>0?Math.abs(t.tp2-t.tp1)/slDist:1;
       const durMin=t.openTime?Math.round((Date.now()-t.openTime)/60000):null;
+      scalpTradeHistory.push({pair:t.pair,type:t.type,outcome:'WIN',r:remR,entry:t.tp1,sl:t.beLevel,tp2:t.tp2,session:t.session,openTime:t.tp1Fired?t.tp1Time||t.openTime:t.openTime,closeTime:Date.now(),remainder:true});
       activeScalpTrades.splice(i,1);saveState();
-      log('Scalp WIN: '+t.pair+' '+t.type+' R='+rFull.toFixed(2));
-      try{scalpJournalEntry(t,'WIN',rFull,durMin,[t.session,'Score '+t.score+'/5']);}catch(e){}
-      try{sendPushToTrackers(t.sigId,'\uD83D\uDCB0 Scalp TP2 '+t.pair,t.name+' — full target hit, +'+rFull.toFixed(2)+'R.','scalp_tp2');}catch(e){}
+      log('Scalp WIN: '+t.pair+' '+t.type+' remainder +'+remR.toFixed(2)+'R (total '+(t.tp1Fired?1+remR:remR).toFixed(1)+'R)');
+      try{scalpJournalEntry(t,'WIN',remR,durMin,[t.session,'Remainder']);}catch(e){}
+      try{sendPushToTrackers(t.sigId,'\uD83D\uDCB0 Scalp Remainder TP2 '+t.pair,t.name+' — remainder hit TP2, +'+remR.toFixed(2)+'R.','scalp_tp2');}catch(e){}
       continue;
     }
 
-    // BE after TP1 (only if TP2 wasn't also hit)
+    // BE after TP1 — remainder closes at BE
     if(t.tp1Fired&&!t.beFired&&didHitBE){
       t.beFired=true;t.closed=true;
-      scalpTradeHistory.push({pair:t.pair,type:t.type,outcome:'BE',r:0,entry:t.entry,sl:t.origSL,tp2:t.tp2,session:t.session,openTime:t.openTime,closeTime:Date.now()});
       const durMin=t.openTime?Math.round((Date.now()-t.openTime)/60000):null;
+      scalpTradeHistory.push({pair:t.pair,type:t.type,outcome:'BE',r:0,entry:t.tp1,sl:t.beLevel,tp2:t.tp2,session:t.session,openTime:t.tp1Fired?t.tp1Time||t.openTime:t.openTime,closeTime:Date.now(),remainder:true});
       activeScalpTrades.splice(i,1);saveState();
-      log('Scalp BE: '+t.pair+' '+t.type);
-      try{scalpJournalEntry(t,'BE',0,durMin,[t.session,'TP1 secured']);}catch(e){}
-      try{sendPushToTrackers(t.sigId,'\u2705 Scalp BE '+t.pair,t.name+' — TP1 secured, closed at entry.','scalp_be');}catch(e){}
+      log('Scalp BE: '+t.pair+' '+t.type+' remainder 0R (TP1 already banked at +1R)');
+      try{scalpJournalEntry(t,'BE',0,durMin,[t.session,'TP1 secured','Remainder BE']);}catch(e){}
+      try{sendPushToTrackers(t.sigId,'\u2705 Scalp Remainder BE '+t.pair,t.name+' — remainder closed at entry. TP1 already banked.','scalp_be');}catch(e){}
       continue;
     }
 
     // SL (only before TP1 fires — after TP1, SL=BE handled above)
     if(!t.tp1Fired&&!t.slFired&&didHitSL){
       t.slFired=true;t.closed=true;
-      const rLoss=-Math.abs(t.tp2-t.entry)/Math.abs(t.entry-t.origSL);
-      scalpTradeHistory.push({pair:t.pair,type:t.type,outcome:'LOSS',r:rLoss,entry:t.entry,sl:t.origSL,tp2:t.tp2,session:t.session,openTime:t.openTime,closeTime:Date.now()});
+      const rLoss=slDist>0?-1:-1;
       const durMin=t.openTime?Math.round((Date.now()-t.openTime)/60000):null;
+      scalpTradeHistory.push({pair:t.pair,type:t.type,outcome:'LOSS',r:rLoss,entry:t.entry,sl:t.origSL,tp2:t.tp2,session:t.session,openTime:t.openTime,closeTime:Date.now()});
       activeScalpTrades.splice(i,1);saveState();
-      log('Scalp LOSS: '+t.pair+' '+t.type+' R='+rLoss.toFixed(2));
+      log('Scalp LOSS: '+t.pair+' '+t.type+' '+rLoss.toFixed(1)+'R');
       try{scalpJournalEntry(t,'LOSS',rLoss,durMin,[t.session]);}catch(e){}
-      try{sendPushToTrackers(t.sigId,'\u274C Scalp SL '+t.pair,t.name+' — stop loss hit, '+rLoss.toFixed(2)+'R.','scalp_sl');}catch(e){}
+      try{sendPushToTrackers(t.sigId,'\u274C Scalp SL '+t.pair,t.name+' — stop loss hit, '+rLoss.toFixed(1)+'R.','scalp_sl');}catch(e){}
       continue;
     }
 
@@ -1149,14 +1156,14 @@ function checkScalpTrades(instId,cHigh,cLow){
 }
 function getScalpStats(){
   const hist=scalpTradeHistory||[];
-  const wins=hist.filter(t=>t.outcome==='WIN').length;
+  const wins=hist.filter(t=>t.outcome==='WIN'||t.outcome==='TP1').length;
   const losses=hist.filter(t=>t.outcome==='LOSS').length;
   const bes=hist.filter(t=>t.outcome==='BE').length;
   const totalR=hist.reduce((s,t)=>s+(t.r||0),0);
   const byPair={};
   for(const t of hist){
     if(!byPair[t.pair])byPair[t.pair]={wins:0,losses:0,bes:0,totalR:0};
-    if(t.outcome==='WIN')byPair[t.pair].wins++;
+    if(t.outcome==='WIN'||t.outcome==='TP1')byPair[t.pair].wins++;
     else if(t.outcome==='LOSS')byPair[t.pair].losses++;
     else if(t.outcome==='BE')byPair[t.pair].bes++;
     byPair[t.pair].totalR+=t.r||0;
