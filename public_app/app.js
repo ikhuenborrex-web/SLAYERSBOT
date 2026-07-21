@@ -264,7 +264,7 @@ async function fetchAll(){
     if(state.filter.dateTo)sigUrl+='&dateTo='+encodeURIComponent(state.filter.dateTo);
     if(state.filter.sort!=='time')sigUrl+='&sort='+state.filter.sort;
     var [sigRes,activeRes,confluRes,statsRes,detailedStatsRes,myStatsRes,journalRes,newsRes,newsFeedRes,settingsRes,tradeHistRes,weekSumRes]=await withTimeout(Promise.all([
-      fetch(sigUrl),fetch(withCode('/api/active')),
+      fetch(withCode(sigUrl)),fetch(withCode('/api/active')),
       fetch(withCode('/api/confluence')),fetch(withCode('/api/stats')),
       fetch(withCode('/api/stats/detailed')),fetch(withCode('/api/member/stats')),fetch(withCode('/api/journal')),
       fetch(withCode('/api/news')),fetch(withCode('/api/news-feed')),fetch(withCode('/api/settings')),
