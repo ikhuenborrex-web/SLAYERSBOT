@@ -1285,10 +1285,47 @@ function overviewScreen(){
   }
   var emptyHtml='';
   if(!myActive.length&&!signalCount)emptyHtml=emptyState(state.fetchError?'Connection problem: '+state.fetchError:'No signals yet. Waiting for the next scan...');
+  // Scalp stats + active (if data available)
+  var scalpHtml='';
+  var scStats=state.scalpStats;
+  if(scStats){
+    var scWrColor=scStats.winRate>=60?'#A3E635':scStats.winRate>=40?'#FBBF24':'#EF4444';
+    scalpHtml='<div class="glass-sm" style="padding:12px 16px;margin-bottom:14px;animation-delay:0.15s">'+
+      '<div style="display:flex;justify-content:space-between;margin-bottom:6px">'+
+      '<span style="font-size:10px;font-weight:700;color:#3B82F6">\u26A1 Scalp</span>'+
+      '<span style="font-size:9px;color:'+C.text2+'">'+(scStats.total||0)+' trades</span></div>'+
+      '<div style="display:flex;gap:14px">'+
+      '<div><span style="font-size:9px;color:'+C.text2+'">Win Rate</span><br><span style="font-size:16px;font-weight:800;color:'+scWrColor+'">'+scStats.winRate+'%</span></div>'+
+      '<div><span style="font-size:9px;color:'+C.text2+'">Total R</span><br><span style="font-size:16px;font-weight:800;color:'+(scStats.totalR>=0?'#A3E635':'#EF4444')+'">'+(scStats.totalR>=0?'+':'')+scStats.totalR+'R</span></div>'+
+      '<div><span style="font-size:9px;color:'+C.text2+'">W/L/BE</span><br><span style="font-size:14px;font-weight:700;color:#FFF">'+scStats.wins+'/'+scStats.losses+'/'+(scStats.bes||0)+'</span></div></div></div>';
+  }
+  var scalpTradesHtml='';
+  var scalpActive=state.scalpActive||[];
+  if(scalpActive.length){
+    scalpTradesHtml='<div class="section-h" style="color:#3B82F6;margin-top:4px">Active Scalp Trades <span style="font-size:10px;color:#3B82F6;font-weight:400">('+scalpActive.length+')</span></div>';
+    for(var si=0;si<scalpActive.length;si++){
+      var st=scalpActive[si];
+      var sib=st.type==='BULLISH';
+      var dec=st.pair==='NAS100'?2:st.pair==='USDJPY'||st.pair==='GBPJPY'?3:5;
+      var sfmt=function(v){return v==null?'--':v.toFixed(dec);};
+      var sdur=Math.round((Date.now()-st.openTime)/60000);
+      scalpTradesHtml+='<div class="card" style="padding:10px 14px;margin-bottom:6px;animation-delay:0.02s">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'+
+        '<div style="display:flex;align-items:center;gap:5px">'+
+        '<span style="font-size:11px;font-weight:700;color:#FFF">'+st.name+'</span>'+
+        '<span style="font-size:8px;font-weight:600;padding:1px 5px;border-radius:2px;background:'+(sib?'rgba(163,230,53,0.15)':'rgba(239,68,68,0.15)')+';color:'+(sib?'#A3E635':'#EF4444')+'">'+(sib?'BUY':'SELL')+'</span>'+
+        (st.tp1Fired?'<span style="font-size:8px;font-weight:600;padding:1px 5px;border-radius:2px;background:rgba(163,230,53,0.12);color:#A3E635">TP1 ✅</span>':'')+
+        '</div><span style="font-size:8px;color:'+C.text2+'">'+(sdur>=60?Math.floor(sdur/60)+'h '+sdur%60+'m':sdur+'m')+'</span></div>'+
+        '<div style="display:flex;gap:10px;font-size:9px;color:'+C.text2+'">'+
+        '<span>Entry: <b style="color:#FFF">'+sfmt(st.entry)+'</b></span>'+
+        '<span>SL: <b style="color:#EF4444">'+sfmt(st.sl)+'</b></span>'+
+        '<span>TP2: <b style="color:#A3E635">'+sfmt(st.tp2)+'</b></span></div></div>';
+    }
+  }
   return headerHtml+
-    statsHtml+
+    statsHtml+scalpHtml+
     '<div class="section-h" style="color:'+C.white+'">Market Pulse</div>'+marketPulseRow()+
-    tradesHtml+signalsHtml+emptyHtml;
+    tradesHtml+scalpTradesHtml+signalsHtml+emptyHtml;
 }
 
 function marketPulseRow(){
