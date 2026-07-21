@@ -1077,12 +1077,14 @@ function checkScalpTrades(instId,cHigh,cLow){
       scalpTradeHistory.push({pair:t.pair,type:t.type,outcome:'WIN',r,entry:t.entry,sl:t.sl,tp2:t.tp2,session:t.session,openTime:t.openTime,closeTime:Date.now()});
       activeScalpTrades.splice(i,1);saveState();
       log('Scalp WIN: '+t.pair+' '+t.type+' R='+r.toFixed(2));
+      try{sendPushToAll('\u2705 TP2 hit '+t.pair,'Scalp '+(t.type==='BULLISH'?'BUY':'SELL')+' closed +'+r.toFixed(2)+'R', '/');}catch(e){}
     }else if(isB?lo<=t.sl:hi>=t.sl){
       t.closed=true;
       const r=-Math.abs(t.tp2-t.entry)/Math.abs(t.entry-t.sl);
       scalpTradeHistory.push({pair:t.pair,type:t.type,outcome:'LOSS',r,entry:t.entry,sl:t.sl,tp2:t.tp2,session:t.session,openTime:t.openTime,closeTime:Date.now()});
       activeScalpTrades.splice(i,1);saveState();
       log('Scalp LOSS: '+t.pair+' '+t.type+' R='+r.toFixed(2));
+      try{sendPushToAll('\u274C SL hit '+t.pair,'Scalp '+(t.type==='BULLISH'?'BUY':'SELL')+' closed '+r.toFixed(2)+'R', '/');}catch(e){}
     }
   }
 }
@@ -1510,6 +1512,11 @@ async function runScan(manual=false){
               });
               if(scalpSignals.length>50)scalpSignals=scalpSignals.slice(0,50);
               activeScalpTrades.push({sigId:'SCALP-'+inst.id+'-'+Date.now(),pair:inst.id,name:inst.name,type:signal.type,entry:signal.entry,sl:signal.sl,tp2:signal.tp2,session:signal.session,openTime:Date.now(),closed:false});
+              try{sendPushToAll(
+                (signal.type==='BULLISH'?'\uD83D\uDFE2 BUY':'\uD83D\uDD34 SELL')+' '+inst.id,
+                'Scalp '+(signal.type==='BULLISH'?'BUY':'SELL')+' \u2014 '+signal.session+' breakout \u2014 \uD83D\uDCA5Score '+signal.score+'/5 \u2014 RR '+signal.rr,
+                '/'
+              );}catch(pushErr){log('Scalp push skipped: '+pushErr.message);}
               log(`Scalp signal: ${inst.id} ${signal.type} ${signal.session} score=${signal.score} fib=${signal.fib} RR=${signal.rr}`);
             }
           }
