@@ -332,7 +332,7 @@ async function loadState(){
     log('State restored: '+activeQMRTrades.length+' active trades, '+tradeHistory.length+' history ('+ageMin+'m old)');
     tradeHistory=(tradeHistory||[]).filter(t=>t.instId!=='EURGBP');
     dailyOutcomeLog=(dailyOutcomeLog||[]).filter(t=>t.id!=='EURGBP');
-    appSignalFeed=(appSignalFeed||[]).filter(s=>s.instId!=='EURGBP');
+    appSignalFeed=(appSignalFeed||[]).filter(s=>s.pair!=='EURGBP');
     if(tradeHistory.length!==st?.tradeHistory?.length)saveState();
   }catch(e){log('loadState error (starting fresh): '+e.message);}
 }
