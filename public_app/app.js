@@ -254,50 +254,46 @@ var state={
 
 // ===== DATA FETCHING =====
 async function fetchAll(){
-  var TIMEOUT_MS=10000;
-  var withTimeout=function(p){return Promise.race([p,new Promise(function(_,rej){setTimeout(function(){rej(new Error('Request timed out'));},TIMEOUT_MS);})]);};
-  try{
-    var sigUrl='/api/signals?limit=20';
-    if(state.filter.pair)sigUrl+='&pair='+encodeURIComponent(state.filter.pair);
-    if(state.filter.dir)sigUrl+='&dir='+encodeURIComponent(state.filter.dir);
-    if(state.filter.tf)sigUrl+='&tf='+encodeURIComponent(state.filter.tf);
-    if(state.filter.minScore>0)sigUrl+='&minScore='+state.filter.minScore;
-    if(state.filter.dateFrom)sigUrl+='&dateFrom='+encodeURIComponent(state.filter.dateFrom);
-    if(state.filter.dateTo)sigUrl+='&dateTo='+encodeURIComponent(state.filter.dateTo);
-    if(state.filter.sort!=='time')sigUrl+='&sort='+state.filter.sort;
-    var [sigRes,activeRes,confluRes,statsRes,detailedStatsRes,myStatsRes,journalRes,newsRes,newsFeedRes,settingsRes,tradeHistRes,weekSumRes]=await withTimeout(Promise.all([
-      fetch(withCode(sigUrl)),fetch(withCode('/api/active')),
-      fetch(withCode('/api/confluence')),fetch(withCode('/api/stats')),
-      fetch(withCode('/api/stats/detailed')),fetch(withCode('/api/member/stats')),fetch(withCode('/api/journal')),
-      fetch(withCode('/api/news')),fetch(withCode('/api/news-feed')),fetch(withCode('/api/settings')),
-      fetch(withCode('/api/trade-history')),fetch(withCode('/api/weekly-summary'))
-    ]));
-    if(sigRes.status===401){clearCode();state.loading=false;renderLogin('Your access code has expired or is no longer valid.');return;}
-    var j=function(r){return r.json().catch(function(){return{};});};
-    state.signals=(await j(sigRes)).signals||[];
-    state.active=(await j(activeRes)).trades||[];
-    state.confluence=(await j(confluRes)).pairs||[];
-    state.stats=await j(statsRes);
-    state.detailedStats=await j(detailedStatsRes);
-    if(myStatsRes.status===200){var myData=await j(myStatsRes);state.myStats=myData.myStats||null;state.notifPrefs=myData.notifPrefs||{};}
-    state.journal=(await j(journalRes)).entries||[];
-    state.news=(await j(newsRes)).events||[];
-    // News feed — try multiple response formats
-    (async function(){
-      var nf=await j(newsFeedRes);
-      state.articles=nf.articles||nf.data||nf.news||nf.items||(Array.isArray(nf)?nf:[])||[];
-      state.newsFeedOk=state.articles.length>0||newsFeedRes.status===200;
-    })();
-    var sData=await j(settingsRes);state.settings=sData.settings||null;
-    var histRes=await j(tradeHistRes);state.botHistory=histRes.outcomes||[];
-    var weekSum=await j(weekSumRes);state.weeklySummary=weekSum.summary||null;
-    // Scalp data — non-blocking, never disrupts main data
-    fetch(withCode('/api/scalp')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){state.scalpSignals=d.signals||[];render();}).catch(function(){});
-    fetch(withCode('/api/scalp/active')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){state.scalpActive=d.trades||[];render();}).catch(function(){});
-    fetch(withCode('/api/scalp/stats')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){state.scalpStats=d;render();}).catch(function(){});
-    fetch(withCode('/api/scalp/pulse')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){state.scalpPulse=d.pairs||[];render();}).catch(function(){});
-    state.fetchError=null;
-  }catch(e){console.error('Fetch error',e);state.fetchError=e.message||'Connection error';}
+  var TIMEOUT_MS=15000;
+  var ft=function(url){
+    return Promise.race([fetch(url),new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'));},TIMEOUT_MS);})]);
+  };
+  var j=function(r){return r&&r.json?r.json().catch(function(){return{};}):Promise.resolve({});};
+  var sigUrl='/api/signals?limit=20';
+  if(state.filter.pair)sigUrl+='&pair='+encodeURIComponent(state.filter.pair);
+  if(state.filter.dir)sigUrl+='&dir='+encodeURIComponent(state.filter.dir);
+  if(state.filter.tf)sigUrl+='&tf='+encodeURIComponent(state.filter.tf);
+  if(state.filter.minScore>0)sigUrl+='&minScore='+state.filter.minScore;
+  if(state.filter.dateFrom)sigUrl+='&dateFrom='+encodeURIComponent(state.filter.dateFrom);
+  if(state.filter.dateTo)sigUrl+='&dateTo='+encodeURIComponent(state.filter.dateTo);
+  if(state.filter.sort!=='time')sigUrl+='&sort='+state.filter.sort;
+  // Each fetch is independent — one slow endpoint won't wipe all data
+  ft(withCode(sigUrl)).then(function(r){
+    if(r.status===401){clearCode();state.loading=false;renderLogin('Your access code has expired or is no longer valid.');return;}
+    j(r).then(function(d){state.signals=d.signals||[];});
+  }).catch(function(){});
+  ft(withCode('/api/active')).then(function(r){j(r).then(function(d){state.active=d.trades||[];});}).catch(function(){});
+  ft(withCode('/api/confluence')).then(function(r){j(r).then(function(d){state.confluence=d.pairs||[];});}).catch(function(){});
+  ft(withCode('/api/stats')).then(function(r){j(r).then(function(d){state.stats=d;});}).catch(function(){});
+  ft(withCode('/api/stats/detailed')).then(function(r){j(r).then(function(d){state.detailedStats=d;});}).catch(function(){});
+  ft(withCode('/api/member/stats')).then(function(r){
+    if(r.status===200)j(r).then(function(d){state.myStats=d.myStats||null;state.notifPrefs=d.notifPrefs||{};});
+  }).catch(function(){});
+  ft(withCode('/api/journal')).then(function(r){j(r).then(function(d){state.journal=d.entries||[];});}).catch(function(){});
+  ft(withCode('/api/news')).then(function(r){j(r).then(function(d){state.news=d.events||[];});}).catch(function(){});
+  ft(withCode('/api/news-feed')).then(function(r){j(r).then(function(d){
+    state.articles=d.articles||d.data||d.news||d.items||(Array.isArray(d)?d:[])||[];
+    state.newsFeedOk=state.articles.length>0;
+  });}).catch(function(){});
+  ft(withCode('/api/settings')).then(function(r){j(r).then(function(d){state.settings=d.settings||null;});}).catch(function(){});
+  ft(withCode('/api/trade-history')).then(function(r){j(r).then(function(d){state.botHistory=d.outcomes||[];});}).catch(function(){});
+  ft(withCode('/api/weekly-summary')).then(function(r){j(r).then(function(d){state.weeklySummary=d.summary||null;});}).catch(function(){});
+  // Scalp data — non-blocking, never disrupts main data
+  fetch(withCode('/api/scalp')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){state.scalpSignals=d.signals||[];render();}).catch(function(){});
+  fetch(withCode('/api/scalp/active')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){state.scalpActive=d.trades||[];render();}).catch(function(){});
+  fetch(withCode('/api/scalp/stats')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){state.scalpStats=d;render();}).catch(function(){});
+  fetch(withCode('/api/scalp/pulse')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){state.scalpPulse=d.pairs||[];render();}).catch(function(){});
+  state.fetchError=null;
   state.loading=false;render();
   if(!state.showOnboarding&&getCode()&&!localStorage.getItem('slayersToured')&&!state.fetchError){
     state.showOnboarding=true;render();
