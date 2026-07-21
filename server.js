@@ -1602,7 +1602,7 @@ async function runScan(manual=false){
               if(scalpSignals.length>50)scalpSignals=scalpSignals.slice(0,50);
               const slDist=Math.abs(signal.entry-signal.sl);
               const tp1Price=signal.type==='BULLISH'?signal.entry+slDist:signal.entry-slDist;
-              activeScalpTrades.push({sigId:'SCALP-'+inst.id+'-'+Date.now(),pair:inst.id,name:inst.name,type:signal.type,entry:signal.entry,sl:signal.sl,tp2:signal.tp2,tp1:tp1Price,beLevel:signal.entry,origSL:signal.sl,session:signal.session,openTime:Date.now(),closed:false,tp1Fired:false,beFired:false,tp2Fired:false,slFired:false});
+              activeScalpTrades.push({sigId:'SCALP-'+inst.id+'-'+Date.now(),pair:inst.id,name:inst.name,type:signal.type,entry:signal.entry,sl:signal.sl,tp2:signal.tp2,tp1:tp1Price,beLevel:signal.entry,origSL:signal.sl,session:signal.session,score:signal.score,openTime:Date.now(),closed:false,tp1Fired:false,beFired:false,tp2Fired:false,slFired:false});
               try{sendScalpPushToAll(
                 (signal.type==='BULLISH'?'\uD83D\uDFE2 BUY':'\uD83D\uDD34 SELL')+' '+inst.id,
                 'Scalp '+(signal.type==='BULLISH'?'BUY':'SELL')+' \u2014 '+signal.session+' breakout \u2014 \uD83D\uDCA5Score '+signal.score+'/5 \u2014 RR '+signal.rr,
