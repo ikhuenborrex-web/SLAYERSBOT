@@ -66,6 +66,12 @@ const QMR_INSTS = [
   {id:'NZDUSD',sym:'NZD/USD',name:'NZD/USD',dec:5},
 ];
 const QMR_TFS=['1h','4h'];
+const SCALP_INSTS=[
+  {id:'EURUSD',sym:'EUR/USD',name:'EUR/USD',dec:5},
+  {id:'GBPUSD',sym:'GBP/USD',name:'GBP/USD',dec:5},
+  {id:'USDJPY',sym:'USD/JPY',name:'USD/JPY',dec:3},
+  {id:'NAS100',sym:'NASDAQ100',name:'NAS100',dec:2},
+];
 const CHECK_MS=30*60*1000,DELAY_MS=12000,PROX=0.007,IMPULSE=0.0015,MIN_FVG=0.0003;
 const QMR_MIN=3,WEEKLY_EVERY=24,LON_S=7,LON_E=16,NY_S=13,NY_E=22;
 
@@ -182,6 +188,7 @@ function getDailyMsg(pool){return pool[Math.floor(Date.now()/86400000)%pool.leng
 
 // State
 let weeklyCache={},prevWeeklyCache={},qmrSeen=new Set();
+let scalpSignals=[],scalpSeen=new Set();
 let activeQMRTrades=[],lastBriefing=null,lastEOD=null,lastWeeklySummary=null,lastMonthlyRecap=null;
 let earlyEntryCache={}; // {pair+type+level: {entryPrice,sl,tp1,tp2,wickRatio}}
 let pairPerformance={}; // {instId:{wins,losses}} — accumulates across all weeks, never cleared
@@ -224,7 +231,7 @@ function saveState(){
       weeklyCache,prevWeeklyCache,recentQMRFires,qmr4HCache,suppressedPairs:[...suppressedPairs],
       lastBriefing,lastEOD,lastWeeklySummary,lastMonthlyRecap,pairPerformance,
       dailyAlertLog,dailyOutcomeLog,
-      qmrSeen:[...qmrSeen],earlyEntryCache,appSignalFeed,lastBriefingSnapshot,lastBriefingTime,      pushSubscriptions,memberCodes,trackedTrades,memberStats,weeklySummaryData,
+      qmrSeen:[...qmrSeen],earlyEntryCache,appSignalFeed,lastBriefingSnapshot,lastBriefingTime,      pushSubscriptions,memberCodes,trackedTrades,memberStats,weeklySummaryData,scalpSignals,
       savedAt:Date.now()
     };
     const json=JSON.stringify(state);
@@ -330,6 +337,7 @@ async function loadState(){
     if(st.trackedTrades&&typeof st.trackedTrades==='object')trackedTrades=st.trackedTrades;
     if(st.memberStats&&typeof st.memberStats==='object')memberStats=st.memberStats;
     if(st.weeklySummaryData)weeklySummaryData=st.weeklySummaryData;
+    if(Array.isArray(st.scalpSignals))scalpSignals=st.scalpSignals;
     const ageMin=st.savedAt?Math.round((Date.now()-st.savedAt)/60000):'?';
     log('State restored: '+activeQMRTrades.length+' active trades, '+tradeHistory.length+' history ('+ageMin+'m old)');
     tradeHistory=(tradeHistory||[]).filter(t=>t.instId!=='EURGBP');
@@ -347,7 +355,7 @@ const log=msg=>console.log(`[${new Date().toISOString()}] ${msg}`);
 
 function parseC(json){
   if(!json?.values?.length)return[];
-  return json.values.map(v=>({dt:v.datetime,open:parseFloat(v.open),high:parseFloat(v.high),low:parseFloat(v.low),close:parseFloat(v.close)})).reverse();
+  return json.values.map(v=>({dt:v.datetime,open:parseFloat(v.open),high:parseFloat(v.high),low:parseFloat(v.low),close:parseFloat(v.close),volume:parseFloat(v.volume)||0})).reverse();
 }
 function getSess(){const h=new Date().getUTCHours(),l=h>=LON_S&&h<LON_E,n=h>=NY_S&&h<NY_E;return l&&n?'London/NY Overlap':l?'London':n?'New York':'CLOSED';}
 function isSessionActive(){const h=new Date().getUTCHours();return h>=LON_S&&h<NY_E;}
@@ -469,6 +477,61 @@ function detectSD(c){const s=[],d=[];for(let i=0;i<c.length-2;i++){const b=c[i],
 function detectOB(c){const bull=[],bear=[];for(let i=0;i<c.length-2;i++){const b=c[i],n=c[i+1];if(Math.abs(n.close-n.open)/n.open<IMPULSE)continue;if(n.close>n.open&&b.close<b.open)bull.push({top:Math.max(b.open,b.close),bottom:Math.min(b.open,b.close)});else if(n.close<n.open&&b.close>b.open)bear.push({top:Math.max(b.open,b.close),bottom:Math.min(b.open,b.close)});}return{bull:bull.slice(-4).reverse(),bear:bear.slice(-4).reverse()};}
 function detectFVG(c){const bull=[],bear=[];for(let i=0;i<c.length-2;i++){const a=c[i],z=c[i+2];if(z.low>a.high&&(z.low-a.high)/a.high>MIN_FVG)bull.push({top:z.low,bottom:a.high});if(z.high<a.low&&(a.low-z.high)/a.low>MIN_FVG)bear.push({top:a.low,bottom:z.high});}return{bull:bull.slice(-5).reverse(),bear:bear.slice(-5).reverse()};}
 function detectBRK(c,sdZ){const cp=c[c.length-1].close,bull=[],bear=[],near=(p,z)=>p>=z.bottom*(1-PROX)&&p<=z.top*(1+PROX);for(const z of sdZ.demand)if(c.some(x=>x.close<z.bottom)&&near(cp,z))bear.push(z);for(const z of sdZ.supply)if(c.some(x=>x.close>z.top)&&near(cp,z))bull.push(z);return{bull,bear};}
+function detectScalp(c,instId){
+  const h=new Date().getUTCHours(),m=new Date().getUTCMinutes();
+  let session=null;
+  if((h===7&&m>=0)||(h>7&&h<10)||(h===10&&m===0))session='LONDON';
+  else if((h===13&&m>=0)||(h>13&&h<16)||(h===16&&m===0))session='NY';
+  else return null;
+  const ss=session==='LONDON'?7:13;
+  let openIdx=-1;
+  for(let i=c.length-1;i>=0;i--){
+    const dt=c[i].dt;if(!dt)continue;
+    const tPart=dt.includes('T')?dt.split('T')[1]:dt.split(' ')[1];
+    if(!tPart)continue;
+    const parts=tPart.split(':');if(parts.length<2)continue;
+    if(parseInt(parts[0])===ss&&parseInt(parts[1])===0){openIdx=i;break;}
+  }
+  if(openIdx===-1||c.length-1-openIdx<6)return null;
+  const rangeC=c.slice(openIdx,openIdx+6);if(rangeC.length<6)return null;
+  const rangeHigh=Math.max(...rangeC.map(x=>x.high)),rangeLow=Math.min(...rangeC.map(x=>x.low));
+  const lastC=c[c.length-1],prevC=c[c.length-2];
+  const brokeBull=prevC.close>rangeHigh||lastC.close>rangeHigh;
+  const brokeBear=prevC.close<rangeLow||lastC.close<rangeLow;
+  if(!brokeBull&&!brokeBear)return null;
+  const dir=brokeBull?'BULLISH':'BEARISH';
+  const postC=c.slice(openIdx+6);
+  const fvgs=detectFVG(postC);
+  const hits=dir==='BULLISH'?fvgs.bull:fvgs.bear;
+  if(!hits.length)return null;
+  const fvg=hits[0];
+  if(dir==='BULLISH'&&lastC.close>fvg.top)return null;
+  if(dir==='BEARISH'&&lastC.close<fvg.bottom)return null;
+  const rng=rangeHigh-rangeLow;if(!rng)return null;
+  const fibs={
+    f618:dir==='BULLISH'?rangeHigh-rng*0.618:rangeLow+rng*0.618,
+    f702:dir==='BULLISH'?rangeHigh-rng*0.702:rangeLow+rng*0.702,
+    f786:dir==='BULLISH'?rangeHigh-rng*0.786:rangeLow+rng*0.786,
+  };
+  const fvgMid=(fvg.top+fvg.bottom)/2;
+  const inZone=(p,zone)=>p>=zone.bottom&&p<=zone.top;
+  const fvgZone={bottom:fvg.bottom,top:fvg.top};
+  let fibScore=0,hitFib=null;
+  const fibPct=dir==='BULLISH'?((fvgMid-rangeLow)/rng*100):((rangeHigh-fvgMid)/rng*100);
+  if(inZone(fibs.f618,fvgZone)||Math.abs(fvgMid-fibs.f618)/rng<0.02){fibScore++;hitFib='61.8';}
+  if(inZone(fibs.f702,fvgZone)||Math.abs(fvgMid-fibs.f702)/rng<0.02){fibScore+=2;hitFib='70.2';}
+  if(inZone(fibs.f786,fvgZone)||Math.abs(fvgMid-fibs.f786)/rng<0.02){fibScore+=3;hitFib='78.6';}
+  let entry,sl,tp2;
+  if(dir==='BULLISH'){entry=fvg.bottom;sl=entry-(fvg.top-fvg.bottom);tp2=entry+Math.abs(entry-sl)*2;}
+  else{entry=fvg.top;sl=entry+(fvg.top-fvg.bottom);tp2=entry-Math.abs(entry-sl)*2;}
+  const rr=Math.abs(tp2-entry)/Math.abs(entry-sl);
+  let score=fibScore+1;
+  if(rr>=2)score++;
+  if(score<3)return null;
+  const avgVol=rangeC.reduce((s,x)=>s+x.volume,0)/rangeC.length;
+  const volRatio=avgVol>0?postC.slice(-5).reduce((s,x)=>s+x.volume,0)/5/avgVol:1;
+  return{type:dir,entry,sl,tp2,session,rangeHigh,rangeLow,score,rr,fib:hitFib,fibPct:Math.round(fibPct*10)/10,fvgTop:fvg.top,fvgBottom:fvg.bottom,volRatio:Math.round(volRatio*10)/10};
+}
 function detectStructure(c){if(c.length<12)return{trend:'RANGING'};const sH=[],sL=[];for(let i=2;i<c.length-2;i++){if(c[i].high>c[i-1].high&&c[i].high>c[i-2].high&&c[i].high>c[i+1].high&&c[i].high>c[i+2].high)sH.push(c[i].high);if(c[i].low<c[i-1].low&&c[i].low<c[i-2].low&&c[i].low<c[i+1].low&&c[i].low<c[i+2].low)sL.push(c[i].low);}if(sH.length<2||sL.length<2)return{trend:'RANGING'};const rH=sH.slice(-2),rL=sL.slice(-2);if(rH[1]>rH[0]&&rL[1]>rL[0])return{trend:'BULLISH'};if(rH[1]<rH[0]&&rL[1]<rL[0])return{trend:'BEARISH'};return{trend:'RANGING'};}
 function detectLiquidity(c,sweep,type){const tol=0.001,fp=PROX*2;const eqH=[],eqL=[];for(let i=0;i<c.length-4;i++){for(let j=i+3;j<c.length;j++){if(Math.abs(c[j].high-c[i].high)/c[i].high<tol){eqH.push(c[i].high);break;}}for(let j=i+3;j<c.length;j++){if(Math.abs(c[j].low-c[i].low)/c[i].low<tol){eqL.push(c[i].low);break;}}}if(type==='BEARISH')return eqH.some(h=>Math.abs(sweep-h)/sweep<fp);return eqL.some(l=>Math.abs(sweep-l)/sweep<fp);}
 function detectFib(c){const rc=c.slice(-60);let sH=-Infinity,sL=Infinity;rc.forEach(x=>{if(x.high>sH)sH=x.high;if(x.low<sL)sL=x.low;});const r=sH-sL;if(!r)return null;return{f618:sH-r*0.618,f705:sH-r*0.705,f500:sH-r*0.5,b618:sL+r*0.618,b705:sL+r*0.705,b500:sL+r*0.5};}
@@ -656,8 +719,8 @@ function checkCorrelationConflict(instId,type){
 // Telegram functions
 async function tgSend(text){if(!TG_TOKEN||!TG_CHAT)return;try{await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:TG_CHAT,text})});}catch(e){log('TG error: '+e.message);}}
 // Chart snapshots via chart-img.com (optional - only active when CHARTIMG_API_KEY is set)
-const CHART_SYMBOLS={EURUSD:'OANDA:EURUSD',GBPUSD:'OANDA:GBPUSD',AUDUSD:'OANDA:AUDUSD',GBPJPY:'OANDA:GBPJPY',XAUUSD:'OANDA:XAUUSD',BTCUSD:'COINBASE:BTCUSD',EURGBP:'OANDA:EURGBP',EURCAD:'OANDA:EURCAD',USDJPY:'OANDA:USDJPY',USDCAD:'OANDA:USDCAD',NZDUSD:'OANDA:NZDUSD'};
-async function tgSendChart(instId,interval,lines,caption,saveForApp){
+const CHART_SYMBOLS={EURUSD:'OANDA:EURUSD',GBPUSD:'OANDA:GBPUSD',AUDUSD:'OANDA:AUDUSD',GBPJPY:'OANDA:GBPJPY',XAUUSD:'OANDA:XAUUSD',BTCUSD:'COINBASE:BTCUSD',EURGBP:'OANDA:EURGBP',EURCAD:'OANDA:EURCAD',USDJPY:'OANDA:USDJPY',USDCAD:'OANDA:USDCAD',NZDUSD:'OANDA:NZDUSD',NAS100:'OANDA:NAS100USD'};
+async function tgSendChart(instId,interval,lines,caption,saveForApp,noTg){
   // saveForApp: if provided, save the exact same image bytes for the app to display later
   let savedFile=null;
   if(!CHARTIMG_KEY){return saveForApp?null:undefined;}
@@ -674,7 +737,7 @@ async function tgSendChart(instId,interval,lines,caption,saveForApp){
         fs.writeFileSync(CHARTS_DIR+'/'+savedFile,Buffer.from(buf));
       }catch(e){log('Chart save error: '+e.message);savedFile=null;}
     }
-    if(TG_TOKEN&&TG_CHAT){
+    if(!noTg&&TG_TOKEN&&TG_CHAT){
       const fd=new FormData();
       fd.append('chat_id',TG_CHAT);
       fd.append('caption',caption);
@@ -684,6 +747,19 @@ async function tgSendChart(instId,interval,lines,caption,saveForApp){
     }
     return savedFile;
   }catch(e){log('Chart error '+instId+': '+e.message);return null;}
+}
+async function genScalpChart(instId,interval,lines,saveKey){
+  if(!CHARTIMG_KEY)return null;
+  try{
+    const sym=CHART_SYMBOLS[instId];if(!sym)return null;
+    const drawings=lines.map(l=>({name:'Horizontal Line',input:{price:l.price,text:l.text},override:{lineColor:l.color,textColor:l.color,fontSize:12,showLabel:true,lineWidth:2}}));
+    const res=await fetch('https://api.chart-img.com/v2/tradingview/advanced-chart',{method:'POST',headers:{'x-api-key':CHARTIMG_KEY,'content-type':'application/json'},body:JSON.stringify({symbol:sym,interval,theme:'dark',width:800,height:600,drawings})});
+    if(!res.ok){log('ScalpChart '+instId+': HTTP '+res.status);return null;}
+    const buf=await res.arrayBuffer();
+    const file=saveKey+'.png';
+    fs.writeFileSync(CHARTS_DIR+'/'+file,Buffer.from(buf));
+    return file;
+  }catch(e){log('ScalpChart error '+instId+': '+e.message);return null;}
 }
 async function tgQMRPreAlert(id,tf,qmr,htfBias,earlyEntry,wickRatio,aggSL,aggTP1,aggTP2){const bear=qmr.type==='BEARISH',p=qmr.qmLevel>10?2:5,zone=bear?'PREMIUM - Sell Zone':'DISCOUNT - Buy Zone',slDist=Math.abs(earlyEntry-aggSL),rr1=slDist>0?(Math.abs(aggTP1-earlyEntry)/slDist).toFixed(1):'--',rr2=slDist>0?(Math.abs(aggTP2-earlyEntry)/slDist).toFixed(1):'2.5',slLabel=bear?'above protected high':'below protected low';let htfLine='';if(htfBias&&htfBias!=='NEUTRAL'){const agrees=(bear&&htfBias==='BEARISH')||((!bear)&&htfBias==='BULLISH');htfLine='\n'+(agrees?'\uD83D\uDD25 HTF Aligned: Weekly '+htfBias+' - HIGH PROBABILITY':'\u26A0\uFE0F Counter-trend: Weekly '+htfBias);}const tier=qmr.criteria.score>=4?'\uD83D\uDC8E ELITE SETUP':'\uD83D\uDFE1 VALID SETUP';await tgSend('\u26A1 EARLY QMR ENTRY \u2014 '+tier+'\n'+'='.repeat(28)+'\n\uD83D\uDCCA '+id+' \u00B7 '+tf+' \u00B7 '+zone+'\n'+(bear?'\uD83D\uDD34 BEARISH QM (AGGRESSIVE)':'\uD83D\uDFE2 BULLISH QM (AGGRESSIVE)')+htfLine+'\n\n\u26A1 Aggressive Entry: '+earlyEntry.toFixed(p)+' (sweep close)\n\uD83D\uDEAB SL:    '+aggSL.toFixed(p)+' ('+slLabel+') \u2014 '+slDist.toFixed(p)+'pts\n\uD83C\uDFAF TP1:    '+aggTP1.toFixed(p)+' (1:'+rr1+'R)\n\uD83C\uDFAF Full TP2: '+aggTP2.toFixed(p)+' (1:'+rr2+'R)\n\n\uD83C\uDFD4\uFE0F Head: '+qmr.head.toFixed(p)+'\n\uD83D\uDD04 Wick rejection: '+(wickRatio*100).toFixed(0)+'% \u2014 genuine sweep\n\n\uD83D\uDD25 Criteria: '+qmr.criteria.score+'/4\n'+qmr.criteria.factors.map(f=>'\u2705 '+f).join('\n')+(qmr.dailyPOI?'\n\uD83C\uDFDB\uFE0F '+qmr.dailyPOI+' \u2014 HTF confluence':'')+(qmr.rsiDivergence?'\n\uD83D\uDD25 '+qmr.rsiDivergence+' on 4H':'')+'\n\n\u23F3 Standard QMR confirmation pending at QM level: '+qmr.qmLevel.toFixed(p)+'\n'+'='.repeat(28)+'\n\u2014 The Slayers Model by Rexroz');}
 async function tgQMR(id,tf,qmr,htfBias,sessWarn,adrWarn){const bear=qmr.type==='BEARISH',p=qmr.qmLevel>10?2:5,zone=bear?'PREMIUM - Sell Zone':'DISCOUNT - Buy Zone',entry=qmr.qmLevel,sl=qmr.retestSL!=null?qmr.retestSL:(bear?qmr.head+qmr.atr*0.1:qmr.head-qmr.atr*0.1),slDist=Math.abs(entry-sl),dol=qmr.drawOnLiquidity,tp1=dol?dol.price:(bear?entry-slDist*3:entry+slDist*3),rr1=slDist>0?(Math.abs(tp1-entry)/slDist).toFixed(1):'--',td=qmr.structuralTP2,tp2=td?td.price:(bear?entry-slDist*2.5:entry+slDist*2.5),rr2=td?td.rr:(slDist>0?(Math.abs(tp2-entry)/slDist).toFixed(1):'2.5'),dolLabel=dol?dol.label:'Draw on Liquidity',slLabel=bear?'above protected high':'below protected low';let htfLine='';if(htfBias&&htfBias!=='NEUTRAL'){const agrees=(bear&&htfBias==='BEARISH')||((!bear)&&htfBias==='BULLISH');htfLine='\n'+(agrees?'\uD83D\uDD25 HTF Aligned: Weekly '+htfBias+' - HIGH PROBABILITY':'\u26A0\uFE0F Counter-trend: Weekly '+htfBias);}const tier=qmr.criteria.score>=4?'\uD83D\uDC8E ELITE SETUP':'\uD83D\uDFE1 VALID SETUP';let msg='\uD83D\uDD04 QMR SIGNAL \u2014 '+tier+'\n'+'='.repeat(28)+'\n\uD83D\uDCCA '+id+' \u00B7 '+tf+' \u00B7 '+zone+'\n'+(bear?'\uD83D\uDD34 BEARISH QM':'\uD83D\uDFE2 BULLISH QM')+htfLine+'\n\n\uD83D\uDCCD '+(qmr.refinedEntry?'4H Zone: ':'Entry: ')+entry.toFixed(p)+' (QM Level)\n'+(qmr.refinedEntry?'\uD83C\uDFAF Refined Entry: '+qmr.refinedEntry.price.toFixed(p)+' ('+qmr.refinedEntry.source+')\n\u2192 Enter at refined level for better R\n':'')+'\uD83D\uDEAB SL:    '+sl.toFixed(p)+' ('+slLabel+')\n\uD83C\uDFAF '+dolLabel+': '+tp1.toFixed(p)+' (1:'+rr1+'R)\n\uD83C\uDFAF Next Structure: '+tp2.toFixed(p)+' (1:'+rr2+'R)\n\n\uD83C\uDFD4\uFE0F Head: '+qmr.head.toFixed(p)+'\n\n\uD83D\uDD25 Criteria: '+qmr.criteria.score+'/4\n'+qmr.criteria.factors.map(f=>'\u2705 '+f).join('\n')+(qmr.dailyPOI?'\n\uD83C\uDFDB\uFE0F '+qmr.dailyPOI+' \u2014 HTF confluence':'')+(qmr.rsiDivergence?'\n\uD83D\uDD25 '+qmr.rsiDivergence+' on 4H':'')+'\n\n';if(qmr.counterTrend)msg+='\u26A0\uFE0F COUNTER-TREND \u2014 potential trend reversal. Reduce size.\n\n';const riskRec=qmr.criteria.score>=4?'1% (ELITE)':'0.5% (VALID)';msg+='\uD83D\uDCB0 Recommended risk: '+riskRec+'\n\n';if(sessWarn)msg+='\u23F0 Outside prime session hours\n\n';if(adrWarn)msg+='\u26A0\uFE0F '+adrWarn+'% of avg daily range already used \u2014 TP may need 1-2 sessions\n\n';msg+='\uD83D\uDCB0 Calc position size: https://slayerbotcalculator.netlify.app/#'+id+','+entry.toFixed(p)+','+sl.toFixed(p)+'\n\n\u26A1 Price at QM level. Look for confirmation candle before entering.\n\u2014 The Slayers Model by Rexroz';await tgSend(msg);}
@@ -1362,7 +1438,50 @@ async function runScan(manual=false){
     if(qmrArr.length>50)qmrArr=qmrArr.slice(-50);
     qmrSeen=new Set(qmrArr);
   }
-  for(const k in recentQMRFires)if(Date.now()-recentQMRFires[k]>24*60*60*1000)delete recentQMRFires[k];scanCount++;lastScanTime=new Date().toISOString();saveState();
+  for(const k in recentQMRFires)if(Date.now()-recentQMRFires[k]>24*60*60*1000)delete recentQMRFires[k];
+  // Scalp scan — session momentum + FVG 5M, London/NY only
+  if(!isWeekend()){
+    const sh=new Date().getUTCHours();
+    const inLondon=(sh===7)||(sh>7&&sh<10)||(sh===10);
+    const inNY=(sh===13)||(sh>13&&sh<16)||(sh===16);
+    if(inLondon||inNY){
+      for(const inst of SCALP_INSTS){
+        try{
+          const sres=await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym)}&interval=5min&outputsize=100&apikey=${API_KEY}`);
+          const sj=await sres.json();
+          if(sj.status==='error'){await sleep(DELAY_MS);continue;}
+          const sc=parseC(sj);if(sc.length<25){await sleep(DELAY_MS);continue;}
+          const signal=detectScalp(sc,inst.id);
+          if(signal){
+            const sKey=inst.id+'-'+signal.type+'-'+signal.session;
+            if(!scalpSeen.has(sKey)){
+              scalpSeen.add(sKey);
+              const chartFile=await genScalpChart(inst.id,'5min',[
+                {price:signal.entry,text:'Entry',color:'#3B82F6'},
+                {price:signal.sl,text:'SL',color:'#EF4444'},
+                {price:signal.tp2,text:'TP2',color:'#A3E635'}
+              ],'scalp_'+inst.id+'_'+Date.now());
+              scalpSignals.unshift({
+                id:'SCALP-'+inst.id+'-'+Date.now(),
+                pair:inst.id,name:inst.name,type:signal.type,
+                entry:signal.entry,sl:signal.sl,tp2:signal.tp2,
+                session:signal.session,score:signal.score,rr:signal.rr,
+                fib:signal.fib,fibPct:signal.fibPct,
+                rangeHigh:signal.rangeHigh,rangeLow:signal.rangeLow,
+                fvgTop:signal.fvgTop,fvgBottom:signal.fvgBottom,
+                volRatio:signal.volRatio,
+                chartFile,time:new Date().toISOString()
+              });
+              if(scalpSignals.length>50)scalpSignals=scalpSignals.slice(0,50);
+              log(`Scalp signal: ${inst.id} ${signal.type} ${signal.session} score=${signal.score} fib=${signal.fib} RR=${signal.rr}`);
+            }
+          }
+          await sleep(DELAY_MS);
+        }catch(e){log('Scalp '+inst.id+': '+e.message);await sleep(DELAY_MS);}
+      }
+    }
+  }
+  scanCount++;lastScanTime=new Date().toISOString();saveState();
   log(`Scan complete #${scanCount}`);
 }
 
@@ -1533,6 +1652,12 @@ app.get('/api/signals',(req,res)=>{
     return {...s,chartUrl:s.chartFile?'/api/chart/'+s.chartFile:null,aggChartUrl:s.aggChartFile?'/api/chart/'+s.aggChartFile:null,consChartUrl:s.consChartFile?'/api/chart/'+s.consChartFile:null,isTracked:isDual?false:!!(trackedTrades[s.id]&&trackedTrades[s.id].includes(myCode)),isTrackedAgg:isDual?!!(trackedTrades[s.id+'-agg']&&trackedTrades[s.id+'-agg'].includes(myCode)):false,isTrackedCons:isDual?!!(trackedTrades[s.id+'-cons']&&trackedTrades[s.id+'-cons'].includes(myCode)):false};
   });
   res.json({signals:out,count:out.length,total:filtered.length});
+});
+app.get('/api/scalp',(req,res)=>{
+  const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
+  const limit=Math.min(parseInt(req.query.limit)||20,50);
+  const sorted=[...scalpSignals].sort((a,b)=>new Date(b.time)-new Date(a.time));
+  res.json({signals:sorted.slice(0,limit).map(s=>({...s,chartUrl:s.chartFile?'/api/chart/'+s.chartFile:null})),count:Math.min(limit,sorted.length),total:scalpSignals.length});
 });
 app.get('/api/vapid-key',(req,res)=>{
   const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});

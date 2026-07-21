@@ -241,7 +241,6 @@ var state={
   journalDirFilter:'all',
   showEntryForm:false,
   editingEntry:null,
-  calFilter:{country:'all',impact:'all'},
   newsFilter:'All',
   articles:[],
   showOnboarding:false,
@@ -263,12 +262,13 @@ async function fetchAll(){
     if(state.filter.dateFrom)sigUrl+='&dateFrom='+encodeURIComponent(state.filter.dateFrom);
     if(state.filter.dateTo)sigUrl+='&dateTo='+encodeURIComponent(state.filter.dateTo);
     if(state.filter.sort!=='time')sigUrl+='&sort='+state.filter.sort;
-    var [sigRes,activeRes,confluRes,statsRes,detailedStatsRes,myStatsRes,journalRes,newsRes,newsFeedRes,settingsRes,tradeHistRes,weekSumRes]=await withTimeout(Promise.all([
+    var [sigRes,activeRes,confluRes,statsRes,detailedStatsRes,myStatsRes,journalRes,newsRes,newsFeedRes,settingsRes,tradeHistRes,weekSumRes,scalpRes]=await withTimeout(Promise.all([
       fetch(withCode(sigUrl)),fetch(withCode('/api/active')),
       fetch(withCode('/api/confluence')),fetch(withCode('/api/stats')),
       fetch(withCode('/api/stats/detailed')),fetch(withCode('/api/member/stats')),fetch(withCode('/api/journal')),
       fetch(withCode('/api/news')),fetch(withCode('/api/news-feed')),fetch(withCode('/api/settings')),
-      fetch(withCode('/api/trade-history')),fetch(withCode('/api/weekly-summary'))
+      fetch(withCode('/api/trade-history')),fetch(withCode('/api/weekly-summary')),
+      fetch(withCode('/api/scalp'))
     ]));
     if(sigRes.status===401){clearCode();state.loading=false;renderLogin('Your access code has expired or is no longer valid.');return;}
     var j=function(r){return r.json().catch(function(){return{};});};
@@ -289,6 +289,7 @@ async function fetchAll(){
     var sData=await j(settingsRes);state.settings=sData.settings||null;
     var histRes=await j(tradeHistRes);state.botHistory=histRes.outcomes||[];
     var weekSum=await j(weekSumRes);state.weeklySummary=weekSum.summary||null;
+    var scalpData=await j(scalpRes);state.scalpSignals=scalpData.signals||[];
     state.fetchError=null;
   }catch(e){console.error('Fetch error',e);state.fetchError=e.message||'Connection error';}
   state.loading=false;render();
@@ -885,107 +886,63 @@ window.deleteEntry=async function(id){
 window.setJournalFilter=function(f){state.journalFilter=f;render();};
 window.setJournalPairFilter=function(f){state.journalPairFilter=f;render();};
 window.setJournalDirFilter=function(f){state.journalDirFilter=f;render();};
-window.setCalFilter=function(key,value){
-  if(!state.calFilter)state.calFilter={country:'all',impact:'all'};
-  state.calFilter[key]=value;render();
-};
 window.setNewsFilter=function(f){state.newsFilter=f;render();};
 
-// ===== CALENDAR SCREEN =====
-function calendarScreen(){
-  var events=state.news;
-  var calFilter=state.calFilter||{country:'all',impact:'all'};
-  var countries=['all'];
-  for(var i=0;i<events.length;i++)if(events[i].country&&countries.indexOf(events[i].country)===-1)countries.push(events[i].country);
-  var countryChips='';
-  for(var i=0;i<countries.length;i++){
-    var active=calFilter.country===countries[i];
-    var label=countries[i]==='all'?'All':countries[i];
-    countryChips+='<span onclick="setCalFilter(\'country\',\''+countries[i]+'\')" style="font-size:9px;font-weight:600;padding:4px 12px;border-radius:4px;cursor:pointer;background:'+(active?C.limeSoft:'rgba(255,255,255,0.03)')+';color:'+(active?C.lime:C.text2)+';border:0.5px solid '+(active?C.limeBorder:'rgba(255,255,255,0.05)')+'">'+label+'</span>';
+// ===== SCALP SCREEN =====
+function scalpScreen(){
+  var signals=state.scalpSignals||[];
+  var h=new Date().getUTCHours();
+  var session='CLOSED';
+  if((h===7||(h>7&&h<10)||h===10))session='LONDON';
+  else if((h===13||(h>13&&h<16)||h===16))session='NY';
+  var sessionColor=session==='LONDON'?C.lime:session==='NY'?C.red:C.text2;
+  var sessionLabel=session==='LONDON'?'London Open':session==='NY'?'New York Open':'Market Closed';
+  var icon=session==='LONDON'?'\uD83C\uDDEC\uD83C\uDDE7':session==='NY'?'\uD83C\uDDFA\uD83C\uDDF8':'\uD83D\uDD34';
+  var headerHtml='<div style="display:flex;justify-content:space-between;align-items:center;padding-top:0;margin-bottom:18px">'+
+    '<div style="font-size:15px;font-weight:800;color:#FFF;letter-spacing:-0.01em">Scalp <span style="font-size:11px;font-weight:400;color:'+C.text2+'">\u00B7 Session Breakout + FVG</span></div>'+
+    '<div style="display:flex;align-items:center;gap:6px">'+
+    '<div style="width:8px;height:8px;border-radius:99px;background:'+sessionColor+'"></div>'+
+    '<span style="font-size:11px;font-weight:600;color:'+sessionColor+'">'+icon+' '+sessionLabel+'</span></div></div>';
+  if(!signals.length){
+    if(session==='CLOSED')return headerHtml+'<div style="margin-top:30px;text-align:center;padding:40px;color:'+C.text2+';font-size:12px">No active session. Scalp signals appear during London (7-10 UTC) and New York (13-16 UTC).</div>';
+    return headerHtml+'<div style="margin-top:30px;text-align:center;padding:40px;color:'+C.text2+';font-size:12px">Waiting for a breakout with FVG + deep Fib confluence...<br><span style="font-size:10px;color:'+C.text3+'">Checking every 30 min during '+session+' session</span></div>';
   }
-  var impacts=['all','High','Medium','Low'];
-  var impactChips='';
-  for(var i=0;i<impacts.length;i++){
-    var active=calFilter.impact===impacts[i];
-    var colors={'High':C.red,'Medium':C.text2,'Low':C.lime};
-    var dims={'High':C.redSoft,'Medium':C.surface,'Low':C.limeSoft};
-    var c=impacts[i]==='all'?C.text2:colors[impacts[i]];
-    var d=impacts[i]==='all'?'rgba(255,255,255,0.03)':dims[impacts[i]];
-    impactChips+='<span onclick="setCalFilter(\'impact\',\''+impacts[i]+'\')" style="font-size:9px;font-weight:600;padding:4px 12px;border-radius:4px;cursor:pointer;background:'+(active?d:'rgba(255,255,255,0.03)')+';color:'+(active?c:C.text2)+';border:0.5px solid '+(active?c+'33':'rgba(255,255,255,0.05)')+'">'+impacts[i]+'</span>';
+  var html='';
+  for(var i=0;i<signals.length;i++){
+    var s=signals[i];
+    var isBuy=s.type==='BULLISH'||s.type==='BUY';
+    var p=s.pair==='NAS100'?2:s.pair==='USDJPY'||s.pair==='GBPJPY'?3:5;
+    var fmt=function(v){return v==null?'--':v.toFixed(p);};
+    var slDist=Math.abs(s.entry-s.sl);
+    var rr=slDist>0?((Math.abs(s.tp2-s.entry)/slDist).toFixed(1)):'--';
+    var sessionTag=s.session==='LONDON'?'\uD83C\uDDEC\uD83C\uDDE7':' \uD83C\uDDFA\uD83C\uDDF8';
+    var fibColors={'61.8':'#3B82F6','70.2':'#8B5CF6','78.6':'#EC4899'};
+    var fibColor=fibColors[s.fib]||C.lime;
+    var timeStr=s.time?new Date(s.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'';
+    html+='<div class="card" style="padding:14px 16px;animation-delay:'+(i*0.04)+'s">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+
+      '<div style="display:flex;align-items:center;gap:6px">'+
+      '<span style="font-size:13px;font-weight:800;color:#FFF">'+(s.name||s.pair)+'</span>'+
+      '<span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px;background:'+(isBuy?C.limeSoft:C.redSoft)+';color:'+(isBuy?C.lime:C.red)+'">'+(isBuy?'BUY':'SELL')+'</span>'+
+      '<span style="font-size:9px;color:'+C.text2+'">'+sessionTag+' '+s.session+'</span></div>'+
+      '<div style="font-size:9px;color:'+C.text2+'">'+timeStr+'</div></div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">'+
+      '<div><div style="font-size:8px;color:'+C.text3+';text-transform:uppercase">Entry</div><div style="font-size:15px;font-weight:700;color:#FFF">'+fmt(s.entry)+'</div></div>'+
+      '<div><div style="font-size:8px;color:'+C.text3+';text-transform:uppercase">SL</div><div style="font-size:13px;font-weight:600;color:'+C.red+'">'+fmt(s.sl)+'</div></div>'+
+      '<div><div style="font-size:8px;color:'+C.text3+';text-transform:uppercase">TP2</div><div style="font-size:13px;font-weight:600;color:'+C.lime+'">'+fmt(s.tp2)+'</div></div></div>'+
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px">'+
+      '<div style="display:flex;align-items:center;gap:4px"><span style="font-size:10px;color:'+C.text2+'">Score</span><span style="font-size:13px;font-weight:800;color:'+C.white+'">'+s.score+'/5</span></div>'+
+      '<div style="display:flex;align-items:center;gap:4px"><span style="font-size:10px;color:'+C.text2+'">RR</span><span style="font-size:13px;font-weight:700;color:'+C.lime+'">1:'+rr+'</span></div>'+
+      '<div style="display:flex;align-items:center;gap:4px"><span style="font-size:10px;color:'+C.text2+'">Fib</span><span style="font-size:11px;font-weight:700;color:'+fibColor+'">'+s.fib+'%</span></div>'+
+      (s.volRatio>1?'<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:'+C.limeSoft+';color:'+C.lime+'">Volume '+(s.volRatio*100).toFixed(0)+'%</span>':'')+
+      '</div>'+
+      '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">'+
+      '<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(59,130,246,0.15);color:#60A5FA">Range: '+fmt(s.rangeHigh)+' / '+fmt(s.rangeLow)+'</span>'+
+      '<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(139,92,246,0.15);color:#A78BFA">FVG: '+fmt(s.fvgBottom)+' - '+fmt(s.fvgTop)+'</span></div>'+
+      (s.chartUrl?'<div class="chart-container" style="margin-top:6px;border-radius:6px;overflow:hidden;max-height:180px;cursor:pointer" onclick="window.open(\''+s.chartUrl+'\',\'_blank\')"><img src="'+s.chartUrl+'" style="width:100%;height:auto;display:block" loading="lazy"></div>':'')+
+      '</div>';
   }
-  var filtered=events;
-  if(calFilter.country!=='all')filtered=filtered.filter(function(e){return e.country===calFilter.country;});
-  if(calFilter.impact!=='all')filtered=filtered.filter(function(e){return e.impact===calFilter.impact;});
-  var high=filtered.filter(function(e){return e.impact==='High';});
-  var med=filtered.filter(function(e){return e.impact==='Medium';});
-  var low=filtered.filter(function(e){return e.impact==='Low';});
-  var dayNames=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  var today=new Date().toISOString().slice(0,10);
-  var dateStrip='';
-  for(var i=0;i<dayNames.length;i++){
-    var dt=new Date();dt.setDate(dt.getDate()-dt.getDay()+1+i);
-    var active=dt.toISOString().slice(0,10)===today;
-    dateStrip+='<div style="text-align:center;padding:6px 14px;border-radius:99px;cursor:pointer;background:'+(active?C.limeSoft:'transparent')+';border:0.5px solid '+(active?C.limeBorder:'rgba(255,255,255,0.04)')+'">'+
-      '<div style="font-size:9px;color:'+(active?C.lime:C.text2)+'">'+dayNames[i].toUpperCase()+'</div>'+
-      '<div style="font-size:15px;font-weight:800;color:'+(active?C.lime:C.white)+'">'+dt.getDate()+'</div></div>';
-  }
-  var eventsHtml='';
-  if(filtered.length){
-    for(var i=0;i<filtered.length;i++){
-      var e=filtered[i];
-      var impactColor=e.impact==='High'?C.red:e.impact==='Medium'?C.text2:C.lime;
-      var bars=e.impact==='High'?3:e.impact==='Medium'?2:1;
-      var eventDate=e.date?new Date(e.date):null;
-      var timeStr=eventDate?eventDate.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'--:--';
-      var isReleased=!!(e.actual);
-      var isPast=eventDate&&eventDate<new Date();
-      var diffMs=eventDate?eventDate-new Date():0;
-      var countdownStr='';
-      if(!isReleased&&!isPast&&eventDate){
-        var days=Math.floor(diffMs/86400000),hrs=Math.floor((diffMs%86400000)/3600000),mins=Math.floor((diffMs%3600000)/60000);
-        countdownStr=days>0?days+'d '+hrs+'h':hrs>0?hrs+'h '+mins+'m':mins+'m';
-      }
-      var dataRow='';
-      if(e.previous||e.forecast||e.actual){
-        dataRow='<div style="display:flex;gap:14px;margin-top:4px;font-size:10px;color:'+C.text2+'">';
-        if(e.previous)dataRow+='<span>Prev: <b style="color:'+C.white+'">'+e.previous+'</b></span>';
-        if(e.forecast)dataRow+='<span>Forecast: <b style="color:'+C.white+'">'+e.forecast+'</b></span>';
-        if(e.actual)dataRow+='<span>Actual: <b style="color:'+C.lime+'">'+e.actual+'</b></span>';
-        dataRow+='</div>';
-      }
-      var impDots='';
-      for(var j=0;j<3;j++)impDots+='<span style="width:8px;height:8px;border-radius:99px;background:'+(j<bars?impactColor:'rgba(255,255,255,0.05)')+'"></span>';
-      eventsHtml+='<div class="card" style="padding:10px 16px;animation-delay:'+(i*0.03)+'s">'+
-        '<div style="display:flex;justify-content:space-between;align-items:center">'+
-        '<div style="display:flex;align-items:center;gap:6px">'+
-        '<div style="display:flex;gap:2px">'+impDots+'</div>'+
-        '<span style="font-size:9.5px;font-weight:600;color:'+impactColor+'">'+(e.impact||'N/A')+'</span>'+
-        '<span style="font-size:9px;color:'+C.text2+'">\u00b7 '+timeStr+'</span>'+
-        (countdownStr?'<span style="margin-left:4px;font-size:9px;color:'+C.lime+';font-weight:700">\u23F1 '+countdownStr+'</span>':'')+
-        '</div>'+
-        (isReleased?'<span style="font-size:8px;font-weight:700;padding:2px 8px;border-radius:4px;background:'+C.limeSoft+';color:'+C.lime+'">Released</span>':'')+
-        '</div>'+
-        '<div style="font-size:13px;font-weight:700;color:'+C.white+';margin-top:3px;line-height:1.3">'+(e.title||e.country||'')+'</div>'+
-        dataRow+
-        (e.description?'<div style="font-size:11px;color:'+C.text2+';margin-top:3px;line-height:1.4">'+e.description+'</div>':'')+
-        '</div>';
-    }
-  }else{
-    eventsHtml='<div class="card" style="text-align:center;padding:30px;color:'+C.text2+';font-size:12px">No events match the selected filters.</div>';
-  }
-  return '<div style="display:flex;justify-content:space-between;align-items:baseline">'+
-    '<div class="section-h" style="padding-top:12px;margin-bottom:8px;color:'+C.white+'">Calendar</div>'+
-    '<span onclick="fetchAll()" style="font-size:9px;color:'+C.lime+';cursor:pointer">\u21BB Refresh</span></div>'+
-    '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">'+countryChips+'</div>'+
-    '<div style="font-size:9px;color:'+C.text2+';font-weight:500;margin-bottom:4px">Impact</div>'+
-    '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px">'+impactChips+'</div>'+
-    '<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;scrollbar-width:none">'+dateStrip+'</div>'+
-    eventsHtml+
-    '<div class="card" style="margin-top:4px;animation-delay:0.1s">'+
-    '<div style="font-size:13px;font-weight:700;color:'+C.white+';margin-bottom:8px">This Week</div>'+
-    '<div style="display:flex;justify-content:space-between;padding:8px 0"><span style="font-size:12px;font-weight:600;color:'+C.white+'">Upcoming High</span><span style="font-size:12px;font-weight:700;color:'+C.red+'">'+high.length+'</span></div>'+
-    '<div style="display:flex;justify-content:space-between;padding:8px 0;border-top:0.5px solid rgba(255,255,255,0.05)"><span style="font-size:12px;font-weight:600;color:'+C.white+'">Upcoming Medium</span><span style="font-size:12px;font-weight:700;color:'+C.text2+'">'+med.length+'</span></div>'+
-    '<div style="display:flex;justify-content:space-between;padding:8px 0;border-top:0.5px solid rgba(255,255,255,0.05)"><span style="font-size:12px;font-weight:600;color:'+C.white+'">Upcoming Low</span><span style="font-size:12px;font-weight:700;color:'+C.text3+'">'+low.length+'</span></div></div>';
+  return headerHtml+html;
 }
 
 // ===== SETTINGS SCREEN =====
@@ -1156,13 +1113,13 @@ function activeTradeWidget(t){
 function render(){
   var app=document.getElementById('app');
   if(state.selected){app.innerHTML=detailPage(state.selected);return;}
-  var tabLabels={overview:'Overview',journal:'Journal',calendar:'Calendar',news:'News',settings:'Settings'};
-  var tabsArr=['overview','journal','calendar','news','settings'];
+  var tabLabels={overview:'Overview',journal:'Journal',scalp:'Scalp',news:'News',settings:'Settings'};
+  var tabsArr=['overview','journal','scalp','news','settings'];
   var tabBtns='';
   for(var i=0;i<tabsArr.length;i++){
     var t=tabsArr[i];
     var active=state.tab===t;
-    var iconKey=t==='overview'?'grid':t==='journal'?'book':t==='calendar'?'cal':t==='news'?'radio':'gear';
+    var iconKey=t==='overview'?'grid':t==='journal'?'book':t==='scalp'?'cal':t==='news'?'radio':'gear';
     tabBtns+='<button class="tab-btn'+(active?' active':'')+'" data-tab="'+t+'">'+
       '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'+ICONS[iconKey]+'</svg>'+
       '<span>'+tabLabels[t]+'</span></button>';
@@ -1181,7 +1138,7 @@ function render(){
     var content=document.getElementById('content');
     if(state.tab==='overview'){content.innerHTML=overviewScreen();}
     else if(state.tab==='journal'){content.innerHTML=journalScreen();}
-    else if(state.tab==='calendar'){content.innerHTML=calendarScreen();}
+    else if(state.tab==='scalp'){content.innerHTML=scalpScreen();}
     else if(state.tab==='settings'){content.innerHTML=settingsScreen();}
     else if(state.tab==='news'){content.innerHTML=newsScreen();}
   }
@@ -1287,7 +1244,6 @@ window.toggleNotifPref=toggleNotifPref;
 window.toggleEntryForm=toggleEntryForm;
 window.saveJournalEntry=saveJournalEntry;
 window.toggleTag=toggleTag;
-window.setCalFilter=setCalFilter;
 window.setNewsFilter=setNewsFilter;
 
 document.addEventListener('click',function(e){
@@ -1378,7 +1334,7 @@ var tourSteps=[
   {tab:'overview',title:'Signal Detail Page',desc:'View <strong>chart screenshot</strong>, <strong>trade levels</strong> (entry, zone, refined entry, SL, TP1, TP2), <strong>criteria checklist</strong> scored X/4, <strong>counter-trend warnings</strong>, and the <strong>track button</strong> to get updates on this trade.'},
   {tab:'overview',title:'Position Calculator',desc:'Tap <strong>Calculate Position Size</strong> on the detail page. Enter your balance & risk % — it calculates <strong>risk amount</strong>, <strong>position size</strong>, <strong>lots</strong>, <strong>R:R</strong>, and <strong>potential profit</strong>, pre-filled with the signal\'s entry & SL.'},
   {tab:'journal',title:'Trade Journal',desc:'Log every trade. Use <strong>+ New Entry</strong> to add notes, screenshots & tags. Filter by All/Wins/Losses/Open. Tap any entry to edit or delete.'},
-  {tab:'calendar',title:'Economic Calendar',desc:'Filter by <strong>country</strong> (USD, EUR, GBP...) and <strong>impact</strong> (High/Medium/Low). See countdown timers, impact dots, and Previous vs Forecast vs Actual data. High-impact events cause volatility — plan around them.'},
+  {tab:'scalp',title:'Live Scalp Signals',desc:'<strong>Session Momentum + FVG</strong> scalping system during London (7-10 UTC) and New York (13-16 UTC). Each signal shows entry, SL, TP2, <strong>deep Fib level</strong> (61.8/70.2/78.6%), volume confirmation, and chart screenshot. Only alerted in-app — no Telegram.'},
   {tab:'news',title:'Market Intel',desc:'Curated news across <strong>Forex</strong>, <strong>Economy</strong>, <strong>Geopolitics</strong>, and <strong>Commodities</strong>. Filter by category using the chips at the top.'},
   {tab:'settings',title:'Settings',desc:'Toggle <strong>Push Alerts</strong>, <strong>News Alerts</strong>, and <strong>Daily Digest</strong>. Disconnect to clear your code. Data refreshes every 60 seconds automatically.'},
 ];
@@ -1388,7 +1344,7 @@ var tourIcons=[
   '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>',
   '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>',
   '<svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M8 7h8M8 11h6"/></svg>',
-  '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/></svg>',
+  '<svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
   '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 010 8.49M7.76 16.24a6 6 0 010-8.49M19.07 4.93a10 10 0 010 14.14M4.93 19.07a10 10 0 010-14.14"/></svg>',
   '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>'
 ];
@@ -1405,7 +1361,7 @@ function onboardingHTML(){
       '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:28px;text-align:left">'+
       '<div class="onboard-feature"><div class="onboard-feature-icon"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></div><div><div style="font-size:12px;font-weight:600;color:#FFF">Real-Time Signals</div><div style="font-size:10px;color:#8E8E93;margin-top:1px">Elite trade setups with entry, SL, TP &amp; criteria</div></div></div>'+
       '<div class="onboard-feature"><div class="onboard-feature-icon"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M8 7h8M8 11h6"/></svg></div><div><div style="font-size:12px;font-weight:600;color:#FFF">Trade Journal</div><div style="font-size:10px;color:#8E8E93;margin-top:1px">Log, edit, and review every trade you take</div></div></div>'+
-      '<div class="onboard-feature"><div class="onboard-feature-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div><div><div style="font-size:12px;font-weight:600;color:#FFF">Economic Calendar</div><div style="font-size:10px;color:#8E8E93;margin-top:1px">High-impact events with countdown &amp; data</div></div></div>'+
+      '<div class="onboard-feature"><div class="onboard-feature-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div><div><div style="font-size:12px;font-weight:600;color:#FFF">Live Scalp Signals</div><div style="font-size:10px;color:#8E8E93;margin-top:1px">Session breakout + FVG scalping with Fib confluence</div></div></div>'+
       '<div class="onboard-feature"><div class="onboard-feature-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 010 8.49M7.76 16.24a6 6 0 010-8.49M19.07 4.93a10 10 0 010 14.14M4.93 19.07a10 10 0 010-14.14"/></svg></div><div><div style="font-size:12px;font-weight:600;color:#FFF">Market Intel</div><div style="font-size:10px;color:#8E8E93;margin-top:1px">Curated news &amp; analysis across asset classes</div></div></div>'+
       '</div>'+
       '<button class="btn-primary" style="width:100%;padding:14px 0;font-size:15px" onclick="startTour()">Take the Tour</button>'+
