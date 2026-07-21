@@ -1091,8 +1091,10 @@ function checkScalpTrades(instId,cHigh,cLow){
     if(!t.tp2Fired&&didHitTP2){
       t.tp2Fired=true;t.closed=true;
       scalpTradeHistory.push({pair:t.pair,type:t.type,outcome:'WIN',r:rFull,entry:t.entry,sl:t.origSL,tp2:t.tp2,session:t.session,openTime:t.openTime,closeTime:Date.now()});
+      const durMin=t.openTime?Math.round((Date.now()-t.openTime)/60000):null;
       activeScalpTrades.splice(i,1);saveState();
       log('Scalp WIN: '+t.pair+' '+t.type+' R='+rFull.toFixed(2));
+      try{scalpJournalEntry(t,'WIN',rFull,durMin,[t.session,'Score '+t.score+'/5']);}catch(e){}
       try{sendPushToTrackers(t.sigId,'\uD83D\uDCB0 Scalp TP2 '+t.pair,t.name+' — full target hit, +'+rFull.toFixed(2)+'R.','scalp_tp2');}catch(e){}
       continue;
     }
@@ -1101,8 +1103,10 @@ function checkScalpTrades(instId,cHigh,cLow){
     if(t.tp1Fired&&!t.beFired&&didHitBE){
       t.beFired=true;t.closed=true;
       scalpTradeHistory.push({pair:t.pair,type:t.type,outcome:'BE',r:0,entry:t.entry,sl:t.origSL,tp2:t.tp2,session:t.session,openTime:t.openTime,closeTime:Date.now()});
+      const durMin=t.openTime?Math.round((Date.now()-t.openTime)/60000):null;
       activeScalpTrades.splice(i,1);saveState();
       log('Scalp BE: '+t.pair+' '+t.type);
+      try{scalpJournalEntry(t,'BE',0,durMin,[t.session,'TP1 secured']);}catch(e){}
       try{sendPushToTrackers(t.sigId,'\u2705 Scalp BE '+t.pair,t.name+' — TP1 secured, closed at entry.','scalp_be');}catch(e){}
       continue;
     }
@@ -1112,8 +1116,10 @@ function checkScalpTrades(instId,cHigh,cLow){
       t.slFired=true;t.closed=true;
       const rLoss=-Math.abs(t.tp2-t.entry)/Math.abs(t.entry-t.origSL);
       scalpTradeHistory.push({pair:t.pair,type:t.type,outcome:'LOSS',r:rLoss,entry:t.entry,sl:t.origSL,tp2:t.tp2,session:t.session,openTime:t.openTime,closeTime:Date.now()});
+      const durMin=t.openTime?Math.round((Date.now()-t.openTime)/60000):null;
       activeScalpTrades.splice(i,1);saveState();
       log('Scalp LOSS: '+t.pair+' '+t.type+' R='+rLoss.toFixed(2));
+      try{scalpJournalEntry(t,'LOSS',rLoss,durMin,[t.session]);}catch(e){}
       try{sendPushToTrackers(t.sigId,'\u274C Scalp SL '+t.pair,t.name+' — stop loss hit, '+rLoss.toFixed(2)+'R.','scalp_sl');}catch(e){}
       continue;
     }
@@ -1126,8 +1132,10 @@ function checkScalpTrades(instId,cHigh,cLow){
       const outcome=rExp>0?'WIN':rExp===0?'BE':'LOSS';
       const adjR=Math.round(rExp*100)/100;
       scalpTradeHistory.push({pair:t.pair,type:t.type,outcome,entry:t.entry,sl:t.origSL,tp2:t.tp2,session:t.session,openTime:t.openTime,closeTime:Date.now(),r:adjR,expired:true});
+      const durMin=t.openTime?Math.round((Date.now()-t.openTime)/60000):null;
       activeScalpTrades.splice(i,1);saveState();
       log('Scalp EXPIRED: '+t.pair+' '+t.type+' R='+adjR.toFixed(2)+' (open >4h)');
+      try{scalpJournalEntry(t,outcome,adjR,durMin,[t.session,'Expired']);}catch(e){}
       try{sendPushToTrackers(t.sigId,'\u23F0 Scalp Expired '+t.pair,t.name+' — auto-closed after 4h, '+adjR.toFixed(2)+'R.','scalp_expiry');}catch(e){}
     }
   }
@@ -1184,6 +1192,25 @@ function autoJournalEntry(t,outcome,rMultiple,durationMin){
   if(rMultiple<-1.5)flags.push('Wider SL needed');
   if(durationMin!=null&&durationMin<120&&(outcome==='SL'||outcome==='BE'))flags.push('Quick exit');
   const base={pair:t.instName||t.instId,direction:dir,tf:tf,outcome:outcome,rMultiple:rMultiple,duration:durStr,notes:'Auto-logged from bot trade',tags:[],reviewFlags:flags};
+  for(const member of memberCodes){
+    if(!member.code||member.code==='admin')continue;
+    if(!member.journal)member.journal=[];
+    member.journal.push({...base,id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),createdAt:new Date().toISOString()});
+  }
+}
+function scalpJournalEntry(t,outcome,rMultiple,durationMin,extraTags){
+  const dir=t.type==='BULLISH'?'BUY':'SELL';
+  const durStr=durationMin!=null?Math.floor(durationMin/60)+'h '+(durationMin%60)+'m':'';
+  const flags=[];
+  if(outcome==='WIN'||outcome==='TP2')flags.push('Perfect setup');
+  if(outcome==='TP1')flags.push('Managed well');
+  if(outcome==='BE')flags.push('Capital protected');
+  if(rMultiple>3)flags.push('Home run');
+  if(rMultiple<-1.5)flags.push('Wider SL needed');
+  if(durationMin!=null&&durationMin<120&&(outcome==='LOSS'||outcome==='BE'))flags.push('Quick exit');
+  if(outcome==='LOSS'&&t.expired)flags.push('Expired');
+  const pairName=t.name||t.pair;
+  const base={pair:pairName,direction:dir,tf:'SCALP',outcome:outcome,rMultiple:rMultiple,duration:durStr,notes:'Auto-logged from scalp trade',tags:extraTags||[],reviewFlags:flags,system:'scalp'};
   for(const member of memberCodes){
     if(!member.code||member.code==='admin')continue;
     if(!member.journal)member.journal=[];

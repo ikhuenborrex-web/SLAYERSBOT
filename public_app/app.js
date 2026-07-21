@@ -237,6 +237,7 @@ var state={
   journal:[],news:[],settings:null,notifPrefs:{},botHistory:[],
   loading:true,
   filter:{pair:'',dir:'',tf:'',minScore:0,dateFrom:'',dateTo:'',sort:'time'},
+  journalTab:'qmr',
   journalFilter:'all',
   journalPairFilter:'all',
   journalDirFilter:'all',
@@ -589,6 +590,9 @@ function toggleJC(key){localStorage.setItem('jc_'+key,!(jcPref(key)));render();}
 // ===== JOURNAL SCREEN =====
 function journalScreen(){
   var entries=state.journal;
+  // Tab filter (QMR vs Scalp)
+  if(state.journalTab==='scalp')entries=entries.filter(function(e){return e.system==='scalp';});
+  else entries=entries.filter(function(e){return e.system!=='scalp';});
   // Pair filter
   var pairs={};
   for(var pi=0;pi<entries.length;pi++)pairs[entries[pi].pair]=true;
@@ -669,12 +673,13 @@ function journalScreen(){
     var flagsHtml='';
     if(e.reviewFlags&&e.reviewFlags.length){flagsHtml='<div style="display:flex;gap:4px;margin-top:4px">';for(var i=0;i<e.reviewFlags.length;i++)flagsHtml+=flagHtml(e.reviewFlags[i]);flagsHtml+='</div>';}
     var notesHtml=e.notes?'<div style="font-size:11.5px;color:'+C.text2+';margin-top:5px;line-height:1.4">'+esc(e.notes)+'</div>':'';
+    var sysTag=e.system==='scalp'?'<span style="font-size:8px;font-weight:700;padding:1px 4px;border-radius:2px;background:#3B82F6;color:#FFF;margin-left:4px">SCALP</span>':'<span style="font-size:8px;font-weight:700;padding:1px 4px;border-radius:2px;background:'+C.lime+';color:#000;margin-left:4px">QMR</span>';
     return '<div class="card" onclick="editEntry(\''+e.id+'\')" style="padding:12px 16px;cursor:pointer;animation-delay:0s">'+
       '<div style="display:flex;gap:12px;align-items:flex-start">'+
       '<div style="width:30px;height:30px;border-radius:99px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;background:'+iconBg+';color:'+iconColor+'">'+iconText+'</div>'+
       '<div style="flex:1;min-width:0">'+
       '<div style="display:flex;justify-content:space-between;align-items:center">'+
-      '<span style="font-weight:700;font-size:13px;color:'+C.white+'">'+e.pair+'</span>'+
+      '<span style="font-weight:700;font-size:13px;color:'+C.white+'">'+e.pair+sysTag+'</span>'+
       '<span style="font-weight:800;font-size:13px;color:'+resultColor+'">'+(e.rMultiple>=0?'+':'')+(e.rMultiple||0)+'R</span></div>'+
       '<div style="font-size:10px;color:'+C.text2+';margin-top:2px">'+(e.direction||'')+' \u00b7 '+(e.tf||'')+' \u00b7 '+(e.duration||'')+' \u00b7 '+(e.createdAt?timeAgo(e.createdAt):'')+'</div>'+
       notesHtml+flagsHtml+tagsHtml+'</div></div></div>';
@@ -763,6 +768,10 @@ function journalScreen(){
     '<span onclick="window.open(withCode(\'/api/journal\'),\'_blank\')" style="font-size:10px;font-weight:600;color:'+C.text2+';cursor:pointer">Export</span>'+
     '<button onclick="toggleEntryForm()" style="background:'+C.lime+';border:none;border-radius:8px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#000;font-weight:800;font-size:18px;line-height:1">+</button>'+
     '</div></div>'+
+    '<div style="display:flex;gap:6px;margin-bottom:12px">'+
+    '<span onclick="state.journalTab=\'qmr\';render()" style="flex:1;text-align:center;padding:8px 0;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;background:'+(state.journalTab==='qmr'?C.lime:'rgba(255,255,255,0.04)')+';color:'+(state.journalTab==='qmr'?'#000':C.text2)+'">QMR Journal</span>'+
+    '<span onclick="state.journalTab=\'scalp\';render()" style="flex:1;text-align:center;padding:8px 0;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;background:'+(state.journalTab==='scalp'?'#3B82F6':'rgba(255,255,255,0.04)')+';color:'+(state.journalTab==='scalp'?'#FFF':C.text2)+'">Scalp Journal</span>'+
+    '</div>'+
     customizePanel+
     (jcPref('summary')?wsHtml:'')+
     (jcPref('stats')?'<div class="card" style="padding:16px 20px;border-color:'+C.limeBorder+';animation-delay:0s"><div style="display:flex;justify-content:space-around">'+
