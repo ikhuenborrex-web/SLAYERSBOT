@@ -1115,8 +1115,8 @@ async function runScan(manual=false){
     await tgBiasFlipBundle(biasFlips);
   }
 
-  // QMR scan — only during active sessions
-  if(!manual&&!isSessionActive()){log('Scan skipped (outside session hours)');}else if(manual||scanCount%2===0){
+  // QMR scan — per-pair session aware
+  if(manual||scanCount%2===0){
     for(const inst of QMR_INSTS){
       const dce=dailyCache[inst.id];
       if(!dce||Date.now()-dce.ts>26*60*60*1000){
@@ -1129,6 +1129,7 @@ async function runScan(manual=false){
       }
     }
     for(const inst of QMR_INSTS){
+      if(!manual&&!isPairInSession(inst.id)){log('QMR scan skipped for '+inst.id+' (outside pair session)');continue;}
       for(const tf of QMR_TFS){
         try{
           const res=await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym)}&interval=${tf}&outputsize=100&apikey=${API_KEY}`);
