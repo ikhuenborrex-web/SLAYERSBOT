@@ -264,14 +264,12 @@ async function fetchAll(){
     if(state.filter.dateFrom)sigUrl+='&dateFrom='+encodeURIComponent(state.filter.dateFrom);
     if(state.filter.dateTo)sigUrl+='&dateTo='+encodeURIComponent(state.filter.dateTo);
     if(state.filter.sort!=='time')sigUrl+='&sort='+state.filter.sort;
-    var [sigRes,activeRes,confluRes,statsRes,detailedStatsRes,myStatsRes,journalRes,newsRes,newsFeedRes,settingsRes,tradeHistRes,weekSumRes,scalpRes,scalpActiveRes,scalpStatsRes,scalpPulseRes]=await withTimeout(Promise.all([
+    var [sigRes,activeRes,confluRes,statsRes,detailedStatsRes,myStatsRes,journalRes,newsRes,newsFeedRes,settingsRes,tradeHistRes,weekSumRes]=await withTimeout(Promise.all([
       fetch(withCode(sigUrl)),fetch(withCode('/api/active')),
       fetch(withCode('/api/confluence')),fetch(withCode('/api/stats')),
       fetch(withCode('/api/stats/detailed')),fetch(withCode('/api/member/stats')),fetch(withCode('/api/journal')),
       fetch(withCode('/api/news')),fetch(withCode('/api/news-feed')),fetch(withCode('/api/settings')),
-      fetch(withCode('/api/trade-history')),fetch(withCode('/api/weekly-summary')),
-      fetch(withCode('/api/scalp')),
-      fetch(withCode('/api/scalp/active')),fetch(withCode('/api/scalp/stats')),fetch(withCode('/api/scalp/pulse'))
+      fetch(withCode('/api/trade-history')),fetch(withCode('/api/weekly-summary'))
     ]));
     if(sigRes.status===401){clearCode();state.loading=false;renderLogin('Your access code has expired or is no longer valid.');return;}
     var j=function(r){return r.json().catch(function(){return{};});};
@@ -292,10 +290,11 @@ async function fetchAll(){
     var sData=await j(settingsRes);state.settings=sData.settings||null;
     var histRes=await j(tradeHistRes);state.botHistory=histRes.outcomes||[];
     var weekSum=await j(weekSumRes);state.weeklySummary=weekSum.summary||null;
-    var scalpData=await j(scalpRes);state.scalpSignals=scalpData.signals||[];
-    var scalpActiveData=await j(scalpActiveRes);state.scalpActive=scalpActiveData.trades||[];
-    var scalpStatsData=await j(scalpStatsRes);state.scalpStats=scalpStatsData;
-    var scalpPulseData=await j(scalpPulseRes);state.scalpPulse=scalpPulseData.pairs||[];
+    // Scalp data — non-blocking, never disrupts main data
+    fetch(withCode('/api/scalp')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){state.scalpSignals=d.signals||[];render();}).catch(function(){});
+    fetch(withCode('/api/scalp/active')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){state.scalpActive=d.trades||[];render();}).catch(function(){});
+    fetch(withCode('/api/scalp/stats')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){state.scalpStats=d;render();}).catch(function(){});
+    fetch(withCode('/api/scalp/pulse')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){state.scalpPulse=d.pairs||[];render();}).catch(function(){});
     state.fetchError=null;
   }catch(e){console.error('Fetch error',e);state.fetchError=e.message||'Connection error';}
   state.loading=false;render();
