@@ -330,8 +330,9 @@ async function loadState(){
     if(st.memberStats&&typeof st.memberStats==='object')memberStats=st.memberStats;
     const ageMin=st.savedAt?Math.round((Date.now()-st.savedAt)/60000):'?';
     log('State restored: '+activeQMRTrades.length+' active trades, '+tradeHistory.length+' history ('+ageMin+'m old)');
-    tradeHistory=(tradeHistory||[]).filter(t=>t.instId!=='FX:EURGBP');
-    dailyOutcomeLog=(dailyOutcomeLog||[]).filter(t=>t.id!=='FX:EURGBP');
+    tradeHistory=(tradeHistory||[]).filter(t=>t.instId!=='EURGBP');
+    dailyOutcomeLog=(dailyOutcomeLog||[]).filter(t=>t.id!=='EURGBP');
+    appSignalFeed=(appSignalFeed||[]).filter(s=>s.instId!=='EURGBP');
     if(tradeHistory.length!==st?.tradeHistory?.length)saveState();
   }catch(e){log('loadState error (starting fresh): '+e.message);}
 }
@@ -1559,6 +1560,18 @@ app.get('/api/trade-history',(req,res)=>{
   const codeCheck=checkMemberCode(req);
   if(codeCheck!=='ok')return res.status(401).json({error:'Invalid or expired access code',reason:codeCheck});
   res.json({outcomes:dailyOutcomeLog.slice(-500),count:dailyOutcomeLog.length});
+});
+app.post('/api/delete-trades',(req,res)=>{
+  const codeCheck=checkMemberCode(req);
+  if(codeCheck!=='ok')return res.status(401).json({error:'Invalid or expired access code',reason:codeCheck});
+  const {instId}=req.body||{};
+  if(!instId)return res.json({error:'instId required'});
+  const beforeHist=tradeHistory.length,beforeLog=dailyOutcomeLog.length;
+  tradeHistory=tradeHistory.filter(t=>t.instId!==instId);
+  dailyOutcomeLog=dailyOutcomeLog.filter(t=>t.id!==instId);
+  appSignalFeed=appSignalFeed.filter(s=>s.instId!==instId&&s.pair!==instId);
+  saveState();
+  res.json({ok:true,removed:{tradeHistory:beforeHist-tradeHistory.length,dailyOutcomeLog:beforeLog-dailyOutcomeLog.length}});
 });
 app.get('/api/settings',(req,res)=>{
   const codeCheck=checkMemberCode(req);
