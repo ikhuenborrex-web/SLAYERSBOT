@@ -330,6 +330,9 @@ async function loadState(){
     if(st.memberStats&&typeof st.memberStats==='object')memberStats=st.memberStats;
     const ageMin=st.savedAt?Math.round((Date.now()-st.savedAt)/60000):'?';
     log('State restored: '+activeQMRTrades.length+' active trades, '+tradeHistory.length+' history ('+ageMin+'m old)');
+    tradeHistory=(tradeHistory||[]).filter(t=>t.instId!=='FX:EURGBP');
+    dailyOutcomeLog=(dailyOutcomeLog||[]).filter(t=>t.id!=='FX:EURGBP');
+    if(tradeHistory.length!==st?.tradeHistory?.length)saveState();
   }catch(e){log('loadState error (starting fresh): '+e.message);}
 }
 let dailyCache={};
