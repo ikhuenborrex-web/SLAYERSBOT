@@ -232,7 +232,7 @@ function saveState(){
       weeklyCache,prevWeeklyCache,recentQMRFires,qmr4HCache,suppressedPairs:[...suppressedPairs],
       lastBriefing,lastEOD,lastWeeklySummary,lastMonthlyRecap,pairPerformance,
       dailyAlertLog,dailyOutcomeLog,
-      qmrSeen:[...qmrSeen],earlyEntryCache,appSignalFeed,lastBriefingSnapshot,lastBriefingTime,      pushSubscriptions,memberCodes,trackedTrades,memberStats,weeklySummaryData,scalpSignals,activeScalpTrades,scalpTradeHistory,
+      qmrSeen:[...qmrSeen],scalpSeen:[...scalpSeen],earlyEntryCache,appSignalFeed,lastBriefingSnapshot,lastBriefingTime,      pushSubscriptions,memberCodes,trackedTrades,memberStats,weeklySummaryData,scalpSignals,activeScalpTrades,scalpTradeHistory,
       savedAt:Date.now()
     };
     const json=JSON.stringify(state);
@@ -341,6 +341,7 @@ async function loadState(){
     if(Array.isArray(st.scalpSignals))scalpSignals=st.scalpSignals;
     if(Array.isArray(st.activeScalpTrades))activeScalpTrades=st.activeScalpTrades;
     if(Array.isArray(st.scalpTradeHistory))scalpTradeHistory=st.scalpTradeHistory;
+    if(Array.isArray(st.scalpSeen))scalpSeen=new Set(st.scalpSeen);
     const ageMin=st.savedAt?Math.round((Date.now()-st.savedAt)/60000):'?';
     log('State restored: '+activeQMRTrades.length+' active trades, '+tradeHistory.length+' history ('+ageMin+'m old)');
     tradeHistory=(tradeHistory||[]).filter(t=>t.instId!=='EURGBP');
@@ -1071,20 +1072,63 @@ function checkScalpTrades(instId,cHigh,cLow){
   for(let i=activeScalpTrades.length-1;i>=0;i--){
     const t=activeScalpTrades[i];if(t.pair!==instId||t.closed)continue;
     const isB=t.type==='BULLISH';
-    if(isB?hi>=t.tp2:lo<=t.tp2){
-      t.closed=true;
-      const r=Math.abs(t.tp2-t.entry)/Math.abs(t.entry-t.sl);
-      scalpTradeHistory.push({pair:t.pair,type:t.type,outcome:'WIN',r,entry:t.entry,sl:t.sl,tp2:t.tp2,session:t.session,openTime:t.openTime,closeTime:Date.now()});
+    const rFull=Math.abs(t.tp2-t.entry)/Math.abs(t.entry-t.origSL);
+    const didHitTP1=isB?hi>=t.tp1:lo<=t.tp1;
+    const didHitTP2=isB?hi>=t.tp2:lo<=t.tp2;
+    const didHitSL=isB?lo<=t.sl:hi>=t.sl;
+    const didHitBE=isB?lo<=t.beLevel:hi>=t.beLevel;
+
+    // TP1 → move SL to break-even
+    if(!t.tp1Fired&&didHitTP1){
+      t.tp1Fired=true;
+      t.sl=t.beLevel;
+      log('Scalp TP1: '+t.pair+' '+t.type+' — SL moved to BE');
+      try{sendPushToTrackers(t.sigId,'\u26A1 Scalp TP1 '+t.pair,t.name+' — SL moved to entry, trade is risk-free.','scalp_tp1');}catch(e){}
+      // Don't continue — check if TP2 also hit in same candle
+    }
+
+    // TP2 (check before BE — TP2 wins if both hit in same candle)
+    if(!t.tp2Fired&&didHitTP2){
+      t.tp2Fired=true;t.closed=true;
+      scalpTradeHistory.push({pair:t.pair,type:t.type,outcome:'WIN',r:rFull,entry:t.entry,sl:t.origSL,tp2:t.tp2,session:t.session,openTime:t.openTime,closeTime:Date.now()});
       activeScalpTrades.splice(i,1);saveState();
-      log('Scalp WIN: '+t.pair+' '+t.type+' R='+r.toFixed(2));
-      try{sendPushToAll('\u2705 TP2 hit '+t.pair,'Scalp '+(t.type==='BULLISH'?'BUY':'SELL')+' closed +'+r.toFixed(2)+'R', '/');}catch(e){}
-    }else if(isB?lo<=t.sl:hi>=t.sl){
-      t.closed=true;
-      const r=-Math.abs(t.tp2-t.entry)/Math.abs(t.entry-t.sl);
-      scalpTradeHistory.push({pair:t.pair,type:t.type,outcome:'LOSS',r,entry:t.entry,sl:t.sl,tp2:t.tp2,session:t.session,openTime:t.openTime,closeTime:Date.now()});
+      log('Scalp WIN: '+t.pair+' '+t.type+' R='+rFull.toFixed(2));
+      try{sendPushToTrackers(t.sigId,'\uD83D\uDCB0 Scalp TP2 '+t.pair,t.name+' — full target hit, +'+rFull.toFixed(2)+'R.','scalp_tp2');}catch(e){}
+      continue;
+    }
+
+    // BE after TP1 (only if TP2 wasn't also hit)
+    if(t.tp1Fired&&!t.beFired&&didHitBE){
+      t.beFired=true;t.closed=true;
+      scalpTradeHistory.push({pair:t.pair,type:t.type,outcome:'BE',r:0,entry:t.entry,sl:t.origSL,tp2:t.tp2,session:t.session,openTime:t.openTime,closeTime:Date.now()});
       activeScalpTrades.splice(i,1);saveState();
-      log('Scalp LOSS: '+t.pair+' '+t.type+' R='+r.toFixed(2));
-      try{sendPushToAll('\u274C SL hit '+t.pair,'Scalp '+(t.type==='BULLISH'?'BUY':'SELL')+' closed '+r.toFixed(2)+'R', '/');}catch(e){}
+      log('Scalp BE: '+t.pair+' '+t.type);
+      try{sendPushToTrackers(t.sigId,'\u2705 Scalp BE '+t.pair,t.name+' — TP1 secured, closed at entry.','scalp_be');}catch(e){}
+      continue;
+    }
+
+    // SL (only before TP1 fires — after TP1, SL=BE handled above)
+    if(!t.tp1Fired&&!t.slFired&&didHitSL){
+      t.slFired=true;t.closed=true;
+      const rLoss=-Math.abs(t.tp2-t.entry)/Math.abs(t.entry-t.origSL);
+      scalpTradeHistory.push({pair:t.pair,type:t.type,outcome:'LOSS',r:rLoss,entry:t.entry,sl:t.origSL,tp2:t.tp2,session:t.session,openTime:t.openTime,closeTime:Date.now()});
+      activeScalpTrades.splice(i,1);saveState();
+      log('Scalp LOSS: '+t.pair+' '+t.type+' R='+rLoss.toFixed(2));
+      try{sendPushToTrackers(t.sigId,'\u274C Scalp SL '+t.pair,t.name+' — stop loss hit, '+rLoss.toFixed(2)+'R.','scalp_sl');}catch(e){}
+      continue;
+    }
+
+    // Expiry — auto-close after 4 hours
+    if(!t.closed&&t.openTime&&Date.now()-t.openTime>4*60*60*1000){
+      t.closed=true;
+      const exitPrice=isB?lo:hi;
+      const rExp=isB?(exitPrice-t.entry)/Math.abs(t.entry-t.origSL):(t.entry-exitPrice)/Math.abs(t.entry-t.origSL);
+      const outcome=rExp>0?'WIN':rExp===0?'BE':'LOSS';
+      const adjR=Math.round(rExp*100)/100;
+      scalpTradeHistory.push({pair:t.pair,type:t.type,outcome,entry:t.entry,sl:t.origSL,tp2:t.tp2,session:t.session,openTime:t.openTime,closeTime:Date.now(),r:adjR,expired:true});
+      activeScalpTrades.splice(i,1);saveState();
+      log('Scalp EXPIRED: '+t.pair+' '+t.type+' R='+adjR.toFixed(2)+' (open >4h)');
+      try{sendPushToTrackers(t.sigId,'\u23F0 Scalp Expired '+t.pair,t.name+' — auto-closed after 4h, '+adjR.toFixed(2)+'R.','scalp_expiry');}catch(e){}
     }
   }
 }
@@ -1092,14 +1136,18 @@ function getScalpStats(){
   const hist=scalpTradeHistory||[];
   const wins=hist.filter(t=>t.outcome==='WIN').length;
   const losses=hist.filter(t=>t.outcome==='LOSS').length;
+  const bes=hist.filter(t=>t.outcome==='BE').length;
   const totalR=hist.reduce((s,t)=>s+(t.r||0),0);
   const byPair={};
   for(const t of hist){
-    if(!byPair[t.pair])byPair[t.pair]={wins:0,losses:0,totalR:0};
-    byPair[t.pair][t.outcome==='WIN'?'wins':'losses']++;byPair[t.pair].totalR+=t.r||0;
+    if(!byPair[t.pair])byPair[t.pair]={wins:0,losses:0,bes:0,totalR:0};
+    if(t.outcome==='WIN')byPair[t.pair].wins++;
+    else if(t.outcome==='LOSS')byPair[t.pair].losses++;
+    else if(t.outcome==='BE')byPair[t.pair].bes++;
+    byPair[t.pair].totalR+=t.r||0;
   }
   const equity=[...hist].reduce((acc,t)=>{const last=acc.length?acc[acc.length-1].r:0;acc.push({t:new Date(t.closeTime).toISOString().slice(0,10),r:last+(t.r||0)});return acc;},[]);
-  return{wins,losses,total:wins+losses,winRate:((wins+losses)?Math.round(wins/(wins+losses)*100):0),totalR:Math.round(totalR*100)/100,byPair,equity};
+  return{wins,losses,bes,total:wins+losses,winRate:(wins+losses?Math.round(wins/(wins+losses)*100):0),totalR:Math.round(totalR*100)/100,byPair,equity};
 }
 
 // When an aggressive trade closes, remove the pending banner on its card
@@ -1511,8 +1559,10 @@ async function runScan(manual=false){
                 chartFile,time:new Date().toISOString()
               });
               if(scalpSignals.length>50)scalpSignals=scalpSignals.slice(0,50);
-              activeScalpTrades.push({sigId:'SCALP-'+inst.id+'-'+Date.now(),pair:inst.id,name:inst.name,type:signal.type,entry:signal.entry,sl:signal.sl,tp2:signal.tp2,session:signal.session,openTime:Date.now(),closed:false});
-              try{sendPushToAll(
+              const slDist=Math.abs(signal.entry-signal.sl);
+              const tp1Price=signal.type==='BULLISH'?signal.entry+slDist:signal.entry-slDist;
+              activeScalpTrades.push({sigId:'SCALP-'+inst.id+'-'+Date.now(),pair:inst.id,name:inst.name,type:signal.type,entry:signal.entry,sl:signal.sl,tp2:signal.tp2,tp1:tp1Price,beLevel:signal.entry,origSL:signal.sl,session:signal.session,openTime:Date.now(),closed:false,tp1Fired:false,beFired:false,tp2Fired:false,slFired:false});
+              try{sendScalpPushToAll(
                 (signal.type==='BULLISH'?'\uD83D\uDFE2 BUY':'\uD83D\uDD34 SELL')+' '+inst.id,
                 'Scalp '+(signal.type==='BULLISH'?'BUY':'SELL')+' \u2014 '+signal.session+' breakout \u2014 \uD83D\uDCA5Score '+signal.score+'/5 \u2014 RR '+signal.rr,
                 '/'
@@ -1527,6 +1577,11 @@ async function runScan(manual=false){
         }catch(e){log('Scalp '+inst.id+': '+e.message);await sleep(DELAY_MS);}
       }
     }
+  }
+  // ScalpSeen cleanup — keep max 100 most recent
+  if(scalpSeen.size>100){
+    const arr=[...scalpSeen];
+    scalpSeen=new Set(arr.slice(-100));
   }
   scanCount++;lastScanTime=new Date().toISOString();saveState();
   log(`Scan complete #${scanCount}`);
@@ -1564,6 +1619,22 @@ async function sendPushToTrackers(signalId,title,body,level){
       const member=memberCodes.find(m=>m.code===code);
       if(member&&member.notifPrefs&&member.notifPrefs[level]===false)continue;
     }
+    try{await webpush.sendNotification(sub,payload);}
+    catch(e){
+      if(e.statusCode===410||e.statusCode===404)dead.push(entry);
+      else log('Push error: '+e.message);
+    }
+  }
+  if(dead.length){pushSubscriptions=pushSubscriptions.filter(s=>!dead.includes(s));saveState();}
+}
+async function sendScalpPushToAll(title,body,url){
+  if(!webpush||!VAPID_PUBLIC||!VAPID_PRIVATE||!pushSubscriptions.length)return;
+  const payload=JSON.stringify({title,body,url:url||'/'});
+  const dead=[];
+  for(const entry of pushSubscriptions){
+    const {code,...sub}=entry;
+    const member=memberCodes.find(m=>m.code===code);
+    if(member&&member.notifPrefs&&member.notifPrefs.scalpAlerts===false)continue;
     try{await webpush.sendNotification(sub,payload);}
     catch(e){
       if(e.statusCode===410||e.statusCode===404)dead.push(entry);
@@ -1702,9 +1773,13 @@ app.get('/api/signals',(req,res)=>{
 });
 app.get('/api/scalp',(req,res)=>{
   const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
+  const myCode=req.query.code||req.headers['x-access-code'];
   const limit=Math.min(parseInt(req.query.limit)||20,50);
   const sorted=[...scalpSignals].sort((a,b)=>new Date(b.time)-new Date(a.time));
-  res.json({signals:sorted.slice(0,limit).map(s=>({...s,chartUrl:s.chartFile?'/api/chart/'+s.chartFile:null})),count:Math.min(limit,sorted.length),total:scalpSignals.length});
+  res.json({signals:sorted.slice(0,limit).map(s=>{
+    const tracked=trackedTrades[s.id]&&trackedTrades[s.id].includes(myCode);
+    return {...s,isTracked:!!tracked,chartUrl:s.chartFile?'/api/chart/'+s.chartFile:null};
+  }),count:Math.min(limit,sorted.length),total:scalpSignals.length});
 });
 app.get('/api/scalp/active',(req,res)=>{
   const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
@@ -2039,4 +2114,25 @@ loadState().then(()=>{
   fetchNewsFeed().then(function(){log('News feed: initial fetch complete ('+newsFeedCache.length+' articles)');});
   setInterval(function(){fetchNewsFeed().catch(function(){});},10*60*1000);
   runScan(true).then(function(){setInterval(function(){runScan(false).catch(function(){});},CHECK_MS);log('Scanning every '+CHECK_MS/60000+' minutes');});
+  // Scalp trade check loop — runs every 2 min during active sessions
+  setInterval(async function(){
+    const sh=new Date().getUTCHours();
+    const inLondon=(sh===7)||(sh>7&&sh<11);
+    const inNY=(sh===13)||(sh>13&&sh<17);
+    if(!inLondon&&!inNY)return;
+    const openPairs=new Set(activeScalpTrades.filter(t=>!t.closed).map(t=>t.pair));
+    if(!openPairs.size)return;
+    for(const pid of openPairs){
+      try{
+        const inst=SCALP_INSTS.find(i=>i.id===pid);if(!inst)continue;
+        const res=await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym)}&interval=5min&outputsize=5&apikey=${API_KEY}`);
+        const j=await res.json();
+        if(j.status==='error')continue;
+        const c=parseC(j);if(c.length<3)continue;
+        const hi=Math.max(...c.slice(-3).map(x=>x.high));
+        const lo=Math.min(...c.slice(-3).map(x=>x.low));
+        checkScalpTrades(pid,hi,lo);
+      }catch(e){log('Scalp check '+pid+': '+e.message);}
+    }
+  },120000);
 });
