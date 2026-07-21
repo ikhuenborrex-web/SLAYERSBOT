@@ -246,7 +246,7 @@ var state={
   articles:[],
   showOnboarding:false,
   onboardingStep:-1,
-  showFilters:false,
+  showFilters:false,showJournalCustomize:false,
   statsTab:'overview',
 };
 
@@ -578,6 +578,8 @@ function rBarChart(entries){
     bars+'</svg></div>';
 }
 
+function jcPref(key){return localStorage.getItem('jc_'+key)!=='false';}
+function toggleJC(key){localStorage.setItem('jc_'+key,!(jcPref(key)));render();}
 // ===== JOURNAL SCREEN =====
 function journalScreen(){
   var entries=state.journal;
@@ -690,9 +692,9 @@ function journalScreen(){
   function perfTabBtn(label,key){var a=state.statsTab===key;return'<span onclick="state.statsTab=\''+key+'\';render()" style="font-size:10px;font-weight:600;padding:5px 14px;border-radius:4px;cursor:pointer;background:'+(a?C.limeSoft:'rgba(255,255,255,0.03)')+';color:'+(a?C.lime:C.text2)+';border:0.5px solid '+(a?C.limeBorder:'rgba(255,255,255,0.05)')+'">'+label+'</span>';}
   var perfContent='';
   if(state.statsTab==='overview'){
-    perfContent=equityChart(entries)+rBarChart(entries)+
-    heatmapCard('Your Trades',entries,function(e){return e.createdAt?e.createdAt.slice(0,10):'';},function(e){return e.outcome;})+
-    heatmapCard('Bot Trades',state.botHistory,function(o){return o.time?o.time.slice(0,10):'';},function(o){return o.outcome;});
+    perfContent=(jcPref('charts')?equityChart(entries)+rBarChart(entries):'')+
+    (jcPref('heatmap')?heatmapCard('Your Trades',entries,function(e){return e.createdAt?e.createdAt.slice(0,10):'';},function(e){return e.outcome;})+
+    heatmapCard('Bot Trades',state.botHistory,function(o){return o.time?o.time.slice(0,10):'';},function(o){return o.outcome;}):'');
   }else if(state.statsTab==='pairs'&&ds.byPair){
     var pairRows='';
     var sortedPairs=Object.keys(ds.byPair).sort(function(a,b){return ds.byPair[b].total-ds.byPair[a].total;});
@@ -740,22 +742,31 @@ function journalScreen(){
       '<span>\u2705 '+ws.tp+' wins</span><span>\u274C '+ws.sl+' losses</span><span>\u2696\uFE0F '+ws.be+' BE</span></div></div>';
   }
 
+  var customizeBtn='<span onclick="state.showJournalCustomize=!state.showJournalCustomize;render()" style="font-size:10px;font-weight:600;color:'+(state.showJournalCustomize?C.lime:C.text2)+';cursor:pointer">'+(state.showJournalCustomize?'Done':'Customize')+'</span>';
+  var customizePanel='';
+  if(state.showJournalCustomize){
+    var cardLabels={summary:'Weekly Summary',stats:'Stats Card',charts:'Equity & R Chart',pairs:'By Pair Table',days:'By Day Table',streaks:'Streaks Card',heatmap:'Heatmaps'},cardKeys=['summary','stats','charts','pairs','days','streaks','heatmap'];
+    customizePanel='<div class="card" style="padding:10px 16px;animation-delay:0s;margin-bottom:8px"><div style="font-size:10px;font-weight:700;color:'+C.text2+';letter-spacing:0.3px;text-transform:uppercase;margin-bottom:6px">Toggle Dashboard Cards</div>';
+    for(var ci=0;ci<cardKeys.length;ci++){var k=cardKeys[ci],on=jcPref(k);customizePanel+='<div class="setting-row" style="padding:8px 0"><span style="font-size:12px;color:'+C.white+'">'+cardLabels[k]+'</span><div class="toggle '+(on?'on':'')+'" onclick="toggleJC(\''+k+'\')"></div></div>';}
+    customizePanel+='</div>';
+  }
   return '<div style="display:flex;align-items:center;justify-content:space-between;padding-top:12px;margin-bottom:14px">'+
     '<div style="font-size:18px;font-weight:600;letter-spacing:-0.3px;color:'+C.white+'">Journal</div>'+
     '<div style="display:flex;gap:8px;align-items:center">'+
+    customizeBtn+
     '<span onclick="window.open(withCode(\'/api/journal\'),\'_blank\')" style="font-size:10px;font-weight:600;color:'+C.text2+';cursor:pointer">Export</span>'+
     '<button onclick="toggleEntryForm()" style="background:'+C.lime+';border:none;border-radius:8px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#000;font-weight:800;font-size:18px;line-height:1">+</button>'+
     '</div></div>'+
-    wsHtml+
-    '<div class="card" style="padding:16px 20px;border-color:'+C.limeBorder+';animation-delay:0s">'+
-    '<div style="display:flex;justify-content:space-around">'+
+    customizePanel+
+    (jcPref('summary')?wsHtml:'')+
+    (jcPref('stats')?'<div class="card" style="padding:16px 20px;border-color:'+C.limeBorder+';animation-delay:0s"><div style="display:flex;justify-content:space-around">'+
     '<div style="text-align:center"><div style="display:flex;align-items:baseline;justify-content:center;gap:1px"><div class="count-up" style="font-size:22px;font-weight:800;color:'+C.lime+';letter-spacing:-0.5px" data-target="'+wr+'">0</div><span style="font-size:12px;font-weight:700;color:'+C.lime+'">%</span></div><div style="font-size:9px;color:'+C.text2+';font-weight:500;margin-top:2px">Win Rate</div></div>'+
     '<div style="text-align:center"><div style="display:flex;align-items:baseline;justify-content:center;gap:1px"><span style="font-size:12px;font-weight:700;color:'+(totalR>=0?C.lime:C.red)+'">'+(totalR>=0?'+':'-')+'</span><div class="count-up" style="font-size:22px;font-weight:800;color:'+(totalR>=0?C.lime:C.red)+';letter-spacing:-0.5px" data-target="'+Math.abs(totalR||0)+'" data-dur="800">0</div><span style="font-size:12px;font-weight:700;color:'+(totalR>=0?C.lime:C.red)+'">R</span></div><div style="font-size:9px;color:'+C.text2+';font-weight:500;margin-top:2px">Total R</div></div>'+
     '<div style="text-align:center"><div class="count-up" style="font-size:22px;font-weight:800;color:'+C.white+';letter-spacing:-0.5px" data-target="'+entries.length+'">0</div><div style="font-size:9px;color:'+C.text2+';font-weight:500;margin-top:2px">Trades</div></div>'+
-    '<div style="text-align:center"><div class="count-up" style="font-size:22px;font-weight:800;color:'+C.red+';letter-spacing:-0.5px" data-target="'+losses.length+'">0</div><div style="font-size:9px;color:'+C.text2+';font-weight:500;margin-top:2px">Losses</div></div></div></div>'+
-    '<div style="display:flex;gap:6px;margin-bottom:8px">'+perfTabBtn('Overview','overview')+perfTabBtn('By Pair','pairs')+perfTabBtn('By Day','days')+'</div>'+
-    perfContent+
-    '<div class="card" style="display:flex;justify-content:space-around;padding:14px 10px;animation-delay:0.1s">'+
+    '<div style="text-align:center"><div class="count-up" style="font-size:22px;font-weight:800;color:'+C.red+';letter-spacing:-0.5px" data-target="'+losses.length+'">0</div><div style="font-size:9px;color:'+C.text2+';font-weight:500;margin-top:2px">Losses</div></div></div></div>':'')+
+    (jcPref('charts')||jcPref('pairs')||jcPref('days')?'<div style="display:flex;gap:6px;margin-bottom:8px">'+perfTabBtn('Overview','overview')+perfTabBtn('By Pair','pairs')+perfTabBtn('By Day','days')+'</div>':'')+
+    ((jcPref('charts')&&state.statsTab==='overview')||(jcPref('pairs')&&state.statsTab==='pairs')||(jcPref('days')&&state.statsTab==='days')?perfContent:'')+
+    (jcPref('streaks')?'<div class="card" style="display:flex;justify-content:space-around;padding:14px 10px;animation-delay:0.1s">'+
     '<div style="text-align:center"><div style="font-size:9px;color:'+C.text2+';font-weight:500">\uD83D\uDD25 Win Streak</div>'+
     '<div style="font-size:20px;font-weight:800;color:'+C.lime+';letter-spacing:-0.5px;margin-top:2px">'+(streakInfo.winStreak??0)+'</div></div>'+
     '<div style="width:0.5px;background:rgba(255,255,255,0.05)"></div>'+
@@ -763,7 +774,7 @@ function journalScreen(){
     '<div style="font-size:20px;font-weight:800;color:'+C.red+';letter-spacing:-0.5px;margin-top:2px">'+(streakInfo.lossStreak??0)+'</div></div>'+
     '<div style="width:0.5px;background:rgba(255,255,255,0.05)"></div>'+
     '<div style="text-align:center"><div style="font-size:9px;color:'+C.text2+';font-weight:500">\uD83C\uDFC6 Best Day</div>'+
-    '<div style="font-size:20px;font-weight:800;color:'+C.white+';letter-spacing:-0.5px;margin-top:2px">'+(state.stats?.bestTrade?'+'+state.stats.bestTrade.rMultiple+'R':'--')+'</div></div></div>'+
+    '<div style="font-size:20px;font-weight:800;color:'+C.white+';letter-spacing:-0.5px;margin-top:2px">'+(state.stats?.bestTrade?'+'+state.stats.bestTrade.rMultiple+'R':'--')+'</div></div></div>':'')+
     (state.showEntryForm||state.editingEntry?journalEntryForm():'')+
     '<div style="display:flex;gap:6px;margin-bottom:8px">'+
     '<select onchange="setJournalPairFilter(this.value)" style="flex:1;font-size:10px;padding:5px 8px;background:rgba(255,255,255,0.03);border:0.5px solid rgba(255,255,255,0.05);border-radius:4px;color:'+C.text2+';outline:none">'+
@@ -1197,7 +1208,7 @@ function overviewScreen(){
   for(var i=0;i<state.active.length;i++)activeSigIds[state.active[i].sigId]=true;
   var headerHtml='<div style="padding-top:0;margin-bottom:18px">'+
     '<div style="font-size:14px;font-weight:500;color:'+C.text2+'">'+greeting()+'</div>'+
-    '<div style="font-size:26px;font-weight:800;letter-spacing:-0.5px;color:'+C.white+'">SLAYERS. <span class="live-dot" style="display:inline-block;vertical-align:middle;margin-left:2px"></span></div></div>';
+    '<div style="font-size:26px;font-weight:800;letter-spacing:-0.5px;color:'+C.white+'">SLAYERS.</div></div>';
   var statsHtml=statsOverview();
   var tradesHtml='';
   for(var i=0;i<myActive.length;i++)tradesHtml+=activeTradeWidget(myActive[i]);
