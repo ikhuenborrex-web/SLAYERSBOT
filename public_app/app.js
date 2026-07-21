@@ -1251,10 +1251,14 @@ function marketPulseRow(){
   var maxChips=Math.min(pairs.length,11);
   for(var i=0;i<maxChips;i++){
     var p=pairs[i];
-    var c=p.signalDir==='BULLISH'?C.lime:p.signalDir==='BEARISH'?C.red:C.text2;
-    var bg=p.signalDir!=='NONE'?(p.signalDir==='BULLISH'?C.limeSoft:C.redSoft):'rgba(255,255,255,0.02)';
+    var wb=p.weeklyBias||'NEUTRAL';
+    var dir=p.signalDir!=='NONE'?p.signalDir:wb;
+    var c=dir==='BULLISH'?C.lime:dir==='BEARISH'?C.red:C.text2;
+    var bg=dir!=='NONE'?(dir==='BULLISH'?C.limeSoft:C.redSoft):'rgba(255,255,255,0.02)';
+    var badge=p.signalDir!=='NONE'?'4H':'W';
     chips+='<span class="m-chip" style="border:0.5px solid '+c+'44;background:'+bg+';color:'+c+'" onclick="setTab(\'journal\');state.journalFilter=\'all\';render()">'+
-      '<span style="width:5px;height:5px;border-radius:99px;background:'+c+'"></span>'+(p.name||p.id)+'</span>';
+      '<span style="width:5px;height:5px;border-radius:99px;background:'+c+'"></span>'+(p.name||p.id)+
+      '<span style="font-size:7px;font-weight:700;opacity:0.6">'+badge+'</span></span>';
   }
   return '<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:6px;scrollbar-width:none">'+(chips||'<span style="color:'+C.text2+';font-size:12px">No market data yet</span>')+'</div>';
 }
