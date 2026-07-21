@@ -1191,8 +1191,8 @@ function activeTradeWidget(t){
 function render(){
   var app=document.getElementById('app');
   if(state.selected){app.innerHTML=detailPage(state.selected);return;}
-  var tabLabels={overview:'Overview',journal:'Journal',scalp:'Scalp',news:'News',settings:'Settings'};
-  var tabsArr=['overview','journal','scalp','news','settings'];
+  var tabLabels={overview:'QMR',scalp:'Scalp',journal:'Journal',news:'News',settings:'Settings'};
+  var tabsArr=['overview','scalp','journal','news','settings'];
   var tabBtns='';
   for(var i=0;i<tabsArr.length;i++){
     var t=tabsArr[i];
@@ -1418,14 +1418,14 @@ async function attemptLogin(){
 
 // ===== ONBOARDING =====
 var tourSteps=[
-  {tab:'overview',title:'Overview Dashboard',desc:'Your command center. Stats, active trades, signal cards, and market pulse — all at a glance.'},
+  {tab:'overview',title:'QMR Dashboard',desc:'Your command center. QMR stats, active trades, signal cards, and market pulse — all at a glance.'},
   {tab:'overview',title:'Signal Cards',desc:'Each card shows: <strong>Pair + Timeframe</strong>, <strong>Direction</strong> (BUY/SELL), <strong>Entry/SL/TP</strong>, and <strong>criteria chips</strong> explaining why the bot took the trade. Tap a card to open the detail page.'},
   {tab:'overview',title:'Signal Detail Page',desc:'View <strong>chart screenshot</strong>, <strong>trade levels</strong> (entry, zone, refined entry, SL, TP1, TP2), <strong>criteria checklist</strong> scored X/4, <strong>counter-trend warnings</strong>, and the <strong>track button</strong> to get updates on this trade.'},
   {tab:'overview',title:'Position Calculator',desc:'Tap <strong>Calculate Position Size</strong> on the detail page. Enter your balance & risk % — it calculates <strong>risk amount</strong>, <strong>position size</strong>, <strong>lots</strong>, <strong>R:R</strong>, and <strong>potential profit</strong>, pre-filled with the signal\'s entry & SL.'},
-  {tab:'journal',title:'Trade Journal',desc:'Log every trade. Use <strong>+ New Entry</strong> to add notes, screenshots & tags. Filter by All/Wins/Losses/Open. Tap any entry to edit or delete.'},
-  {tab:'scalp',title:'Live Scalp Signals',desc:'<strong>Session Momentum + FVG</strong> scalping system during London (7-10 UTC) and New York (13-16 UTC). Each signal shows entry, SL, TP2, <strong>deep Fib level</strong> (61.8/70.2/78.6%), volume confirmation, and chart screenshot. Only alerted in-app — no Telegram.'},
+  {tab:'scalp',title:'Scalp Trading',desc:'<strong>Session Momentum + FVG</strong> scalping system during London (7-10 UTC) and New York (13-16 UTC). Each signal shows entry, SL, TP2, <strong>deep Fib level</strong> (61.8/70.2/78.6%), volume confirmation, and chart screenshot. Track signals to get TP1/SL/BE push alerts.'},
+  {tab:'journal',title:'Trade Journal',desc:'Log every trade. Switch between <strong>QMR Journal</strong> and <strong>Scalp Journal</strong> using the tabs at the top. Use <strong>+ New Entry</strong> to add notes & tags. Tap any entry to edit or delete.'},
   {tab:'news',title:'Market Intel',desc:'Curated news across <strong>Forex</strong>, <strong>Economy</strong>, <strong>Geopolitics</strong>, and <strong>Commodities</strong>. Filter by category using the chips at the top.'},
-  {tab:'settings',title:'Settings',desc:'Toggle <strong>Push Alerts</strong>, <strong>News Alerts</strong>, and <strong>Daily Digest</strong>. Disconnect to clear your code. Data refreshes every 60 seconds automatically.'},
+  {tab:'settings',title:'Settings',desc:'Toggle <strong>Push Alerts</strong>, <strong>Scalp Alerts</strong>, <strong>News Alerts</strong>, and configure <strong>Alert Filters</strong>. Disconnect to clear your code.'},
 ];
 var tourIcons=[
   '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>',
@@ -1446,7 +1446,7 @@ function onboardingHTML(){
       '<div class="onboard-logo">S</div>'+
       '<div style="font-size:12px;color:#8E8E93;font-weight:500;letter-spacing:3px;text-transform:uppercase;margin-bottom:4px">Welcome to</div>'+
       '<div style="font-size:30px;font-weight:800;color:#FFF;letter-spacing:-1px;margin-bottom:4px">SLAYERS<span style="color:#A3E635">.</span></div>'+
-      '<p style="font-size:13px;color:#8E8E93;line-height:1.5;margin-bottom:24px">Your institutional-grade trading companion for signals, journaling, and market intelligence.</p>'+
+      '<p style="font-size:13px;color:#8E8E93;line-height:1.5;margin-bottom:24px">QMR signals, scalp breakout trading, trade journal, and market intelligence — all in one place.</p>'+
       '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:28px;text-align:left">'+
       '<div class="onboard-feature"><div class="onboard-feature-icon"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></div><div><div style="font-size:12px;font-weight:600;color:#FFF">Real-Time Signals</div><div style="font-size:10px;color:#8E8E93;margin-top:1px">Elite trade setups with entry, SL, TP &amp; criteria</div></div></div>'+
       '<div class="onboard-feature"><div class="onboard-feature-icon"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M8 7h8M8 11h6"/></svg></div><div><div style="font-size:12px;font-weight:600;color:#FFF">Trade Journal</div><div style="font-size:10px;color:#8E8E93;margin-top:1px">Log, edit, and review every trade you take</div></div></div>'+
