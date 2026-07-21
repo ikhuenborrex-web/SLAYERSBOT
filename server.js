@@ -525,7 +525,24 @@ function checkRSIDivergence(candles,direction){
 }
 
 // QMR
-function checkPremiumDiscount(c,type,qmLevel){const rc=c.slice(-100);let hi=-Infinity,lo=Infinity;rc.forEach(x=>{if(x.high>hi)hi=x.high;if(x.low<lo)lo=x.low;});return type==='BULLISH'?qmLevel<(hi+lo)/2:qmLevel>(hi+lo)/2;}
+function checkPremiumDiscount(c,type,qmLevel){
+  const rc=c.slice(-100);let hi=-Infinity,lo=Infinity;
+  rc.forEach(x=>{if(x.high>hi)hi=x.high;if(x.low<lo)lo=x.low;});
+  return type==='BULLISH'?qmLevel<(hi+lo)/2:qmLevel>(hi+lo)/2;
+}
+function calcFibLevels(high,low){
+  if(!high||!low||high<=low)return null;
+  const r=high-low;
+  return{p236:high-r*0.236,p382:high-r*0.382,p50:high-r*0.5,p618:high-r*0.618,p786:high-r*0.786};
+}
+function getFibDepth(price,high,low,type){
+  if(!high||!low||high<=low)return{zone:'UNKNOWN',level:null};
+  const r=high-low,pct=type==='BULLISH'?(high-price)/r:(price-low)/r;
+  if(pct>=0.786)return{zone:'DEEP',level:'78.6%'};
+  if(pct>=0.618)return{zone:'STRONG',level:'61.8%'};
+  if(pct>=0.5)return{zone:'MODERATE',level:'50.0%'};
+  return{zone:'WEAK',level:null};
+}
 function isLevelAlreadySeen(instId,type,qmLevel,variant){
   for(const key of qmrSeen){
     if(!key.startsWith(instId+'-'+type+'-'))continue;
@@ -580,7 +597,9 @@ function findStructuralTP2(c,type,entryPrice,slDist,tp1Price){if(slDist<=0)retur
 // Conflict resolution hierarchy: Daily CRT > 4H QMR > 1H QMR
 function tfWeight(tf){if(tf==='DAILY')return 3;if(tf==='4H')return 2;if(tf==='1H')return 1;return 0;}
 async function tgTradeInvalidated(trade,reason,weeklyBias){const isB=trade.type==='BULLISH';const biasLine=weeklyBias&&weeklyBias!=='NEUTRAL'?'\nWeekly Bias: '+weeklyBias+' - market aligned with new direction':'';await tgSend('\u26A0\uFE0F TRADE INVALIDATED\n'+'='.repeat(28)+'\n\uD83D\uDCCA '+trade.instName+' | '+(isB?'BUY':'SELL')+' QMR '+trade.tf+'\n\n\uD83D\uDD34 Reason: '+reason+biasLine+'\n\n'+(isB?'Close any open BUY positions on '+trade.instName+'.':'Close any open SELL positions on '+trade.instName+'.')+'\n\n\u2014 The Slayers Model by Rexroz');}
-async function resolveConflicts(instId,newType,newTf,source,weeklyBias){const newW=tfWeight(newTf);let blocked=false;for(let i=activeQMRTrades.length-1;i>=0;i--){const t=activeQMRTrades[i];if(t.instId!==instId||t.type===newType)continue;const exW=tfWeight(t.tf);if(newW>exW){const reason=source==='CRT'?'Daily CRT confirmed '+newType+' - structure shifted on Daily timeframe':newTf+' QMR '+newType+' - '+newTf+' overrides '+t.tf;log(`INVALIDATING: ${t.instName} ${t.type} ${t.tf}`);await tgTradeInvalidated(t,reason,weeklyBias);tradeHistory.push({instId:t.instId,type:t.type,tf:t.tf,outcome:'INVALIDATED',rMultiple:0,time:new Date().toISOString()});delete trackedTrades[t.sigId];activeQMRTrades.splice(i,1);}else{log(`BLOCKED: ${instId} ${newTf} ${newType} by ${t.tf} ${t.type}`);blocked=true;}}return blocked;}
+async function resolveConflicts(instId,newType,newTf,source,weeklyBias){const newW=tfWeight(newTf);let blocked=false;for(let i=activeQMRTrades.length-1;i>=0;i--){const t=activeQMRTrades[i];if(t.instId!==instId||t.type===newType)continue;const exW=tfWeight(t.tf);if(newW>exW){// Fib protection: don't invalidate trades at 61.8%+ HTF zones
+const wLvls=weeklyCache[instId]?.lvls;if(wLvls&&wLvls.high&&wLvls.low){const fd=getFibDepth(t.qmLevel,wLvls.high,wLvls.low,t.type);if(fd.zone==='STRONG'||fd.zone==='DEEP'){log(`FIB PROTECTED: ${t.instName} ${t.type} at ${fd.level} — not invalidating`);blocked=true;continue;}}
+const reason=source==='CRT'?'Daily CRT confirmed '+newType+' - structure shifted on Daily timeframe':newTf+' QMR '+newType+' - '+newTf+' overrides '+t.tf;log(`INVALIDATING: ${t.instName} ${t.type} ${t.tf}`);await tgTradeInvalidated(t,reason,weeklyBias);tradeHistory.push({instId:t.instId,type:t.type,tf:t.tf,outcome:'INVALIDATED',rMultiple:0,time:new Date().toISOString()});delete trackedTrades[t.sigId];activeQMRTrades.splice(i,1);}else{log(`BLOCKED: ${instId} ${newTf} ${newType} by ${t.tf} ${t.type}`);blocked=true;}}return blocked;}
 function checkCorrelationConflict(instId,type){
   // Returns array of active trade descriptions that conflict with this new signal
   const conflicts=[];
@@ -1118,6 +1137,18 @@ async function runScan(manual=false){
               // instObj already defined above
               const dailyPOI=checkDailyPOI(inst.id,qmr.type,qmr.qmLevel);
               if(dailyPOI)qmr.dailyPOI=dailyPOI;
+              // Fib zone check — boosts quality for signals at key HTF levels
+              const wLvls=weeklyCache[inst.id]?.lvls;
+              let fibZone='WEAK';
+              if(wLvls&&wLvls.high&&wLvls.low){
+                const fd=getFibDepth(qmr.qmLevel,wLvls.high,wLvls.low,qmr.type);
+                fibZone=fd.zone;
+                if(fd.level){
+                  qmr.criteria.factors.push(fd.level+' '+(qmr.type==='BULLISH'?'Discount':'Premium'));
+                  if(fd.zone==='STRONG'||fd.zone==='DEEP')qmr.criteria.score++;
+                }
+              }
+              qmr.fibZone=fibZone;
               const counterTrend=htfBias!=='NEUTRAL'&&qmr.type!==htfBias;
               if(counterTrend){
                 const dTrend=getDailyTrend(inst.id),dFlip=dTrend!=='RANGING'&&dTrend===qmr.type;
