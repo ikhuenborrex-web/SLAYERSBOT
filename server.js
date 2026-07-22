@@ -1786,6 +1786,45 @@ app.delete('/api/admin/members/:code',(req,res)=>{
   saveState();
   res.json({removed:before-memberCodes.length});
 });
+// Admin: manually close an active QMR trade by pair (e.g. EURUSD)
+app.post('/api/admin/close-trade/:pair',async(req,res)=>{
+  if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
+  const pair=req.params.pair.toUpperCase();
+  const idx=activeQMRTrades.findIndex(t=>t.instId===pair&&!t.slFired);
+  if(idx===-1)return res.status(404).json({error:'No active trade found for '+pair});
+  const t=activeQMRTrades[idx];
+  // Fetch current price
+  let price;
+  try{
+    const inst=INSTRUMENTS.find(i=>i.id===pair)||{sym:pair};
+    const pRes=await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym||pair)}&interval=1h&outputsize=1&apikey=${API_KEY}`);
+    const pJson=await pRes.json();
+    const c=parseC(pJson);
+    if(!c.length)return res.status(502).json({error:'Could not fetch current price'});
+    price=c[0].close;
+  }catch(e){return res.status(502).json({error:'Price fetch failed: '+e.message});}
+  const isB=t.type==='BULLISH';
+  const rMultiple=computeR(t,price);
+  const inProfit=isB?price>=t.qmLevel:price<=t.qmLevel;
+  const outcome=inProfit?'WIN':'SL';
+  const duration=t.openTime?Math.round((Date.now()-t.openTime)/60000):null;
+  // Record trade
+  tradeHistory.push({instId:t.instId,type:t.type,tf:t.tf,outcome,rMultiple,time:new Date().toISOString(),duration,manualClose:true});
+  updateMemberStats(t.sigId,outcome,rMultiple);
+  autoJournalEntry(t,outcome,rMultiple,duration);
+  dailyOutcomeLog.push({id:t.instId,name:t.instName,tf:t.tf,type:t.type,outcome,time:new Date().toISOString()});
+  if(outcome==='WIN'){lossStreak=0;winStreak++;}else{winStreak=0;lossStreak++;}
+  const rStr=rMultiple>=0?'+'+rMultiple.toFixed(t.dec||2)+'R':rMultiple.toFixed(t.dec||2)+'R';
+  await tgSend('\uD83D\uDD04 MANUAL CLOSE - '+pair+'\n'+'='.repeat(28)+'\n\uD83D\uDCCA '+t.instName+' \u00B7 '+t.tf+' | '+(isB?'BUY':'SELL')+' QMR\n\n\uD83D\uDCCD Entry: '+t.qmLevel.toFixed(t.dec||5)+'\n\uD83C\uDF1F Exit: '+price.toFixed(t.dec||5)+'\n\uD83D\uDCB0 '+rStr+'\n\nTrade closed manually by admin.\n'+(outcome==='WIN'?'\u2705 Profit secured.':'Stay disciplined, next setup coming.')+'\n\n\u2014 The Slayers Model by Rexroz');
+  const[pt,pb]=pushTextFor(outcome==='WIN'?'tp2':'sl',t);
+  try{sendPushToTrackers(t.sigId,'\uD83D\uDD04 Manual Close '+t.pair+' — '+rStr,t.name||pair,outcome==='WIN'?'tp2':'sl');}catch(e){}
+  markFeedOutcome(t.sigId,outcome);
+  clearAggBanner(t.sigId);
+  delete trackedTrades[t.sigId];
+  activeQMRTrades.splice(idx,1);
+  saveState();
+  res.json({ok:true,pair,outcome,rMultiple,exitPrice:price});
+});
 app.get('/api/signals',(req,res)=>{
   const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
   const myCode=req.query.code||req.headers['x-access-code'];
