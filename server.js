@@ -1796,7 +1796,8 @@ app.post('/api/admin/close-trade/:pair',async(req,res)=>{
   // Fetch current price
   let price;
   try{
-    const inst=INSTRUMENTS.find(i=>i.id===pair)||{sym:pair};
+    const allInsts=[...QMR_INSTS,...SCALP_INSTS,...CRT_INSTS];
+    const inst=allInsts.find(i=>i.id===pair)||{sym:pair};
     const pRes=await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym||pair)}&interval=1h&outputsize=1&apikey=${API_KEY}`);
     const pJson=await pRes.json();
     const c=parseC(pJson);
@@ -1817,7 +1818,7 @@ app.post('/api/admin/close-trade/:pair',async(req,res)=>{
   const rStr=rMultiple>=0?'+'+rMultiple.toFixed(t.dec||2)+'R':rMultiple.toFixed(t.dec||2)+'R';
   await tgSend('\uD83D\uDD04 MANUAL CLOSE - '+pair+'\n'+'='.repeat(28)+'\n\uD83D\uDCCA '+t.instName+' \u00B7 '+t.tf+' | '+(isB?'BUY':'SELL')+' QMR\n\n\uD83D\uDCCD Entry: '+t.qmLevel.toFixed(t.dec||5)+'\n\uD83C\uDF1F Exit: '+price.toFixed(t.dec||5)+'\n\uD83D\uDCB0 '+rStr+'\n\nTrade closed manually by admin.\n'+(outcome==='WIN'?'\u2705 Profit secured.':'Stay disciplined, next setup coming.')+'\n\n\u2014 The Slayers Model by Rexroz');
   const[pt,pb]=pushTextFor(outcome==='WIN'?'tp2':'sl',t);
-  try{sendPushToTrackers(t.sigId,'\uD83D\uDD04 Manual Close '+t.pair+' — '+rStr,t.name||pair,outcome==='WIN'?'tp2':'sl');}catch(e){}
+  try{sendPushToTrackers(t.sigId,'\uD83D\uDD04 Manual Close '+t.instName+' — '+rStr,t.instName,outcome==='WIN'?'tp2':'sl');}catch(e){}
   markFeedOutcome(t.sigId,outcome);
   clearAggBanner(t.sigId);
   delete trackedTrades[t.sigId];
