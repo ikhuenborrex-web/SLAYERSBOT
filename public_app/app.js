@@ -268,33 +268,34 @@ async function fetchAll(){
   if(state.filter.dateTo)sigUrl+='&dateTo='+encodeURIComponent(state.filter.dateTo);
   if(state.filter.sort!=='time')sigUrl+='&sort='+state.filter.sort;
   // Each fetch is independent — one slow endpoint won't wipe all data
+  // Each successful fetch re-renders so new data shows immediately
   ft(withCode(sigUrl)).then(function(r){
     if(r.status===401){clearCode();state.loading=false;renderLogin('Your access code has expired or is no longer valid.');return;}
-    j(r).then(function(d){state.signals=d.signals||[];});
+    j(r).then(function(d){state.signals=d.signals||[];render();});
   }).catch(function(){});
-  ft(withCode('/api/active')).then(function(r){j(r).then(function(d){state.active=d.trades||[];});}).catch(function(){});
-  ft(withCode('/api/confluence')).then(function(r){j(r).then(function(d){state.confluence=d.pairs||[];});}).catch(function(){});
-  ft(withCode('/api/stats')).then(function(r){j(r).then(function(d){state.stats=d;});}).catch(function(){});
-  ft(withCode('/api/stats/detailed')).then(function(r){j(r).then(function(d){state.detailedStats=d;});}).catch(function(){});
+  ft(withCode('/api/active')).then(function(r){j(r).then(function(d){state.active=d.trades||[];render();});}).catch(function(){});
+  ft(withCode('/api/confluence')).then(function(r){j(r).then(function(d){state.confluence=d.pairs||[];render();});}).catch(function(){});
+  ft(withCode('/api/stats')).then(function(r){j(r).then(function(d){state.stats=d;render();});}).catch(function(){});
+  ft(withCode('/api/stats/detailed')).then(function(r){j(r).then(function(d){state.detailedStats=d;render();});}).catch(function(){});
   ft(withCode('/api/member/stats')).then(function(r){
-    if(r.status===200)j(r).then(function(d){state.myStats=d.myStats||null;state.notifPrefs=d.notifPrefs||{};});
+    if(r.status===200)j(r).then(function(d){state.myStats=d.myStats||null;state.notifPrefs=d.notifPrefs||{};render();});
   }).catch(function(){});
-  ft(withCode('/api/journal')).then(function(r){j(r).then(function(d){state.journal=d.entries||[];});}).catch(function(){});
-  ft(withCode('/api/news')).then(function(r){j(r).then(function(d){state.news=d.events||[];});}).catch(function(){});
+  ft(withCode('/api/journal')).then(function(r){j(r).then(function(d){state.journal=d.entries||[];render();});}).catch(function(){});
+  ft(withCode('/api/news')).then(function(r){j(r).then(function(d){state.news=d.events||[];render();});}).catch(function(){});
   ft(withCode('/api/news-feed')).then(function(r){j(r).then(function(d){
     state.articles=d.articles||d.data||d.news||d.items||(Array.isArray(d)?d:[])||[];
-    state.newsFeedOk=state.articles.length>0;
+    state.newsFeedOk=state.articles.length>0;render();
   });}).catch(function(){});
-  ft(withCode('/api/settings')).then(function(r){j(r).then(function(d){state.settings=d.settings||null;});}).catch(function(){});
-  ft(withCode('/api/trade-history')).then(function(r){j(r).then(function(d){state.botHistory=d.outcomes||[];});}).catch(function(){});
-  ft(withCode('/api/weekly-summary')).then(function(r){j(r).then(function(d){state.weeklySummary=d.summary||null;});}).catch(function(){});
+  ft(withCode('/api/settings')).then(function(r){j(r).then(function(d){state.settings=d.settings||null;render();});}).catch(function(){});
+  ft(withCode('/api/trade-history')).then(function(r){j(r).then(function(d){state.botHistory=d.outcomes||[];render();});}).catch(function(){});
+  ft(withCode('/api/weekly-summary')).then(function(r){j(r).then(function(d){state.weeklySummary=d.summary||null;render();});}).catch(function(){});
   // Scalp data — non-blocking, never disrupts main data
   fetch(withCode('/api/scalp')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){state.scalpSignals=d.signals||[];render();}).catch(function(){});
   fetch(withCode('/api/scalp/active')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){state.scalpActive=d.trades||[];render();}).catch(function(){});
   fetch(withCode('/api/scalp/stats')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){state.scalpStats=d;render();}).catch(function(){});
   fetch(withCode('/api/scalp/pulse')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){state.scalpPulse=d.pairs||[];render();}).catch(function(){});
   state.fetchError=null;
-  state.loading=false;render();
+  state.loading=false;
   if(!state.showOnboarding&&getCode()&&!localStorage.getItem('slayersToured')&&!state.fetchError){
     state.showOnboarding=true;render();
   }
