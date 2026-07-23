@@ -1013,7 +1013,7 @@ function scalpScreen(){
       '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">'+
       '<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(59,130,246,0.12);color:#60A5FA">Range: '+fmt(s.rangeHigh)+' / '+fmt(s.rangeLow)+'</span>'+
       '<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(139,92,246,0.12);color:#A78BFA">FVG: '+fmt(s.fvgBottom)+' - '+fmt(s.fvgTop)+'</span></div>'+
-      (s.chartUrl?'<div class="chart-container" style="margin-top:6px;border-radius:6px;overflow:hidden;max-height:180px;cursor:pointer" onclick="window.open(\''+s.chartUrl+'\',\'_blank\')"><img src="'+s.chartUrl+'" style="width:100%;height:auto;display:block" loading="lazy"></div>':'')+
+      (s.chartUrl?'<div class="chart-container" style="margin-top:6px;border-radius:6px;overflow:hidden;max-height:180px;cursor:pointer" onclick="window.open(\''+withCode(s.chartUrl)+'\',\'_blank\')"><img src="'+withCode(s.chartUrl)+'" style="width:100%;height:auto;display:block" loading="lazy"></div>':'')+
       '</div>';
   }
   return html;
