@@ -2137,12 +2137,40 @@ app.get('/api/confluence',(req,res)=>{
   }
   res.json({pairs,generatedAt:new Date().toISOString()});
 });
-app.get('/api/chart/:file',(req,res)=>{
+app.get('/api/chart/:file',async(req,res)=>{
   const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
   const file=req.params.file.replace(/[^a-zA-Z0-9_.-]/g,'');
   const filePath=CHARTS_DIR+'/'+file;
-  if(!fs.existsSync(filePath))return res.status(404).json({error:'Chart not found'});
-  res.sendFile(filePath);
+  if(fs.existsSync(filePath))return res.sendFile(filePath);
+  // Chart file missing (e.g. after deploy that wiped /tmp/) — try to regenerate from signal data
+  try{
+    const base=file.replace(/\.png$/,'');
+    // Check QMR signals
+    const qmrSig=appSignalFeed.find(s=>s.chartFile===file||s.aggChartFile===file||s.consChartFile===file);
+    if(qmrSig){
+      const p=qmrSig.dec||5;
+      const lines=[
+        {price:qmrSig.entry,text:'ENTRY',color:'rgb(38,166,154)'},
+        {price:qmrSig.sl,text:'SL',color:'rgb(244,67,54)'}
+      ];
+      if(qmrSig.tp2!=null)lines.push({price:qmrSig.tp2,text:'TP2',color:'rgb(245,166,35)'});
+      const interval=(qmrSig.tf||'1H').toLowerCase();
+      await tgSendChart(qmrSig.pair,interval,lines,'',base,true);
+    }else{
+      // Check scalp signals
+      const scSig=(scalpSignals||[]).find(s=>s.chartFile===file);
+      if(scSig){
+        const lines=[
+          {price:scSig.entry,text:'Entry',color:'#3B82F6'},
+          {price:scSig.sl,text:'SL',color:'#EF4444'}
+        ];
+        if(scSig.tp2!=null)lines.push({price:scSig.tp2,text:'TP2',color:'#A3E635'});
+        await genScalpChart(scSig.pair,'5min',lines,base);
+      }
+    }
+  }catch(e){log('Chart regeneration failed: '+e.message);}
+  if(fs.existsSync(filePath))res.sendFile(filePath);
+  else res.status(404).json({error:'Chart not found'});
 });
 app.get('/',(req,res)=>{
   const up=process.uptime(),hrs=Math.floor(up/3600),mins=Math.floor((up%3600)/60),wr=(()=>{const w=tradeHistory.filter(t=>t.outcome==='TP1'||t.outcome==='TP2'||t.outcome==='WIN').length,l=tradeHistory.filter(t=>t.outcome==='SL').length;return(w+l)?Math.round((w/(w+l))*100):0;})();
