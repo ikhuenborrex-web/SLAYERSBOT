@@ -1787,9 +1787,11 @@ app.delete('/api/admin/members/:code',(req,res)=>{
   res.json({removed:before-memberCodes.length});
 });
 // Admin: manually close an active QMR trade by pair (e.g. EURUSD)
+// Safety: requires body.confirm === pair name (e.g. "EURUSD") to prevent accidental closes
 app.post('/api/admin/close-trade/:pair',async(req,res)=>{
   if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
   const pair=req.params.pair.toUpperCase();
+  if((req.body&&req.body.confirm)!==pair)return res.status(400).json({error:'Must send confirm:"'+pair+'" in request body to close this trade'});
   const idx=activeQMRTrades.findIndex(t=>t.instId===pair&&!t.slFired);
   if(idx===-1)return res.status(404).json({error:'No active trade found for '+pair});
   const t=activeQMRTrades[idx];
