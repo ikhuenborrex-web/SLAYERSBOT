@@ -1853,7 +1853,7 @@ app.post('/api/admin/backtest',async(req,res)=>{
   const{pair,interval,days,breakoutATR,symbol:symOverride,dec:decOverride,strategy:strat}=req.body||{};
   if(!pair||!interval)return res.status(400).json({error:'pair and interval required (e.g. NZDUSD, 1h)'});
   const strategy=strat||'qmr';
-  if(!['qmr','emaCross'].includes(strategy))return res.status(400).json({error:'Strategy must be "qmr" or "emaCross"'});
+  if(!['qmr','rsiReversion'].includes(strategy))return res.status(400).json({error:'Strategy must be "qmr" or "rsiReversion"'});
   const id=pair.toUpperCase();
   const allInsts=[...QMR_INSTS,...SCALP_INSTS,...CRT_INSTS];
   const inst=allInsts.find(i=>i.id===id);
@@ -1872,29 +1872,41 @@ app.post('/api/admin/backtest',async(req,res)=>{
     const c=parseC(dJson);
     if(c.length<40)return res.status(502).json({error:'Not enough data (got '+c.length+' candles, need 40+)'});
     const trades=[],maxLookahead=200;
-    if(strategy==='emaCross'){
-      function calcEmaVals(data,period){
-        const k=2/(period+1),r=[data[0].close];
-        for(let i=1;i<data.length;i++)r.push(data[i].close*k+r[i-1]*(1-k));
+    if(strategy==='rsiReversion'){
+      function calcRsi(data,period){
+        const r=[],changes=[];
+        for(let i=1;i<data.length;i++)changes.push(data[i].close-data[i-1].close);
+        let avgG=0,avgL=0;
+        for(let i=0;i<period;i++){if(changes[i]>0)avgG+=changes[i];else avgL+=Math.abs(changes[i]);}
+        avgG/=period;avgL/=period;
+        for(let i=0;i<period;i++)r.push(50);
+        for(let i=period;i<data.length;i++){
+          const c=changes[i-1];
+          if(c>0){avgG=(avgG*13+c)/14;avgL=(avgL*13+0)/14;}
+          else{avgG=(avgG*13+0)/14;avgL=(avgL*13+Math.abs(c))/14;}
+          const rs=avgL===0?100:avgG/avgL;
+          r.push(Math.round(100-(100/(1+rs))));
+        }
         return r;
       }
-      const ema9=calcEmaVals(c,9),ema21=calcEmaVals(c,21);
+      const rsi=calcRsi(c,14);
       const atrVals=[];for(let i=0;i<c.length;i++){const s=Math.max(0,i-13),w=c.slice(s,i+1);atrVals.push(calcATR(w,14));}
-      let lastSigIdx=-10;
-      for(let i=50;i<c.length;i++){
+      const lookahead=120;
+      let lastSigIdx=-15;
+      for(let i=30;i<c.length;i++){
         if(i-lastSigIdx<15)continue;
-        const prevBull=ema9[i-1]>ema21[i-1],currBull=ema9[i]>ema21[i];
-        if(prevBull===currBull)continue;
-        const isB=currBull;
+        const rsiVal=rsi[i],prevRsi=rsi[i-1];
+        const oversold=rsiVal<=25&&prevRsi>25;
+        const overbought=rsiVal>=75&&prevRsi<75;
+        if(!oversold&&!overbought)continue;
+        const isB=oversold;
         const entryPrice=c[i].close;
-        const slDist=atrVals[i];
+        const slDist=atrVals[i]*0.8;
         if(slDist<=0)continue;
         const sl=isB?entryPrice-slDist:entryPrice+slDist;
-        const tp=isB?entryPrice+slDist*2:entryPrice-slDist*2;
-        const rr=2;
-        if(rr<1.5)continue;
+        const tp=isB?entryPrice+slDist*1.5:entryPrice-slDist*1.5;
         let outcome='OPEN',exitPrice=null;
-        for(let j=i+1;j<Math.min(c.length,i+maxLookahead);j++){
+        for(let j=i+1;j<Math.min(c.length,i+lookahead);j++){
           const candle=c[j];
           if(isB){
             if(candle.low<=sl){outcome='LOSS';exitPrice=sl;break;}
@@ -1908,6 +1920,7 @@ app.post('/api/admin/backtest',async(req,res)=>{
         lastSigIdx=i;
         const rMultiple=Math.round(((exitPrice-entryPrice)*(isB?1:-1)/slDist)*100)/100;
         trades.push({outcome,rMultiple,score:0});
+      }
       }
     }else{
     let lastSigIdx=-20;
