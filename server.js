@@ -55,7 +55,7 @@ const CRT_INSTS = [
 // QMR pairs (forex + XAU + BTC)
 const QMR_INSTS = [
   {id:'EURUSD',sym:'EUR/USD',name:'EUR/USD',dec:5},
-  {id:'GBPUSD',sym:'GBP/USD',name:'GBP/USD',dec:5},
+  {id:'GBPUSD',sym:'GBP/USD',name:'GBP/USD',dec:5}, // in QMR_INSTS only for trade management; signals disabled
   {id:'AUDUSD',sym:'AUD/USD',name:'AUD/USD',dec:5},
   {id:'GBPJPY',sym:'GBP/JPY',name:'GBP/JPY',dec:3},
   {id:'XAUUSD',sym:'XAU/USD',name:'XAU/USD',dec:2},
@@ -78,7 +78,7 @@ const QMR_MIN=3,WEEKLY_EVERY=24,LON_S=7,LON_E=16,NY_S=13,NY_E=22;
 
 // Correlation groups — pairs that move together; opposite-direction signals on correlated pairs flag a warning
 const CORRELATION_GROUPS=[
-  ['EURUSD','GBPUSD','EURGBP'],
+  ['EURUSD','EURGBP'],
   ['AUDUSD','NZDUSD'],
   ['GBPJPY','USDJPY'],
   ['EURUSD','EURCAD','EURGBP'],
