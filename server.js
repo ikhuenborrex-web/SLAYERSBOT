@@ -2108,6 +2108,34 @@ app.get('/api/briefing',(req,res)=>{
   const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
   res.json({pairs:lastBriefingSnapshot,generatedAt:lastBriefingTime});
 });
+// Weekly stats for in-app summary card
+app.get('/api/stats/weekly',(req,res)=>{
+  const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
+  const now=new Date();
+  const day=now.getUTCDay();
+  const monday=new Date(now);
+  monday.setUTCDate(now.getUTCDate()-(day===0?6:day-1));
+  monday.setUTCHours(0,0,0,0);
+  const weekTrades=tradeHistory.filter(t=>t.time&&new Date(t.time)>=monday);
+  const total=weekTrades.length;
+  const wins=weekTrades.filter(t=>t.outcome==='WIN'||t.outcome==='TP1'||t.outcome==='TP2').length;
+  const losses=weekTrades.filter(t=>t.outcome==='SL').length;
+  const bes=weekTrades.filter(t=>t.outcome==='BE').length;
+  const totalR=Math.round(weekTrades.reduce((s,t)=>s+(t.rMultiple||0),0)*100)/100;
+  const wr=total?Math.round(wins/(wins+losses)*100):0;
+  const pairMap={};
+  for(const t of weekTrades){
+    const id=t.instId||'UNKNOWN';
+    if(!pairMap[id])pairMap[id]={trades:0,wins:0,losses:0,bes:0,sumR:0};
+    pairMap[id].trades++;
+    if(t.outcome==='WIN'||t.outcome==='TP1'||t.outcome==='TP2')pairMap[id].wins++;
+    else if(t.outcome==='SL')pairMap[id].losses++;
+    else if(t.outcome==='BE')pairMap[id].bes++;
+    pairMap[id].sumR+=t.rMultiple||0;
+  }
+  const pairs=Object.entries(pairMap).map(([id,d])=>({id,trades:d.trades,wins:d.wins,losses:d.losses,bes:d.bes,sumR:Math.round(d.sumR*100)/100})).sort((a,b)=>b.sumR-a.sumR);
+  res.json({week:now.toISOString().slice(0,10),monday:monday.toISOString().slice(0,10),total,wins,losses,bes,winRate:wr,totalR,avgR:total?Math.round(totalR/total*100)/100:0,pairs});
+});
 app.get('/api/active',(req,res)=>{
   const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
   res.json({trades:activeQMRTrades,count:activeQMRTrades.length});

@@ -247,6 +247,8 @@ var state={
   articles:[],
   showOnboarding:false,
   onboardingStep:-1,
+  weeklyStats:null,
+  weeklyOpen:false,
   showFilters:false,showJournalCustomize:false,
   statsTab:'overview',
   scalpSignals:[],scalpActive:[],scalpStats:null,scalpPulse:[],
@@ -277,6 +279,7 @@ async function fetchAll(){
   ft(withCode('/api/confluence')).then(function(r){j(r).then(function(d){state.confluence=d.pairs||[];render();});}).catch(function(){});
   ft(withCode('/api/stats')).then(function(r){j(r).then(function(d){state.stats=d;render();});}).catch(function(){});
   ft(withCode('/api/stats/detailed')).then(function(r){j(r).then(function(d){state.detailedStats=d;render();});}).catch(function(){});
+  ft(withCode('/api/stats/weekly')).then(function(r){j(r).then(function(d){state.weeklyStats=d;render();});}).catch(function(){});
   ft(withCode('/api/member/stats')).then(function(r){
     if(r.status===200)j(r).then(function(d){state.myStats=d.myStats||null;state.notifPrefs=d.notifPrefs||{};render();});
   }).catch(function(){});
@@ -1242,6 +1245,35 @@ function overviewScreen(){
     '<div style="font-size:14px;font-weight:500;color:'+C.text2+'">'+greeting()+'</div>'+
     '<div style="font-size:26px;font-weight:800;letter-spacing:-0.5px;color:'+C.white+'">SLAYERS.</div></div>';
   var statsHtml=statsOverview();
+  var weeklyHtml='';
+  if(state.weeklyStats&&state.weeklyStats.total){
+    var ws=state.weeklyStats;
+    var wrColor=ws.winRate>=50?C.lime:(ws.winRate>=30?C.orange:C.red);
+    var expanded=state.weeklyOpen?'block':'none';
+    var chevronClass=state.weeklyOpen?' style="transform:rotate(180deg)"':'';
+    var pairsHtml='';
+    for(var pi=0;pi<ws.pairs.length;pi++){
+      var p=ws.pairs[pi];var pColor=p.sumR>=0?C.lime:C.red;
+      pairsHtml+='<div style="display:flex;align-items:center;padding:5px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">'+
+        '<span style="flex:1;font-size:12px;font-weight:600;color:'+C.white+'">'+p.id+'</span>'+
+        '<span style="font-size:10px;color:'+C.text2+';margin-right:8px">'+p.trades+'t \u00b7 '+p.wins+'W '+p.losses+'L'+(p.bes?' '+p.bes+'BE':'')+'</span>'+
+        '<span style="font-size:12px;font-weight:700;color:'+pColor+'">'+(p.sumR>0?'+':'')+p.sumR+'</span></div>';
+    }
+    weeklyHtml='<div class="card" style="padding:12px 14px;margin-bottom:10px;cursor:pointer;border:0.5px solid rgba(163,230,53,0.12)" onclick="state.weeklyOpen=!state.weeklyOpen;render()">'+
+      '<div style="display:flex;align-items:center;gap:8px">'+
+      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="'+C.lime+'" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>'+
+      '<span style="flex:1;font-size:12px;font-weight:700;color:'+C.white+'">This Week</span>'+
+      '<span style="font-size:14px;font-weight:800;color:'+wrColor+'">'+(ws.totalR>0?'+':'')+ws.totalR+'R</span>'+
+      '<span style="color:'+C.text2+';font-size:10px"'+chevronClass+'>\u25BC</span></div>'+
+      '<div style="display:'+expanded+'">'+
+      '<div style="display:flex;gap:6px;margin-top:10px;padding-top:10px;border-top:0.5px solid rgba(255,255,255,0.06)">'+
+      '<div style="flex:1;text-align:center"><div style="font-size:17px;font-weight:800;color:'+C.white+'">'+ws.total+'</div><div style="font-size:8px;color:'+C.text2+';text-transform:uppercase;letter-spacing:0.3px">Trades</div></div>'+
+      '<div style="flex:1;text-align:center"><div style="font-size:17px;font-weight:800;color:'+wrColor+'">'+ws.winRate+'%</div><div style="font-size:8px;color:'+C.text2+';text-transform:uppercase;letter-spacing:0.3px">Win Rate</div></div>'+
+      '<div style="flex:1;text-align:center"><div style="font-size:17px;font-weight:800;color:'+C.white+'">'+(ws.totalR>0?'+':'')+ws.totalR+'</div><div style="font-size:8px;color:'+C.text2+';text-transform:uppercase;letter-spacing:0.3px">Total R</div></div>'+
+      '<div style="flex:1;text-align:center"><div style="font-size:17px;font-weight:800;color:'+C.white+'">'+ws.avgR+'</div><div style="font-size:8px;color:'+C.text2+';text-transform:uppercase;letter-spacing:0.3px">Avg R</div></div></div>'+
+      '<div style="height:4px;background:rgba(255,255,255,0.06);border-radius:99px;margin:8px 0;overflow:hidden"><div style="height:100%;width:'+ws.winRate+'%;background:linear-gradient(90deg,'+C.lime+','+C.teal+');border-radius:99px"></div></div>'+
+      pairsHtml+'</div></div>';
+  }
   var tradesHtml='';
   for(var i=0;i<myActive.length;i++)tradesHtml+=activeTradeWidget(myActive[i]);
   // Signal filter bar
@@ -1284,6 +1316,7 @@ function overviewScreen(){
   if(!myActive.length&&!signalCount)emptyHtml=emptyState(state.fetchError?'Connection problem: '+state.fetchError:'No signals yet. Waiting for the next scan...');
   return headerHtml+
     statsHtml+
+    weeklyHtml+
     '<div class="section-h" style="color:'+C.white+'">Market Pulse</div>'+marketPulseRow()+
     tradesHtml+signalsHtml+emptyHtml;
 }
