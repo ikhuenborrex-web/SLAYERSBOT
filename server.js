@@ -1893,18 +1893,16 @@ app.post('/api/admin/backtest',async(req,res)=>{
       for(let j=i+1;j<Math.min(c.length,i+maxLookahead);j++){
         const candle=c[j];
         if(isB){
-          if(candle.low<=qmr.retestSL){outcome='LOSS';exitPrice=qmr.retestSL;closeIdx=j;break;}
-          if(!hitTp1&&candle.high>=tp1Price){hitTp1=true;continue;} // TP1 reached, remainder still runs
+          if(candle.low<=qmr.retestSL&&!hitTp1){outcome='LOSS';exitPrice=qmr.retestSL;closeIdx=j;break;}
+          if(!hitTp1&&candle.high>=tp1Price){hitTp1=true;continue;}
           if(hitTp1&&candle.high>=tp2Price){outcome='WIN';exitPrice=tp2Price;closeIdx=j;break;}
-          if(hitTp1&&candle.low<=qmr.qmLevel){outcome='BE';exitPrice=qmr.qmLevel;closeIdx=j;break;} // remainder hit BE
         }else{
-          if(candle.high>=qmr.retestSL){outcome='LOSS';exitPrice=qmr.retestSL;closeIdx=j;break;}
+          if(candle.high>=qmr.retestSL&&!hitTp1){outcome='LOSS';exitPrice=qmr.retestSL;closeIdx=j;break;}
           if(!hitTp1&&candle.low<=tp1Price){hitTp1=true;continue;}
           if(hitTp1&&candle.low<=tp2Price){outcome='WIN';exitPrice=tp2Price;closeIdx=j;break;}
-          if(hitTp1&&candle.high>=qmr.qmLevel){outcome='BE';exitPrice=qmr.qmLevel;closeIdx=j;break;}
         }
       }
-      if(outcome==='OPEN'&&hitTp1){outcome='WIN';exitPrice=tp1Price;closeIdx=i+1;} // TP1 hit but TP2 never
+      if(hitTp1){outcome='WIN';exitPrice=tp1Price;closeIdx=closeIdx||i+1;} // TP1 banked = partial win
       if(outcome==='OPEN')continue; // skip still-open trades
       lastSigIdx=i;
       const rMultiple=computeR({qmLevel:entryPrice,origSL:qmr.retestSL,type:qmr.type},exitPrice);
