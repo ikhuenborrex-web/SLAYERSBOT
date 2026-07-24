@@ -1854,6 +1854,78 @@ app.get('/api/signals',(req,res)=>{
   });
   res.json({signals:out,count:out.length,total:filtered.length});
 });
+// Admin backtesting — runs QMR on historical data (uses BACKTEST_API_KEY env var)
+app.post('/api/admin/backtest',async(req,res)=>{
+  if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
+  const backtestKey=process.env.BACKTEST_API_KEY;
+  if(!backtestKey)return res.status(500).json({error:'BACKTEST_API_KEY not set on server'});
+  const{pair,interval,days}=req.body||{};
+  if(!pair||!interval)return res.status(400).json({error:'pair and interval required (e.g. NZDUSD, 1h)'});
+  const id=pair.toUpperCase();
+  const allInsts=[...QMR_INSTS,...SCALP_INSTS,...CRT_INSTS];
+  const inst=allInsts.find(i=>i.id===id);
+  if(!inst)return res.status(400).json({error:'Unknown pair: '+id});
+  const tf=interval.toLowerCase();
+  if(tf!=='1h'&&tf!=='4h')return res.status(400).json({error:'Interval must be 1h or 4h'});
+  const numDays=Math.min(days||60,180);
+  const outputSize=numDays*(tf==='1h'?24:6)+100;
+  try{
+    const url=`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym)}&interval=${tf}&outputsize=${outputSize}&apikey=${backtestKey}`;
+    const dRes=await fetch(url);
+    const dJson=await dRes.json();
+    if(dJson.status==='error')return res.status(502).json({error:'Twelve Data error: '+dJson.message});
+    const c=parseC(dJson);
+    if(c.length<40)return res.status(502).json({error:'Not enough data (got '+c.length+' candles, need 40+)'});
+    const trades=[],maxLookahead=200;
+    let lastSigIdx=-20;
+    for(let i=35;i<c.length;i++){
+      if(i-lastSigIdx<10)continue; // min gap between signals
+      const window=c.slice(0,i+1);
+      const qmrResults=detectQMR(window);
+      if(!qmrResults.length)continue;
+      const qmr=qmrResults[0];
+      const isB=qmr.type==='BULLISH';
+      const slDist=Math.abs(qmr.qmLevel-qmr.retestSL);
+      const entryPrice=qmr.qmLevel;
+      let outcome='OPEN',exitPrice=null,hitTp1=false,closeIdx=null;
+      const tp1Price=isB?entryPrice+slDist*3:entryPrice-slDist*3;
+      const tp2Price=isB?entryPrice+slDist*2.5:entryPrice-slDist*2.5;
+      for(let j=i+1;j<Math.min(c.length,i+maxLookahead);j++){
+        const candle=c[j];
+        if(isB){
+          if(candle.low<=qmr.retestSL){outcome='LOSS';exitPrice=qmr.retestSL;closeIdx=j;break;}
+          if(!hitTp1&&candle.high>=tp1Price){hitTp1=true;continue;} // TP1 reached, remainder still runs
+          if(hitTp1&&candle.high>=tp2Price){outcome='WIN';exitPrice=tp2Price;closeIdx=j;break;}
+          if(hitTp1&&candle.low<=qmr.qmLevel){outcome='BE';exitPrice=qmr.qmLevel;closeIdx=j;break;} // remainder hit BE
+        }else{
+          if(candle.high>=qmr.retestSL){outcome='LOSS';exitPrice=qmr.retestSL;closeIdx=j;break;}
+          if(!hitTp1&&candle.low<=tp1Price){hitTp1=true;continue;}
+          if(hitTp1&&candle.low<=tp2Price){outcome='WIN';exitPrice=tp2Price;closeIdx=j;break;}
+          if(hitTp1&&candle.high>=qmr.qmLevel){outcome='BE';exitPrice=qmr.qmLevel;closeIdx=j;break;}
+        }
+      }
+      if(outcome==='OPEN'&&hitTp1){outcome='WIN';exitPrice=tp1Price;closeIdx=i+1;} // TP1 hit but TP2 never
+      if(outcome==='OPEN')continue; // skip still-open trades
+      lastSigIdx=i;
+      const rMultiple=computeR({qmLevel:entryPrice,origSL:qmr.retestSL,type:qmr.type},exitPrice);
+      trades.push({entry:entryPrice,sl:qmr.retestSL,tp1:tp1Price,tp2:tp2Price,outcome,rMultiple:Math.round(rMultiple*100)/100,duration:closeIdx-i,score:qmr.criteria.score});
+    }
+    const wins=trades.filter(t=>t.outcome==='WIN').length;
+    const losses=trades.filter(t=>t.outcome==='LOSS').length;
+    const bes=trades.filter(t=>t.outcome==='BE').length;
+    const total=trades.length;
+    const totalR=trades.reduce((s,t)=>s+(t.rMultiple||0),0);
+    const avgR=total?Math.round(totalR/total*100)/100:0;
+    const equity=[0];for(const t of trades)equity.push(Math.round((equity[equity.length-1]+(t.rMultiple||0))*100)/100);
+    res.json({
+      pair:id,interval:tf,days:numDays,candles:c.length,
+      total,wins,losses,bes,
+      winRate:total?Math.round(wins/(wins+losses)*100):0,
+      totalR:Math.round(totalR*100)/100,avgR,equity,
+      trades:trades.slice(-20).map(t=>({outcome:t.outcome,r:t.rMultiple,score:t.score}))
+    });
+  }catch(e){res.status(500).json({error:'Backtest error: '+e.message});}
+});
 app.get('/api/scalp',(req,res)=>{
   const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
   const myCode=req.query.code||req.headers['x-access-code'];
