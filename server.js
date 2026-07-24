@@ -55,16 +55,12 @@ const CRT_INSTS = [
 // QMR pairs (forex + XAU + BTC)
 const QMR_INSTS = [
   {id:'EURUSD',sym:'EUR/USD',name:'EUR/USD',dec:5},
-  {id:'GBPUSD',sym:'GBP/USD',name:'GBP/USD',dec:5}, // in QMR_INSTS only for trade management; signals disabled
-  {id:'AUDUSD',sym:'AUD/USD',name:'AUD/USD',dec:5},
-  {id:'GBPJPY',sym:'GBP/JPY',name:'GBP/JPY',dec:3},
   {id:'XAUUSD',sym:'XAU/USD',name:'XAU/USD',dec:2},
   {id:'BTCUSD',sym:'BTC/USD',name:'BTC/USD',dec:2},
   {id:'EURGBP',sym:'EUR/GBP',name:'EUR/GBP',dec:5},
   {id:'EURCAD',sym:'EUR/CAD',name:'EUR/CAD',dec:5},
   {id:'USDJPY',sym:'USD/JPY',name:'USD/JPY',dec:3},
-  {id:'USDCAD',sym:'USD/CAD',name:'USD/CAD',dec:5},
-  {id:'NZDUSD',sym:'NZD/USD',name:'NZD/USD',dec:5},
+  {id:'CHFJPY',sym:'CHF/JPY',name:'CHF/JPY',dec:3},
 ];
 const QMR_TFS=['1h','4h'];
 const SCALP_INSTS=[
@@ -78,30 +74,24 @@ const QMR_MIN=3,WEEKLY_EVERY=24,LON_S=7,LON_E=16,NY_S=13,NY_E=22;
 
 // Correlation groups — pairs that move together; opposite-direction signals on correlated pairs flag a warning
 const CORRELATION_GROUPS=[
-  ['EURUSD','EURGBP'],
-  ['AUDUSD','NZDUSD'],
-  ['GBPJPY','USDJPY'],
   ['EURUSD','EURCAD','EURGBP'],
-  ['USDCAD','NZDUSD'],
-  ['USDJPY','USDCAD'],
+  ['USDJPY','CHFJPY'],
 ];
 const PAIR_SESSIONS={
-  EURUSD:{s:7,e:22},GBPUSD:{s:7,e:22},AUDUSD:{s:0,e:16},
-  GBPJPY:{s:0,e:22},XAUUSD:{s:7,e:22},BTCUSD:{s:0,e:24},
+  EURUSD:{s:7,e:22},XAUUSD:{s:7,e:22},BTCUSD:{s:0,e:24},
   EURGBP:{s:7,e:16},EURCAD:{s:7,e:22},USDJPY:{s:0,e:22},
-  USDCAD:{s:7,e:22},NZDUSD:{s:0,e:16},
+  CHFJPY:{s:0,e:22},
 };
 const PAIR_CURRENCIES={
-  EURUSD:['EUR','USD'],GBPUSD:['GBP','USD'],AUDUSD:['AUD','USD'],
-  GBPJPY:['GBP','JPY'],XAUUSD:['XAU','USD'],BTCUSD:['BTC'],
+  EURUSD:['EUR','USD'],XAUUSD:['XAU','USD'],BTCUSD:['BTC'],
   EURGBP:['EUR','GBP'],EURCAD:['EUR','CAD'],USDJPY:['USD','JPY'],
-  USDCAD:['USD','CAD'],NZDUSD:['NZD','USD'],
+  CHFJPY:['CHF','JPY'],
 };
 // Per-pair killzones (UTC hours) for 1H QMR signals. null = no restriction (24/7)
 // Asian-active pairs include Tokyo killzone 0-4; EU/US pairs are London + NY open only
 const PAIR_KILLZONES={
-  EURUSD:[[7,10],[13,16]],GBPUSD:[[7,10],[13,16]],EURGBP:[[7,10],[13,16]],EURCAD:[[7,10],[13,16]],XAUUSD:[[7,10],[13,16]],
-  AUDUSD:[[0,4],[7,10],[13,16]],USDJPY:[[0,4],[7,10],[13,16]],USDCAD:[[7,10],[13,16]],NZDUSD:[[0,4],[7,10],[13,16]],GBPJPY:[[0,4],[7,10],[13,16]],
+  EURUSD:[[7,10],[13,16]],EURGBP:[[7,10],[13,16]],EURCAD:[[7,10],[13,16]],XAUUSD:[[7,10],[13,16]],
+  USDJPY:[[0,4],[7,10],[13,16]],CHFJPY:[[0,4],[7,10],[13,16]],
   BTCUSD:null,
 };
 function inKillzone(id){const kz=PAIR_KILLZONES[id];if(!kz)return true;const h=new Date().getUTCHours();return kz.some(w=>h>=w[0]&&h<w[1]);}
@@ -731,7 +721,7 @@ function checkCorrelationConflict(instId,type){
 // Telegram functions
 async function tgSend(text){if(!TG_TOKEN||!TG_CHAT)return;try{await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:TG_CHAT,text})});}catch(e){log('TG error: '+e.message);}}
 // Chart snapshots via chart-img.com (optional - only active when CHARTIMG_API_KEY is set)
-const CHART_SYMBOLS={EURUSD:'OANDA:EURUSD',GBPUSD:'OANDA:GBPUSD',AUDUSD:'OANDA:AUDUSD',GBPJPY:'OANDA:GBPJPY',XAUUSD:'OANDA:XAUUSD',BTCUSD:'COINBASE:BTCUSD',EURGBP:'OANDA:EURGBP',EURCAD:'OANDA:EURCAD',USDJPY:'OANDA:USDJPY',USDCAD:'OANDA:USDCAD',NZDUSD:'OANDA:NZDUSD',NAS100:'OANDA:NAS100USD'};
+const CHART_SYMBOLS={EURUSD:'OANDA:EURUSD',XAUUSD:'OANDA:XAUUSD',BTCUSD:'COINBASE:BTCUSD',EURGBP:'OANDA:EURGBP',EURCAD:'OANDA:EURCAD',USDJPY:'OANDA:USDJPY',CHFJPY:'OANDA:CHFJPY',NAS100:'OANDA:NAS100USD'};
 async function tgSendChart(instId,interval,lines,caption,saveForApp,noTg){
   // saveForApp: if provided, save the exact same image bytes for the app to display later
   let savedFile=null;
@@ -1346,7 +1336,6 @@ async function runScan(manual=false){
           // Pre-calculate ADR for TP1 capping and ADR gap filter
           const adrQ=calcADR(c,14),todayRngQ=getTodayRange(c),adrPctQ=adrQ>0?Math.round((todayRngQ/adrQ)*100):0;
           const instObj=QMR_INSTS.find(x=>x.id===inst.id)||{dec:5,name:inst.id};
-          if(inst.id==='GBPUSD')continue; // removed: 17% win rate over 90-day backtest
           const qmrs=detectQMR(c);
           for(const qmr of qmrs){
             qmr.drawOnLiquidity=findDrawOnLiquidity(c,qmr.type,qmr.qmLevel,qmr.atr);
@@ -2173,7 +2162,7 @@ app.get('/api/confluence',(req,res)=>{
   if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
   const code=req.query.code||req.headers['x-access-code'];
   const pairs=[];
-  for(const inst of QMR_INSTS.filter(i=>i.id!=='GBPUSD')){
+  for(const inst of QMR_INSTS){
     const wb=weeklyCache[inst.id]?.bias||'NEUTRAL';
     const dc=dailyCache[inst.id];
     const dt=dc&&dc.c&&dc.c.length>=12?detectStructure(dc.c).trend:'RANGING';
