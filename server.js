@@ -1861,18 +1861,20 @@ app.post('/api/admin/backtest',async(req,res)=>{
   if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
   const backtestKey=process.env.BACKTEST_API_KEY;
   if(!backtestKey)return res.status(500).json({error:'BACKTEST_API_KEY not set on server'});
-  const{pair,interval,days,breakoutATR}=req.body||{};
+  const{pair,interval,days,breakoutATR,symbol:symOverride,dec:decOverride}=req.body||{};
   if(!pair||!interval)return res.status(400).json({error:'pair and interval required (e.g. NZDUSD, 1h)'});
   const id=pair.toUpperCase();
   const allInsts=[...QMR_INSTS,...SCALP_INSTS,...CRT_INSTS];
   const inst=allInsts.find(i=>i.id===id);
-  if(!inst)return res.status(400).json({error:'Unknown pair: '+id});
+  if(!inst&&!symOverride)return res.status(400).json({error:'Unknown pair: '+id+'. For new pairs, provide "symbol" (Twelve Data symbol, e.g. USD/CHF) and "dec" (decimal places).'});
   const tf=interval.toLowerCase();
   if(tf!=='1h'&&tf!=='4h')return res.status(400).json({error:'Interval must be 1h or 4h'});
   const numDays=Math.min(days||60,180);
   const outputSize=numDays*(tf==='1h'?24:6)+100;
+  const sym=symOverride||(inst?inst.sym:id);
+  const dPlaces=decOverride!=null?decOverride:(inst?inst.dec:5);
   try{
-    const url=`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym)}&interval=${tf}&outputsize=${outputSize}&apikey=${backtestKey}`;
+    const url=`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(sym)}&interval=${tf}&outputsize=${outputSize}&apikey=${backtestKey}`;
     const dRes=await fetch(url);
     const dJson=await dRes.json();
     if(dJson.status==='error')return res.status(502).json({error:'Twelve Data error: '+dJson.message});
