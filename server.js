@@ -1346,6 +1346,7 @@ async function runScan(manual=false){
           // Pre-calculate ADR for TP1 capping and ADR gap filter
           const adrQ=calcADR(c,14),todayRngQ=getTodayRange(c),adrPctQ=adrQ>0?Math.round((todayRngQ/adrQ)*100):0;
           const instObj=QMR_INSTS.find(x=>x.id===inst.id)||{dec:5,name:inst.id};
+          if(inst.id==='GBPUSD')continue; // removed: 17% win rate over 90-day backtest
           const qmrs=detectQMR(c);
           for(const qmr of qmrs){
             qmr.drawOnLiquidity=findDrawOnLiquidity(c,qmr.type,qmr.qmLevel,qmr.atr);
@@ -2170,7 +2171,7 @@ app.get('/api/confluence',(req,res)=>{
   if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
   const code=req.query.code||req.headers['x-access-code'];
   const pairs=[];
-  for(const inst of QMR_INSTS){
+  for(const inst of QMR_INSTS.filter(i=>i.id!=='GBPUSD')){
     const wb=weeklyCache[inst.id]?.bias||'NEUTRAL';
     const dc=dailyCache[inst.id];
     const dt=dc&&dc.c&&dc.c.length>=12?detectStructure(dc.c).trend:'RANGING';
