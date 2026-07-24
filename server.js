@@ -1921,7 +1921,6 @@ app.post('/api/admin/backtest',async(req,res)=>{
         const rMultiple=Math.round(((exitPrice-entryPrice)*(isB?1:-1)/slDist)*100)/100;
         trades.push({outcome,rMultiple,score:0});
       }
-      }
     }else{
     let lastSigIdx=-20;
     const prevBA=BREAKOUT_ATR;
