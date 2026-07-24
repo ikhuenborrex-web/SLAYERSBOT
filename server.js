@@ -1896,8 +1896,8 @@ app.post('/api/admin/backtest',async(req,res)=>{
       for(let i=30;i<c.length;i++){
         if(i-lastSigIdx<15)continue;
         const rsiVal=rsi[i],prevRsi=rsi[i-1];
-        const oversold=rsiVal<=30&&prevRsi>30;
-        const overbought=rsiVal>=70&&prevRsi<70;
+        const oversold=rsiVal<=35&&prevRsi>35;
+        const overbought=rsiVal>=65&&prevRsi<65;
         if(!oversold&&!overbought)continue;
         const isB=oversold;
         const entryPrice=c[i].close;
