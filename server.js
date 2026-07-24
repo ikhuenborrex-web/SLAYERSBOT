@@ -1896,15 +1896,15 @@ app.post('/api/admin/backtest',async(req,res)=>{
       for(let i=30;i<c.length;i++){
         if(i-lastSigIdx<15)continue;
         const rsiVal=rsi[i],prevRsi=rsi[i-1];
-        const oversold=rsiVal<=25&&prevRsi>25;
-        const overbought=rsiVal>=75&&prevRsi<75;
+        const oversold=rsiVal<=30&&prevRsi>30;
+        const overbought=rsiVal>=70&&prevRsi<70;
         if(!oversold&&!overbought)continue;
         const isB=oversold;
         const entryPrice=c[i].close;
-        const slDist=atrVals[i]*0.8;
+        const slDist=atrVals[i]*0.5;
         if(slDist<=0)continue;
         const sl=isB?entryPrice-slDist:entryPrice+slDist;
-        const tp=isB?entryPrice+slDist*1.5:entryPrice-slDist*1.5;
+        const tp=isB?entryPrice+slDist*2:entryPrice-slDist*2;
         let outcome='OPEN',exitPrice=null;
         for(let j=i+1;j<Math.min(c.length,i+lookahead);j++){
           const candle=c[j];
