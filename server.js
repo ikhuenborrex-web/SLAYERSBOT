@@ -1853,7 +1853,7 @@ app.post('/api/admin/backtest',async(req,res)=>{
   const{pair,interval,days,breakoutATR,symbol:symOverride,dec:decOverride,strategy:strat}=req.body||{};
   if(!pair||!interval)return res.status(400).json({error:'pair and interval required (e.g. NZDUSD, 1h)'});
   const strategy=strat||'qmr';
-  if(!['qmr','rsiReversion'].includes(strategy))return res.status(400).json({error:'Strategy must be "qmr" or "rsiReversion"'});
+  if(!['qmr','donchian'].includes(strategy))return res.status(400).json({error:'Strategy must be "qmr" or "donchian"'});
   const id=pair.toUpperCase();
   const allInsts=[...QMR_INSTS,...SCALP_INSTS,...CRT_INSTS];
   const inst=allInsts.find(i=>i.id===id);
@@ -1872,41 +1872,26 @@ app.post('/api/admin/backtest',async(req,res)=>{
     const c=parseC(dJson);
     if(c.length<40)return res.status(502).json({error:'Not enough data (got '+c.length+' candles, need 40+)'});
     const trades=[],maxLookahead=200;
-    if(strategy==='rsiReversion'){
-      function calcRsi(data,period){
-        const r=[],changes=[];
-        for(let i=1;i<data.length;i++)changes.push(data[i].close-data[i-1].close);
-        let avgG=0,avgL=0;
-        for(let i=0;i<period;i++){if(changes[i]>0)avgG+=changes[i];else avgL+=Math.abs(changes[i]);}
-        avgG/=period;avgL/=period;
-        for(let i=0;i<period;i++)r.push(50);
-        for(let i=period;i<data.length;i++){
-          const c=changes[i-1];
-          if(c>0){avgG=(avgG*13+c)/14;avgL=(avgL*13+0)/14;}
-          else{avgG=(avgG*13+0)/14;avgL=(avgL*13+Math.abs(c))/14;}
-          const rs=avgL===0?100:avgG/avgL;
-          r.push(Math.round(100-(100/(1+rs))));
-        }
-        return r;
-      }
-      const rsi=calcRsi(c,14);
+    if(strategy==='donchian'){
       const atrVals=[];for(let i=0;i<c.length;i++){const s=Math.max(0,i-13),w=c.slice(s,i+1);atrVals.push(calcATR(w,14));}
-      const lookahead=120;
+      const period=20;
       let lastSigIdx=-15;
-      for(let i=30;i<c.length;i++){
+      for(let i=period;i<c.length;i++){
         if(i-lastSigIdx<15)continue;
-        const rsiVal=rsi[i],prevRsi=rsi[i-1];
-        const oversold=rsiVal<=35&&prevRsi>35;
-        const overbought=rsiVal>=65&&prevRsi<65;
-        if(!oversold&&!overbought)continue;
-        const isB=oversold;
-        const entryPrice=c[i].close;
-        const slDist=atrVals[i]*0.5;
+        const slice=c.slice(i-period,i);
+        const hi=Math.max(...slice.map(x=>x.high)),lo=Math.min(...slice.map(x=>x.low));
+        const prevClose=c[i-1].close,currClose=c[i].close;
+        const brokeHigh=prevClose<=hi&&currClose>hi;
+        const brokeLow=prevClose>=lo&&currClose<lo;
+        if(!brokeHigh&&!brokeLow)continue;
+        const isB=brokeHigh;
+        const entryPrice=currClose;
+        const slDist=atrVals[i];
         if(slDist<=0)continue;
         const sl=isB?entryPrice-slDist:entryPrice+slDist;
         const tp=isB?entryPrice+slDist*2:entryPrice-slDist*2;
         let outcome='OPEN',exitPrice=null;
-        for(let j=i+1;j<Math.min(c.length,i+lookahead);j++){
+        for(let j=i+1;j<Math.min(c.length,i+120);j++){
           const candle=c[j];
           if(isB){
             if(candle.low<=sl){outcome='LOSS';exitPrice=sl;break;}
