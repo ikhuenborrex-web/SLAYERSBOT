@@ -412,7 +412,7 @@ function overviewScreen(){
   if(!sigCount&&!state.signals.length)sigsHtml=emptyState('Waiting for market data...');
 
   return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+';position:relative">'+
-    '<div style="flex:1;overflow-y:auto;padding:calc(30px + env(safe-area-inset-top)) 16px calc(100px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch">'+
+    '<div class="sc" style="flex:1;overflow-y:auto;padding:calc(30px + env(safe-area-inset-top)) 16px calc(100px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch">'+
       hero+mc+mp+actCards+sigHeader+filterHtml+sigsHtml+
     '</div>'+navBar()+'</div>';
 }
@@ -455,7 +455,7 @@ function scalpScreen(){
       '<button onclick="event.stopPropagation();toggleTrack(&#39;'+s.id+'&#39;,'+!!(s.isTracked)+')" style="display:inline-flex;align-items:center;gap:3px;background:'+(s.isTracked?C.limeSoft:C.surface)+';border:0.5px solid '+(s.isTracked?C.lime:C.border)+';border-radius:99px;padding:3px 10px;font-size:8px;color:'+(s.isTracked?C.lime:C.text2)+';cursor:pointer;font-family:inherit;font-weight:600">'+icon(I.crosshair,s.isTracked?C.lime:C.text2,10)+(s.isTracked?'Tracking':'Track')+'</button></div></div>';
   }).join('');
   return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+';position:relative">'+
-    '<div style="flex:1;overflow-y:auto;padding:calc(30px + env(safe-area-inset-top)) 16px calc(100px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch">'+
+    '<div class="sc" style="flex:1;overflow-y:auto;padding:calc(30px + env(safe-area-inset-top)) 16px calc(100px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch">'+
     '<div style="font-size:22px;font-weight:700;color:#FFF;margin-bottom:2px">Scalp</div>'+
     '<div style="font-size:12px;color:#5F5F5F;margin-bottom:20px">Session momentum + FVG breakout</div>'+
     statsHtml+(sigs||emptyState('No scalp signals yet'))+
@@ -664,7 +664,7 @@ function journalScreen(){
   }
 
   return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+';position:relative">'+
-    '<div style="flex:1;overflow-y:auto;padding:calc(34px + env(safe-area-inset-top)) 18px calc(100px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch">'+
+    '<div class="sc" style="flex:1;overflow-y:auto;padding:calc(34px + env(safe-area-inset-top)) 18px calc(100px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch">'+
       header+timeHtml+equityHero+statsHtml+tabHtml+(cardsHtml||empty)+
     '</div>'+navBar()+'</div>';
 }
@@ -924,7 +924,7 @@ function intelScreen(){
     '<div style="height:20px"></div>';
 
   return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+';position:relative">'+
-    '<div style="flex:1;overflow-y:auto;padding:calc(34px + env(safe-area-inset-top)) 18px calc(100px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch">'+
+    '<div class="sc" style="flex:1;overflow-y:auto;padding:calc(34px + env(safe-area-inset-top)) 18px calc(100px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch">'+
       content+
     '</div>'+navBar()+'</div>';
 }
@@ -945,7 +945,7 @@ function settingsScreen(){
   else if(!swRegistration)pushBtns='<div style="font-size:11px;color:#5F5F5F;text-align:center;padding:10px">Setting up notifications...</div>';
   else if(typeof Notification!=='undefined'&&Notification.permission!=='denied')pushBtns='<button onclick="enablePush()" style="width:100%;background:#B7FF2A;border:none;border-radius:14px;padding:14px 0;color:#050505;font-weight:600;font-size:13px;cursor:pointer;margin-top:12px;font-family:inherit;box-shadow:0 0 20px rgba(183,255,42,0.2)">Enable Push</button>';
   return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+';position:relative">'+
-    '<div style="flex:1;overflow-y:auto;padding:calc(30px + env(safe-area-inset-top)) 16px calc(100px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch">'+
+    '<div class="sc" style="flex:1;overflow-y:auto;padding:calc(30px + env(safe-area-inset-top)) 16px calc(100px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch">'+
     '<div style="font-size:22px;font-weight:700;color:#FFF;margin-bottom:2px">Settings</div>'+
     '<div style="font-size:12px;color:#5F5F5F;margin-bottom:20px">v10</div>'+
     '<div style="margin-bottom:16px"><div style="font-size:10px;font-weight:600;color:#5F5F5F;text-transform:uppercase;margin-bottom:8px;padding:0 4px;letter-spacing:0.04em">Notifications</div>'+
@@ -973,6 +973,9 @@ function switchIntelTab(ck){
 
 function render(){
   var app=document.getElementById('app');
+  if(!window._sp)window._sp={};
+  var oldSc=app.querySelector('.sc');
+  if(oldSc&&state.tab)window._sp[state.tab]=oldSc.scrollTop;
   if(state.selected){app.innerHTML=detailPage(state.selected);void app.offsetWidth;return;}
   var t=state.tab||'dash';
   if(t==='dash'){app.innerHTML=overviewScreen();}
@@ -982,6 +985,8 @@ function render(){
   else if(t==='settings'){app.innerHTML=settingsScreen();}
   else{app.innerHTML=overviewScreen();}
   void app.offsetWidth;
+  var newSc=app.querySelector('.sc');
+  if(newSc&&window._sp[state.tab])requestAnimationFrame(function(){newSc.scrollTop=window._sp[state.tab];});
   positionNavIndicator();
 }
 
