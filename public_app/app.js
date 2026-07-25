@@ -1,3 +1,5 @@
+try{document.getElementById('app').innerHTML='<div style="padding:30px;color:rgba(255,255,255,0.4);text-align:center;font-size:13px;font-family:monospace">Loading...</div>';}catch(e){}
+window.onerror=function(m,u,l,c,err){try{document.getElementById('app').innerHTML='<div style="padding:30px;color:#EF4444;text-align:center;font-family:monospace;font-size:12px;line-height:1.5">JS Error: '+m+'<br>line: '+l+'<br>'+(err&&err.stack?err.stack.slice(0,200):'')+'</div>';}catch(e){}};
 (function(){var s=document.createElement("style");s.textContent=
 "html,body{background:#000;margin:0;padding:0;height:100dvh;overflow:hidden;-webkit-overflow-scrolling:touch;-webkit-tap-highlight-color:transparent}"+
 ".card{background:#141416;border-radius:16px;padding:16px;margin-bottom:8px;position:relative;overflow:hidden;animation:fadeUp 0.5s cubic-bezier(0.16,1,0.3,1) both}"+
