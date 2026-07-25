@@ -112,7 +112,7 @@ function calcPos(s){
 
 function overviewScreen(){
   var st=state.stats||{},ws=state.weeklyStats||{},m=state.myStats||state.stats||{};
-  var heroStat=function(v,u,c2){return'<div style="flex:1"><div style="font-size:20px;font-weight:800;letter-spacing:-0.02em;color:'+c2+'">'+v+'<span style="font-size:12px;font-weight:600;margin-left:1px">'+u+'</span></div><div style="font-size:8px;color:rgba(255,255,255,0.25);font-weight:500;text-transform:uppercase;letter-spacing:0.04em;margin-top:2px">'+(u==='R'?'Week':u==='%'?'WR':'Active')+'</div></div>';};
+  var heroStat=function(v,u,c2){return'<div style="flex:1"><div class="count-up" style="font-size:20px;font-weight:800;letter-spacing:-0.02em;color:'+c2+'">'+v+'<span style="font-size:12px;font-weight:600;margin-left:1px">'+u+'</span></div><div style="font-size:8px;color:rgba(255,255,255,0.25);font-weight:500;text-transform:uppercase;letter-spacing:0.04em;margin-top:2px">'+(u==='R'?'Week':u==='%'?'WR':'Active')+'</div></div>';};
   var wr=st.winRate||0,tr=st.totalR||0;
   var hero= '<div class="hero">'+
     '<div class="glow"></div><div class="glow-2"></div>'+
@@ -156,7 +156,7 @@ function overviewScreen(){
         '<div><div style="font-size:8px;font-weight:600">Entry</div><div style="font-size:12px;font-weight:700;color:#FFF">'+fmt(t.entryPrice||t.entry)+'</div></div>'+
         '<div><div style="font-size:8px;font-weight:600">SL</div><div style="font-size:12px;font-weight:700;color:'+col+'">'+fmt(t.sl)+'</div></div>'+
         '<div><div style="font-size:8px;font-weight:600">'+(t.tp1Fired?'TP1':'Goal')+'</div><div style="font-size:12px;font-weight:700;color:'+C.lime+'">'+fmt(t.tp1||t.tp2||'')+'</div></div></div>'+
-        '<div style="height:2px;border-radius:1px;background:rgba(255,255,255,0.06);margin:6px 0;overflow:hidden"><div style="height:100%;background:'+col+';width:'+pct+'%"></div></div>'+
+        '<div style="height:2px;border-radius:1px;background:rgba(255,255,255,0.06);margin:6px 0;overflow:hidden"><div style="height:100%;background:'+col+';width:'+pct+'%;animation:fillBar 0.8s cubic-bezier(.16,1,.3,1)"></div></div>'+
         '<div style="display:flex;justify-content:space-between;font-size:8px;color:rgba(255,255,255,0.3)"><span>'+timeAgo(t.entryTime)+'</span><span style="color:'+col+';font-weight:600">'+(t.tp1Fired?'TP1 \u2713':t.beFired?'BE':t.slFired?'Stopped':'Active')+'</span></div></div>';
     }
     if(myAct.length)actCards='<div style="display:flex;align-items:center;justify-content:space-between;margin:20px 0 10px">'+
@@ -250,9 +250,9 @@ function navBar(){
 function scalpScreen(){
   var ss=state.scalpStats||{};
   var statsHtml='<div style="display:flex;gap:8px;margin-bottom:14px;margin-top:8px">'+
-    '<div class="card" style="flex:1;text-align:center;padding:12px 8px;animation-delay:0s"><div style="font-size:9px;color:'+C.text2+'">WR</div><div style="font-size:18px;font-weight:800;color:'+C.lime+';margin-top:4px">'+(ss.winRate||0)+'%</div></div>'+
-    '<div class="card" style="flex:1;text-align:center;padding:12px 8px;animation-delay:0s"><div style="font-size:9px;color:'+C.text2+'">Total R</div><div style="font-size:18px;font-weight:800;color:'+(ss.totalR>=0?C.lime:C.red)+';margin-top:4px">'+(ss.totalR>0?'+':'')+(ss.totalR||0)+'</div></div>'+
-    '<div class="card" style="flex:1;text-align:center;padding:12px 8px;animation-delay:0s"><div style="font-size:9px;color:'+C.text2+'">Active</div><div style="font-size:18px;font-weight:800;color:'+C.white+';margin-top:4px">'+state.scalpActive.length+'</div></div></div>';
+    '<div class="card" style="flex:1;text-align:center;padding:12px 8px;animation-delay:0s"><div style="font-size:9px;color:'+C.text2+'">WR</div><div class="count-up" style="font-size:18px;font-weight:800;color:'+C.lime+';margin-top:4px">'+(ss.winRate||0)+'%</div></div>'+
+    '<div class="card" style="flex:1;text-align:center;padding:12px 8px;animation-delay:0s"><div style="font-size:9px;color:'+C.text2+'">Total R</div><div class="count-up" style="font-size:18px;font-weight:800;color:'+(ss.totalR>=0?C.lime:C.red)+';margin-top:4px">'+(ss.totalR>0?'+':'')+(ss.totalR||0)+'</div></div>'+
+    '<div class="card" style="flex:1;text-align:center;padding:12px 8px;animation-delay:0s"><div style="font-size:9px;color:'+C.text2+'">Active</div><div class="count-up" style="font-size:18px;font-weight:800;color:'+C.white+';margin-top:4px">'+state.scalpActive.length+'</div></div></div>';
   var sigs=(state.scalpSignals||[]).map(function(s,i){
     var isB=s.type==='BULLISH'||s.direction==='LONG';var col=isB?C.lime:C.red;var bg=isB?C.limeSoft:C.redSoft;
     return '<div class="card" style="border-left:2.5px solid '+col+'" onclick="openScalpDetail(&#39;'+s.id+'&#39;)">'+
@@ -370,7 +370,7 @@ function settingsScreen(){
 
 function render(){
   var app=document.getElementById('app');
-  if(state.selected){app.innerHTML=detailPage(state.selected);return;}
+  if(state.selected){app.innerHTML=detailPage(state.selected);void app.offsetWidth;return;}
   var t=state.tab||'dash';
   if(t==='dash'){app.innerHTML=overviewScreen();}
   else if(t==='journal'){app.innerHTML=journalScreen();}
@@ -378,6 +378,7 @@ function render(){
   else if(t==='intel'){app.innerHTML=intelScreen();}
   else if(t==='settings'){app.innerHTML=settingsScreen();}
   else{app.innerHTML=overviewScreen();}
+  void app.offsetWidth;
 }
 
 function detailPage(s){
@@ -537,5 +538,44 @@ document.addEventListener('click',function(e){
 });
 document.addEventListener('focusin',function(e){var t=e.target.tagName;if(t==='INPUT'||t==='TEXTAREA'||t==='SELECT')state.userBusy=true;});
 document.addEventListener('focusout',function(e){var t=e.target.tagName;if(t==='INPUT'||t==='TEXTAREA'||t==='SELECT')setTimeout(function(){state.userBusy=false;},200);});
+
+// Pull-to-refresh
+var ptr={startY:0,dy:0,indicator:null,refreshing:false};
+document.addEventListener('touchstart',function(e){
+  if(ptr.refreshing)return;
+  var s=e.target.closest('[style*="overflow-y:auto"]');
+  if(!s||s.scrollTop>0)return;
+  ptr.startY=e.touches[0].clientY;ptr.dy=0;
+  if(!ptr.indicator){
+    ptr.indicator=document.createElement('div');
+    ptr.indicator.textContent='\u2193 Refresh';
+    ptr.indicator.style.cssText='position:fixed;top:calc(12px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);color:'+C.lime+';font-size:11px;font-weight:700;z-index:999;opacity:0;transition:opacity 0.15s;pointer-events:none';
+    document.body.appendChild(ptr.indicator);
+  }
+},{passive:true});
+document.addEventListener('touchmove',function(e){
+  if(!ptr.startY||ptr.refreshing||!ptr.indicator)return;
+  ptr.dy=e.touches[0].clientY-ptr.startY;
+  if(ptr.dy<20){ptr.indicator.style.opacity=0;return;}
+  ptr.indicator.textContent=ptr.dy>70?'Release to refresh':'\u2193 Pull to refresh';
+  ptr.indicator.style.opacity=Math.min((ptr.dy-20)/50,1);
+},{passive:true});
+document.addEventListener('touchend',function(e){
+  if(!ptr.startY||!ptr.indicator)return;
+  if(ptr.dy>70&&!ptr.refreshing){
+    ptr.refreshing=true;
+    ptr.indicator.textContent='\u21BB Refreshing...';
+    ptr.indicator.style.opacity=1;
+    showToast('Refreshing');
+    fetchAll();
+    setTimeout(function(){
+      ptr.refreshing=false;
+      if(ptr.indicator)ptr.indicator.style.opacity=0;
+    },3000);
+  }else{
+    ptr.indicator.style.opacity=0;
+  }
+  ptr.startY=0;ptr.dy=0;
+},{passive:true});
 if(getCode()){render();fetchAll();}else{renderLogin();}
 setInterval(function(){if(getCode())fetchAll(true);},120000);
