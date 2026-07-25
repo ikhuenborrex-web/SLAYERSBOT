@@ -308,7 +308,7 @@ function scalpScreen(){
 function journalScreen(){
   var allEntries=state.journal||[];
   var now=Date.now();
-  var cutDays={1W:7,2W:14,1M:30,3M:90,6M:180}[state.journalTime];
+  var cutDays={'1W':7,'2W':14,'1M':30,'3M':90,'6M':180}[state.journalTime];
   if(cutDays)allEntries=allEntries.filter(function(e){return now-new Date(e.createdAt||e.time||0).getTime()<cutDays*864e5;});
   function isW(e){return e.outcome==='WIN'||e.outcome==='TP1'||e.outcome==='TP2'||e.outcome==='TP';}
   function isL(e){return e.outcome==='SL'||e.outcome==='LOSS';}
