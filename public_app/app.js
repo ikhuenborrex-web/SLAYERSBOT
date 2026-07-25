@@ -812,7 +812,7 @@ function intelScreen(){
   for(var ti=0;ti<catList.length;ti++){
     var ck=catList[ti]==='All Intel'?'all':catList[ti].toLowerCase().replace(/[^a-z]/g,'');
     var isA=activeTab===ck;
-    tabHtml+='<button onclick="state.intelTab=\''+ck+'\';render()" style="position:relative;flex-shrink:0;padding:8px 14px;font-size:11px;font-weight:'+(isA?'700':'500')+';color:'+(isA?'#FFF':'#5F5F5F')+';background:transparent;border:none;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .2s">'+
+    tabHtml+='<button onclick="switchIntelTab(\''+ck+'\')" style="position:relative;flex-shrink:0;padding:8px 14px;font-size:11px;font-weight:'+(isA?'700':'500')+';color:'+(isA?'#FFF':'#5F5F5F')+';background:transparent;border:none;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .2s">'+
       catList[ti]+(isA?'<div style="position:absolute;bottom:0;left:14px;right:14px;height:2px;border-radius:1px;background:'+C.lime+';box-shadow:0 0 8px rgba(183,255,42,0.4);animation:fadeIn .2s"></div>':'')+'</button>';
   }
   tabHtml+='</div></div>';
@@ -937,6 +937,17 @@ function settingsScreen(){
     '<button onclick="logout()" style="width:100%;background:transparent;border:none;padding:16px 16px;color:#FF5252;font-size:13px;font-weight:500;cursor:pointer;text-align:left;font-family:inherit">Disconnect / Logout</button></div></div>'+
     '<div style="text-align:center;padding:24px;color:#5F5F5F;font-size:9px">Made by roz & n8s \u00b7 QMR</div>'+
     '</div>'+navBar()+'</div>';
+}
+
+function switchIntelTab(ck){
+  var container=document.querySelector('[style*="overflow-y:auto"]');
+  var saved=container?container.scrollTop:0;
+  state.intelTab=ck;
+  render();
+  requestAnimationFrame(function(){
+    var c=document.querySelector('[style*="overflow-y:auto"]');
+    if(c&&saved)c.scrollTop=saved;
+  });
 }
 
 function render(){
