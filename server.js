@@ -2006,21 +2006,19 @@ app.post('/api/subscribe',(req,res)=>{
   res.json({ok:true});
 });
 app.post('/api/test-push',async (req,res)=>{
-  const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:'Invalid code'});
-  const code=req.query.code||req.headers['x-access-code'];
-  const sub=pushSubscriptions.find(s=>s.code===code);
-  if(!sub)return res.json({error:'No push subscription found. Enable push first.'});
-  const {code:c,...subData}=sub;
-  try{
-    var msg='Good '+(new Date().getHours()<12?'morning':new Date().getHours()<18?'afternoon':'evening')+' Slayers';
-    await webpush.sendNotification(subData,JSON.stringify({title:msg,body:'Test push \u2014 working!','url':'/'}));
-    res.json({ok:true});
-  }catch(e){
-    if(e.statusCode===410||e.statusCode===404){
-      pushSubscriptions=pushSubscriptions.filter(s=>s!==sub);saveState();
-      res.json({error:'Subscription expired. Re-enable push.'});
-    }else{res.json({error:e.message});}
+  if(!webpush||!VAPID_PUBLIC||!VAPID_PRIVATE||!pushSubscriptions.length)return res.json({error:'No push subscribers'});
+  const payload=JSON.stringify({title:'Daily Briefing',body:'Good evening Slayers \u2014 market pulse is live.','url':'/'});
+  const dead=[];
+  for(const entry of pushSubscriptions){
+    const {code,...sub}=entry;
+    try{await webpush.sendNotification(sub,payload);}
+    catch(e){
+      if(e.statusCode===410||e.statusCode===404)dead.push(entry);
+      else log('Push error: '+e.message);
+    }
   }
+  if(dead.length){pushSubscriptions=pushSubscriptions.filter(s=>!dead.includes(s));saveState();}
+  res.json({ok:true,sent:pushSubscriptions.length-dead.length});
 });
 app.post('/api/member/notif-prefs',(req,res)=>{
   const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
