@@ -219,9 +219,9 @@ function overviewScreen(){
       (s.dailyPOI?'<div style="font-size:10px;color:'+C.lime+';font-weight:600;margin-top:4px">\uD83C\uDFDB '+s.dailyPOI+'</div>':'')+
       (s.rsiDivergence?'<div style="font-size:10px;color:'+C.orange+';font-weight:600;margin-top:2px">\uD83D\uDD25 '+s.rsiDivergence+'</div>':'')+
       '<div style="display:flex;gap:6px;padding-top:8px;border-top:0.5px solid rgba(255,255,255,0.04);margin-top:8px">'+
-      '<div onclick="event.stopPropagation();toggleTrack(\''+s.id+'\','+!!isT+')" style="flex:1;text-align:center;padding:7px 0;border-radius:8px;background:'+(isT?C.lime:C.lime+');color:#000;font-size:10px;font-weight:700;cursor:pointer">'+(isT?'Tracking':'Track')+'</div>'+
-      '<div onclick="event.stopPropagation();openDetail(\''+s.id+'\')" style="flex:1;text-align:center;padding:7px 0;border-radius:8px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);font-size:10px;font-weight:700;cursor:pointer">Chart</div>'+
-      '<div onclick="event.stopPropagation();copyTrade(\''+s.id+'\')" style="flex:1;text-align:center;padding:7px 0;border-radius:8px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);font-size:10px;font-weight:700;cursor:pointer">Copy</div></div></div>';
+      '<div onclick="event.stopPropagation();toggleTrack(&#39;'+s.id+'&#39;,'+!!isT+')" style="flex:1;text-align:center;padding:7px 0;border-radius:8px;background:'+C.lime+';color:#000;font-size:10px;font-weight:700;cursor:pointer">'+(isT?'Tracking':'Track')+'</div>'+
+      '<div onclick="event.stopPropagation();openDetail(&#39;'+s.id+'&#39;)" style="flex:1;text-align:center;padding:7px 0;border-radius:8px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);font-size:10px;font-weight:700;cursor:pointer">Chart</div>'+
+      '<div onclick="event.stopPropagation();copyTrade(&#39;'+s.id+'&#39;)" style="flex:1;text-align:center;padding:7px 0;border-radius:8px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);font-size:10px;font-weight:700;cursor:pointer">Copy</div></div></div>';
   }
   if(!sigCount&&!state.signals.length)sigsHtml=emptyState('Waiting for market data...');
 
