@@ -1,7 +1,7 @@
 try{document.getElementById('app').innerHTML='<div style="padding:30px;color:rgba(255,255,255,0.4);text-align:center;font-size:13px;font-family:monospace">Loading...</div>';}catch(e){}
-window.onerror=function(m,u,l,c,err){try{document.getElementById('app').innerHTML='<div style="padding:30px;color:#EF4444;text-align:center;font-family:monospace;font-size:12px;line-height:1.5">JS Error: '+m+' line: '+l+'</div>';}catch(e){}};
+window.onerror=function(m,u,l,c,err){try{document.getElementById('app').innerHTML='<div style="padding:30px;color:#FF5252;text-align:center;font-family:monospace;font-size:12px;line-height:1.5">JS Error: '+m+' line: '+l+'</div>';}catch(e){}};
 
-var C={bg:"#000",surface:"#141416",white:"#FFF",text2:"rgba(255,255,255,0.35)",text3:"rgba(255,255,255,0.2)",lime:"#a3e635",limeSoft:"rgba(163,230,53,0.08)",limeBorder:"rgba(163,230,53,0.25)",red:"#FF453A",redSoft:"rgba(255,69,58,0.12)",orange:"#f97316",orangeSoft:"rgba(249,115,22,0.1)",blue:"#3b82f6",blueSoft:"rgba(59,130,246,0.1)",border:"rgba(255,255,255,0.06)"};
+var C={bg:"#050505",surface:"#151515",card:"#1A1A1A",white:"#FFF",text2:"#8E8E8E",text3:"#5F5F5F",lime:"#B7FF2A",limeSoft:"rgba(183,255,42,0.08)",limeBorder:"rgba(183,255,42,0.25)",red:"#FF5252",redSoft:"rgba(255,82,82,0.12)",orange:"#f97316",orangeSoft:"rgba(249,115,22,0.1)",blue:"#3b82f6",blueSoft:"rgba(59,130,246,0.1)",border:"rgba(255,255,255,0.06)"};
 
 function getCode(){try{return localStorage.getItem('qmr_code')||'';}catch(e){return '';}}
 function saveCode(c){try{localStorage.setItem('qmr_code',c);}catch(e){}}
@@ -12,8 +12,8 @@ function withCode(u){if(!u)return'';var c=getCode();if(!c)return u;return u+(u.i
 function fmt(v){if(v==null||v===undefined)return'-';var n=parseFloat(v);if(isNaN(n))return v;return n.toFixed(5).replace(/0+$/,'').replace(/\.$/,'');}
 function timeAgo(t){if(!t)return'';var n=Date.now(),d=new Date(t).getTime();if(isNaN(d))return'';var diff=n-d;if(diff<0)return'just now';var s=Math.floor(diff/1e3),m=Math.floor(s/60),h=Math.floor(m/60),d2=Math.floor(h/24);if(d2>0)return d2+'d ago';if(h>0)return h+'h ago';if(m>0)return m+'m ago';return s+'s ago';}
 function greeting(){var h=new Date().getHours();if(h<5)return'Late night';if(h<12)return'Good morning';if(h<18)return'Good afternoon';return'Good evening';}
-function emptyState(msg){return'<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center"><div style="font-size:28px;margin-bottom:12px;opacity:0.15">\u25CB</div><div style="font-size:13px;color:'+C.text2+';line-height:1.5;max-width:260px">'+msg+'</div></div>';}
-function showToast(msg){var d=document.createElement('div');d.textContent=msg;d.style.cssText='position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:'+C.surface+';border:0.5px solid '+C.border+';color:#fff;padding:10px 20px;border-radius:99px;font-size:12px;font-weight:600;z-index:9999;animation:fadeUp 0.2s ease';document.body.appendChild(d);setTimeout(function(){d.style.opacity='0';d.style.transition='opacity 0.3s';setTimeout(function(){d.remove();},300);},2000);}
+function emptyState(msg){return'<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center"><div style="font-size:28px;margin-bottom:12px;opacity:0.1">\u25CB</div><div style="font-size:13px;color:#8E8E8E;line-height:1.5;max-width:260px">'+msg+'</div></div>';}
+function showToast(msg){var d=document.createElement('div');d.textContent=msg;d.style.cssText='position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#151515;border:0.5px solid rgba(255,255,255,0.06);color:#FFF;padding:10px 20px;border-radius:99px;font-size:12px;font-weight:500;z-index:9999;box-shadow:0 4px 24px rgba(0,0,0,0.3);animation:fadeUp 0.2s ease';document.body.appendChild(d);setTimeout(function(){d.style.opacity='0';d.style.transition='opacity 0.3s';setTimeout(function(){d.remove();},300);},2000);}
 
 function icon(path,color,size){return '<svg width="'+(size||18)+'" height="'+(size||18)+'" viewBox="0 0 24 24" fill="none" stroke="'+color+'" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'+path+'</svg>';}
 var I={dash:'<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',journal:'<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M8 7h8M8 11h6"/>',pulse:'<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',intel:'<circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49M7.76 16.24a6 6 0 0 1 0-8.49M19.07 4.93a10 10 0 0 1 0 14.14M4.93 19.07a10 10 0 0 1 0-14.14"/>',gear:'<circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>'};
@@ -112,17 +112,15 @@ function calcPos(s){
 
 function overviewScreen(){
   var st=state.stats||{},ws=state.weeklyStats||{},m=state.myStats||state.stats||{};
-  var heroStat=function(v,u,c2){return'<div style="flex:1"><div class="count-up" style="font-size:20px;font-weight:800;letter-spacing:-0.02em;color:'+c2+'">'+v+'<span style="font-size:12px;font-weight:600;margin-left:1px">'+u+'</span></div><div style="font-size:8px;color:rgba(255,255,255,0.25);font-weight:500;text-transform:uppercase;letter-spacing:0.04em;margin-top:2px">'+(u==='R'?'Week':u==='%'?'WR':'Active')+'</div></div>';};
   var wr=st.winRate||0,tr=st.totalR||0;
   var hero= '<div class="hero">'+
-    '<div class="glow"></div><div class="glow-2"></div>'+
-    '<div style="font-size:11px;color:rgba(255,255,255,0.3);font-weight:600;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:4px;position:relative;z-index:1">'+greeting()+'</div>'+
-    '<div style="font-size:32px;font-weight:800;letter-spacing:-0.03em;line-height:1.05;margin-bottom:6px;position:relative;z-index:1;color:#FFF">SLAYERS</div>'+
-    '<div style="font-size:12px;color:rgba(255,255,255,0.3);font-weight:500;position:relative;z-index:1">'+tr+'R total \u00b7 '+wr+'% WR \u00b7 '+state.active.length+' active</div>'+
-    '<div style="display:flex;gap:16px;margin-top:14px;padding-top:14px;border-top:0.5px solid rgba(255,255,255,0.06);position:relative;z-index:1">'+
-    heroStat((ws.totalR>0?'+':'')+(ws.totalR||'0'),'R',C.lime)+
-    heroStat(state.active.length,'',C.white)+
-    heroStat((ws.winRate||wr),'%',C.lime)+
+    '<div class="glow-large"></div><div class="glow-small"></div>'+
+    '<div style="font-size:12px;color:#8E8E8E;font-weight:500;margin-bottom:6px;position:relative;z-index:1">'+greeting()+'</div>'+
+    '<div style="font-size:38px;font-weight:800;letter-spacing:-0.04em;line-height:1;margin-bottom:16px;position:relative;z-index:1;color:#FFF">SLAYERS.</div>'+
+    '<div style="display:flex;gap:24px;padding-top:16px;border-top:0.5px solid rgba(255,255,255,0.06);position:relative;z-index:1">'+
+    '<div><div class="count-up" style="font-size:24px;font-weight:700;color:'+C.lime+';letter-spacing:-0.02em">'+(ws.totalR>0?'+':'')+(ws.totalR||'0')+'<span style="font-size:14px;font-weight:600;color:#8E8E8E;margin-left:2px">R</span></div><div style="font-size:10px;color:#5F5F5F;font-weight:500;margin-top:2px">Week</div></div>'+
+    '<div><div class="count-up" style="font-size:24px;font-weight:700;color:#FFF;letter-spacing:-0.02em">'+(ws.winRate||wr)+'<span style="font-size:14px;font-weight:600;color:#8E8E8E;margin-left:2px">%</span></div><div style="font-size:10px;color:#5F5F5F;font-weight:500;margin-top:2px">Win Rate</div></div>'+
+    '<div><div class="count-up" style="font-size:24px;font-weight:700;color:#FFF;letter-spacing:-0.02em">'+state.active.length+'<span style="font-size:14px;font-weight:600;color:#8E8E8E;margin-left:2px"></span></div><div style="font-size:10px;color:#5F5F5F;font-weight:500;margin-top:2px">Active</div></div>'+
     '</div></div>';
 
   var mc=miniChart(state.journal);
@@ -134,8 +132,8 @@ function overviewScreen(){
       var p=confl[ci],c=p.signalDir!=='NONE'?(p.signalDir==='BULLISH'?C.lime:C.red):p.weeklyBias==='BULLISH'?C.lime:p.weeklyBias==='BEARISH'?C.red:C.text2;
       mp+='<span class="pill-chip" style="background:'+C.surface+';border:0.5px solid '+C.border+';color:'+C.text2+'"><span style="width:5px;height:5px;border-radius:50%;background:'+c+';flex-shrink:0"></span>'+(p.name||p.id)+' <span style="font-size:8px;opacity:0.5">'+(p.signalDir!=='NONE'?'4H':'W')+'</span></span>';
     }
-    mp='<div style="display:flex;align-items:center;justify-content:space-between;margin:20px 0 10px">'+
-      '<span style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.35);letter-spacing:0.08em;text-transform:uppercase">Market Pulse</span>'+
+    mp='<div style="display:flex;align-items:center;justify-content:space-between;margin:24px 0 12px">'+
+      '<span style="font-size:12px;font-weight:600;color:#8E8E8E;letter-spacing:0.04em;text-transform:uppercase">Market Pulse</span>'+
       '<span style="font-size:10px;color:'+C.lime+';opacity:0.6;font-weight:600">'+confl.length+' pairs</span></div>'+
       '<div class="h-scroll">'+mp+'</div>';
   }
@@ -159,15 +157,15 @@ function overviewScreen(){
         '<div style="height:2px;border-radius:1px;background:rgba(255,255,255,0.06);margin:6px 0;overflow:hidden"><div style="height:100%;background:'+col+';width:'+pct+'%;animation:fillBar 0.8s cubic-bezier(.16,1,.3,1)"></div></div>'+
         '<div style="display:flex;justify-content:space-between;font-size:8px;color:rgba(255,255,255,0.3)"><span>'+timeAgo(t.entryTime)+'</span><span style="color:'+col+';font-weight:600">'+(t.tp1Fired?'TP1 \u2713':t.beFired?'BE':t.slFired?'Stopped':'Active')+'</span></div></div>';
     }
-    if(myAct.length)actCards='<div style="display:flex;align-items:center;justify-content:space-between;margin:20px 0 10px">'+
-      '<span style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.35);letter-spacing:0.08em;text-transform:uppercase">Active Trades</span>'+
+    if(myAct.length)actCards='<div style="display:flex;align-items:center;justify-content:space-between;margin:24px 0 12px">'+
+      '<span style="font-size:12px;font-weight:600;color:#8E8E8E;letter-spacing:0.04em;text-transform:uppercase">Active Trades</span>'+
       '<span style="font-size:10px;color:'+C.lime+';opacity:0.6;font-weight:600">'+myAct.length+' active</span></div>'+
       '<div class="h-scroll">'+actCards+'</div>';
   }
 
   var filterIcon=state.showFilters?'\u25B2':'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="'+C.text2+'" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="20" y2="12"/><line x1="12" y1="18" x2="20" y2="18"/></svg>';
-  var sigHeader='<div style="display:flex;align-items:center;justify-content:space-between;margin:20px 0 10px">'+
-    '<span style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.35);letter-spacing:0.08em;text-transform:uppercase">Recent Signals</span>'+
+  var sigHeader='<div style="display:flex;align-items:center;justify-content:space-between;margin:24px 0 12px">'+
+    '<span style="font-size:12px;font-weight:600;color:#8E8E8E;letter-spacing:0.04em;text-transform:uppercase">Recent Signals</span>'+
     '<span onclick="state.showFilters=!state.showFilters;render()" style="font-size:10px;color:'+C.lime+';opacity:0.6;font-weight:600;cursor:pointer">'+filterIcon+' Filter</span></div>';
 
   var filterHtml='';
@@ -198,7 +196,7 @@ function overviewScreen(){
     var tc=isE?C.white:'rgba(255,255,255,0.5)';
     var col=isB?C.lime:C.red,bg=isB?C.limeSoft:C.redSoft;
     var isN=s.time&&(Date.now()-new Date(s.time).getTime())<300000;
-    var criteriaChips=(s.criteria||[]).map(function(c){return '<span style="font-size:8px;padding:3px 6px;border-radius:3px;background:rgba(163,230,53,0.08);color:'+C.lime+';font-weight:600">'+c+'</span>';}).join('');
+    var criteriaChips=(s.criteria||[]).map(function(c){return '<span style="font-size:8px;padding:3px 8px;border-radius:6px;background:rgba(183,255,42,0.06);color:'+C.lime+';font-weight:600;border:0.5px solid rgba(183,255,42,0.15)">'+c+'</span>';}).join('');
     var isT=s.isTracked;
     sigsHtml+='<div class="card'+(isN?' flash-row':'')+'" style="cursor:pointer;border-left:2.5px solid '+(isD?C.orange:tc)+'" onclick="openDetail(&#39;'+s.id+'&#39;)">'+
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">'+
@@ -219,9 +217,9 @@ function overviewScreen(){
       (s.dailyPOI?'<div style="font-size:10px;color:'+C.lime+';font-weight:600;margin-top:4px">\uD83C\uDFDB '+s.dailyPOI+'</div>':'')+
       (s.rsiDivergence?'<div style="font-size:10px;color:'+C.orange+';font-weight:600;margin-top:2px">\uD83D\uDD25 '+s.rsiDivergence+'</div>':'')+
       '<div style="display:flex;gap:6px;padding-top:8px;border-top:0.5px solid rgba(255,255,255,0.04);margin-top:8px">'+
-      '<div onclick="event.stopPropagation();toggleTrack(&#39;'+s.id+'&#39;,'+!!isT+')" style="flex:1;text-align:center;padding:7px 0;border-radius:8px;background:'+C.lime+';color:#000;font-size:10px;font-weight:700;cursor:pointer">'+(isT?'Tracking':'Track')+'</div>'+
-      '<div onclick="event.stopPropagation();openDetail(&#39;'+s.id+'&#39;)" style="flex:1;text-align:center;padding:7px 0;border-radius:8px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);font-size:10px;font-weight:700;cursor:pointer">Chart</div>'+
-      '<div onclick="event.stopPropagation();copyTrade(&#39;'+s.id+'&#39;)" style="flex:1;text-align:center;padding:7px 0;border-radius:8px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);font-size:10px;font-weight:700;cursor:pointer">Copy</div></div></div>';
+      '<div onclick="event.stopPropagation();toggleTrack(&#39;'+s.id+'&#39;,'+!!isT+')" style="flex:1;text-align:center;padding:8px 0;border-radius:10px;background:'+C.lime+';color:#050505;font-size:10px;font-weight:700;cursor:pointer">'+(isT?'Tracking':'Track')+'</div>'+
+      '<div onclick="event.stopPropagation();openDetail(&#39;'+s.id+'&#39;)" style="flex:1;text-align:center;padding:8px 0;border-radius:10px;background:rgba(255,255,255,0.04);color:#5F5F5F;font-size:10px;font-weight:600;cursor:pointer">Chart</div>'+
+      '<div onclick="event.stopPropagation();copyTrade(&#39;'+s.id+'&#39;)" style="flex:1;text-align:center;padding:8px 0;border-radius:10px;background:rgba(255,255,255,0.04);color:#5F5F5F;font-size:10px;font-weight:600;cursor:pointer">Copy</div></div></div>';
   }
   if(!sigCount&&!state.signals.length)sigsHtml=emptyState('Waiting for market data...');
 
@@ -233,18 +231,15 @@ function overviewScreen(){
 
 function navBar(){
   var tabs=['dash','journal','scalp','intel','settings'];
-  var labels={dash:'Dashboard',journal:'Journal',scalp:'Scalp',intel:'Intel',settings:'Settings'};
   var icons={dash:I.dash,journal:I.journal,scalp:I.pulse,intel:I.intel,settings:I.gear};
   var btns='';
   for(var i=0;i<tabs.length;i++){
     var t=tabs[i],a=state.tab===t;
-    var c=a?'#000':'rgba(255,255,255,0.35)';
-    btns+='<button class="nav-btn" onclick="setTab(&#39;'+t+'&#39;)" style="background:'+(a?C.lime:'transparent')+'">'+
-      icon(icons[t],c,16)+
-      '<span style="font-size:7px;font-weight:700;color:'+c+';letter-spacing:0.02em">'+labels[t]+'</span></button>';
+    var c=a?'#050505':'#5F5F5F';
+    btns+='<button class="nav-btn'+(a?' active':'')+'" onclick="setTab(&#39;'+t+'&#39;)">'+
+      icon(icons[t],c,18)+'</button>';
   }
-  return '<div style="padding:8px 16px calc(8px + env(safe-area-inset-bottom));background:'+C.bg+'">'+
-    '<div style="background:'+C.surface+';border-radius:99px;padding:4px;display:flex;border:0.5px solid '+C.border+'">'+btns+'</div></div>';
+  return '<div class="nav-wrap"><div class="nav-inner">'+btns+'</div></div>';
 }
 
 function scalpScreen(){
@@ -269,8 +264,8 @@ function scalpScreen(){
   }).join('');
   return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+'">'+
     '<div style="flex:1;overflow-y:auto;padding:calc(30px + env(safe-area-inset-top)) 16px 0;-webkit-overflow-scrolling:touch">'+
-    '<div style="font-size:22px;font-weight:800;color:#FFF;margin-bottom:4px">Scalp</div>'+
-    '<div style="font-size:11px;color:'+C.text2+';margin-bottom:12px">Session momentum + FVG breakout</div>'+
+    '<div style="font-size:22px;font-weight:700;color:#FFF;margin-bottom:2px">Scalp</div>'+
+    '<div style="font-size:12px;color:#5F5F5F;margin-bottom:20px">Session momentum + FVG breakout</div>'+
     statsHtml+(sigs||emptyState('No scalp signals yet'))+
     '</div>'+navBar()+'</div>';
 }
@@ -297,7 +292,7 @@ function journalScreen(){
   return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+'">'+
     '<div style="flex:1;overflow-y:auto;padding:calc(30px + env(safe-area-inset-top)) 16px 0;-webkit-overflow-scrolling:touch">'+
     '<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">'+
-    '<span style="font-size:22px;font-weight:800;color:#FFF">Journal</span>'+
+    '<span style="font-size:22px;font-weight:700;color:#FFF">Journal</span>'+
     '<span style="font-size:10px;color:'+C.lime+';font-weight:600">'+wins.length+'W</span>'+
     '<span style="font-size:10px;color:'+C.red+';font-weight:600">'+losses.length+'L</span>'+
     '<span style="font-size:10px;color:'+C.text2+';font-weight:600">'+bes.length+'BE</span>'+
@@ -332,8 +327,8 @@ function intelScreen(){
   }).join('');
   return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+'">'+
     '<div style="flex:1;overflow-y:auto;padding:calc(30px + env(safe-area-inset-top)) 16px 0;-webkit-overflow-scrolling:touch">'+
-    '<div style="font-size:22px;font-weight:800;color:#FFF;margin-bottom:4px">Intel</div>'+
-    '<div style="font-size:11px;color:'+C.text2+';margin-bottom:10px">Market news & analysis</div>'+
+    '<div style="font-size:22px;font-weight:700;color:#FFF;margin-bottom:2px">Intel</div>'+
+    '<div style="font-size:12px;color:#5F5F5F;margin-bottom:16px">Market news & analysis</div>'+
     (catChips?'<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:4px;scrollbar-width:none">'+catChips+'</div>':'')+
     (items||emptyState('No news available'))+
     '</div>'+navBar()+'</div>';
@@ -351,20 +346,20 @@ function settingsScreen(){
   var pushBtns='';
   if(window.pushStatus==='subscribed')pushBtns='<div style="font-size:11px;color:'+C.lime+';text-align:center;padding:10px;font-weight:600">\u2713 Push active</div>';
   else if(window.pushStatus==='denied')pushBtns='<div style="font-size:11px;color:'+C.red+';text-align:center;padding:10px">Push blocked</div>';
-  else if(typeof Notification!=='undefined'&&Notification.permission!=='denied')pushBtns='<button onclick="enablePush()" style="width:100%;background:'+C.lime+';border:none;border-radius:10px;padding:12px 0;color:#000;font-weight:700;font-size:13px;cursor:pointer;margin-top:8px;font-family:inherit">Enable Push</button>';
+  else if(typeof Notification!=='undefined'&&Notification.permission!=='denied')pushBtns='<button onclick="enablePush()" style="width:100%;background:#B7FF2A;border:none;border-radius:14px;padding:14px 0;color:#050505;font-weight:600;font-size:13px;cursor:pointer;margin-top:12px;font-family:inherit;box-shadow:0 0 20px rgba(183,255,42,0.2)">Enable Push</button>';
   return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+'">'+
     '<div style="flex:1;overflow-y:auto;padding:calc(30px + env(safe-area-inset-top)) 16px 0;-webkit-overflow-scrolling:touch">'+
-    '<div style="font-size:22px;font-weight:800;color:#FFF;margin-bottom:4px">Settings</div>'+
-    '<div style="font-size:11px;color:'+C.text2+';margin-bottom:16px">v10</div>'+
-    '<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:700;color:'+C.text2+';text-transform:uppercase;margin-bottom:6px;padding:0 4px;letter-spacing:0.06em">Notifications</div>'+
-    '<div style="background:#141416;border-radius:14px;overflow:hidden">'+
+    '<div style="font-size:22px;font-weight:700;color:#FFF;margin-bottom:2px">Settings</div>'+
+    '<div style="font-size:12px;color:#5F5F5F;margin-bottom:20px">v10</div>'+
+    '<div style="margin-bottom:16px"><div style="font-size:10px;font-weight:600;color:#5F5F5F;text-transform:uppercase;margin-bottom:8px;padding:0 4px;letter-spacing:0.04em">Notifications</div>'+
+    '<div style="background:#151515;border-radius:22px;overflow:hidden;border:0.5px solid rgba(255,255,255,0.04)">'+
     tp('tradeAlerts','Trade Alerts','New QMR signals')+
     tp('scalpAlerts','Scalp Alerts','New scalp signals')+
     tp('newsAlerts','News Alerts','Daily news digest')+'</div>'+pushBtns+'</div>'+
-    '<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:700;color:'+C.text2+';text-transform:uppercase;margin-bottom:6px;padding:0 4px;letter-spacing:0.06em">Account</div>'+
-    '<div style="background:#141416;border-radius:14px;overflow:hidden">'+
-    '<button onclick="logout()" style="width:100%;background:transparent;border:none;padding:14px 16px;color:'+C.red+';font-size:13px;font-weight:600;cursor:pointer;text-align:left;font-family:inherit">Disconnect / Logout</button></div></div>'+
-    '<div style="text-align:center;padding:20px;color:'+C.text3+';font-size:9px">Made by roz & n8s \u00b7 QMR</div>'+
+    '<div style="margin-bottom:16px"><div style="font-size:10px;font-weight:600;color:#5F5F5F;text-transform:uppercase;margin-bottom:8px;padding:0 4px;letter-spacing:0.04em">Account</div>'+
+    '<div style="background:#151515;border-radius:22px;overflow:hidden;border:0.5px solid rgba(255,255,255,0.04)">'+
+    '<button onclick="logout()" style="width:100%;background:transparent;border:none;padding:16px 16px;color:#FF5252;font-size:13px;font-weight:500;cursor:pointer;text-align:left;font-family:inherit">Disconnect / Logout</button></div></div>'+
+    '<div style="text-align:center;padding:24px;color:#5F5F5F;font-size:9px">Made by roz & n8s \u00b7 QMR</div>'+
     '</div>'+navBar()+'</div>';
 }
 
@@ -416,10 +411,10 @@ function detailPage(s){
     (!isD?s.tp2?'<div style="display:flex;justify-content:space-between;padding:8px 0"><span style="color:'+C.text2+'">TP2</span><span style="font-weight:700;color:'+C.lime+'">'+fmt(s.tp2)+'</span></div>':'':'')+
     '</div>'+
     (isD?'<div style="font-size:13px;font-weight:700;color:#FFF;margin:12px 0 8px">Track Your Entry</div>'+
-    '<button onclick="toggleTrack(&#39;'+s.id+'-agg&#39;,'+!!s.isTrackedAgg+')" style="width:100%;background:'+(s.isTrackedAgg?C.lime:C.surface)+';border:0.5px solid '+(s.isTrackedAgg?C.lime:C.border)+';border-radius:10px;padding:12px 0;font-size:12px;font-weight:700;cursor:pointer;color:'+(s.isTrackedAgg?'#000':'rgba(255,255,255,0.6)')+';margin-bottom:8px;font-family:inherit">'+(s.isTrackedAgg?'\u2713 Tracking aggressive at '+fmt(s.aggEntry):'\u26A1 Aggressive entry at '+fmt(s.aggEntry))+'</button>'+
-    (s.consEntry?'<button onclick="toggleTrack(&#39;'+s.id+'-cons&#39;,'+!!s.isTrackedCons+')" style="width:100%;background:'+(s.isTrackedCons?C.lime:C.surface)+';border:0.5px solid '+(s.isTrackedCons?C.lime:C.border)+';border-radius:10px;padding:12px 0;font-size:12px;font-weight:700;cursor:pointer;color:'+(s.isTrackedCons?'#000':'rgba(255,255,255,0.6)')+';margin-bottom:12px;font-family:inherit">'+(s.isTrackedCons?'\u2713 Conservative at '+fmt(s.consEntry):'\uD83C\uDFAF Conservative at '+fmt(s.consEntry))+'</button>':'')
-    :'<button onclick="toggleTrack(&#39;'+s.id+'&#39;,'+!!s.isTracked+')" style="width:100%;background:'+(s.isTracked?C.lime:C.surface)+';border:0.5px solid '+(s.isTracked?C.lime:C.border)+';border-radius:10px;padding:12px 0;font-size:12px;font-weight:700;cursor:pointer;color:'+(s.isTracked?'#000':'rgba(255,255,255,0.6)')+';margin-bottom:12px;font-family:inherit">'+(s.isTracked?"\u2713 Tracking – you'll get updates":"I'm in this trade")+'</button>')+
-    '<button onclick="toggleCalc()" style="width:100%;background:'+C.lime+';border:none;border-radius:10px;padding:12px 0;color:#000;font-weight:700;font-size:12px;cursor:pointer;margin-bottom:12px;font-family:inherit">'+(state.showCalc?'Close Calculator':'Calculate Position Size')+'</button>'+
+    '<button onclick="toggleTrack(&#39;'+s.id+'-agg&#39;,'+!!s.isTrackedAgg+')" style="width:100%;background:'+(s.isTrackedAgg?C.lime:C.surface)+';border:0.5px solid '+(s.isTrackedAgg?C.lime:C.border)+';border-radius:12px;padding:14px 0;font-size:12px;font-weight:600;cursor:pointer;color:'+(s.isTrackedAgg?'#050505':'#5F5F5F')+';margin-bottom:10px;font-family:inherit">'+(s.isTrackedAgg?'\u2713 Tracking aggressive at '+fmt(s.aggEntry):'\u26A1 Aggressive entry at '+fmt(s.aggEntry))+'</button>'+
+    (s.consEntry?'<button onclick="toggleTrack(&#39;'+s.id+'-cons&#39;,'+!!s.isTrackedCons+')" style="width:100%;background:'+(s.isTrackedCons?C.lime:C.surface)+';border:0.5px solid '+(s.isTrackedCons?C.lime:C.border)+';border-radius:12px;padding:14px 0;font-size:12px;font-weight:600;cursor:pointer;color:'+(s.isTrackedCons?'#050505':'#5F5F5F')+';margin-bottom:12px;font-family:inherit">'+(s.isTrackedCons?'\u2713 Conservative at '+fmt(s.consEntry):'\uD83C\uDFAF Conservative at '+fmt(s.consEntry))+'</button>':'')
+    :'<button onclick="toggleTrack(&#39;'+s.id+'&#39;,'+!!s.isTracked+')" style="width:100%;background:'+(s.isTracked?C.lime:C.surface)+';border:0.5px solid '+(s.isTracked?C.lime:C.border)+';border-radius:12px;padding:14px 0;font-size:12px;font-weight:600;cursor:pointer;color:'+(s.isTracked?'#050505':'#5F5F5F')+';margin-bottom:16px;font-family:inherit">'+(s.isTracked?"\u2713 Tracking – you'll get updates":"I'm in this trade")+'</button>')+
+    '<button onclick="toggleCalc()" style="width:100%;background:#0A0A0A;border:0.5px solid rgba(255,255,255,0.04);border-radius:12px;padding:14px 0;color:#8E8E8E;font-weight:600;font-size:12px;cursor:pointer;margin-bottom:16px;font-family:inherit">'+(state.showCalc?'Close Calculator':'Calculate Position Size')+'</button>'+
     (state.showCalc?'<div style="background:'+C.surface+';border:0.5px solid '+C.border+';border-radius:14px;padding:14px;margin-bottom:16px">'+
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'+
       '<div><span style="color:'+C.text2+';font-size:9px">Balance ($)</span><input id="pc-bal" type="number" value="1000" style="width:100%;background:rgba(255,255,255,0.05);border:0.5px solid '+C.border+';border-radius:6px;padding:8px 10px;color:#FFF;font-size:12px;box-sizing:border-box;outline:none;font-family:inherit"></div>'+
@@ -432,22 +427,22 @@ function detailPage(s){
     '<div class="card" style="margin-bottom:16px">'+crit+'</div>'+
     (s.counterTrend?'<div style="background:'+C.redSoft+';border:0.5px solid '+C.red+'55;border-radius:14px;padding:14px;margin-bottom:16px;font-size:12px;color:'+C.red+';font-weight:600">\u26A0 Counter-trend \u2014 '+(s.htfBias||'')+'. Reduce size.</div>':'')+
     (s.rsiDivergence?'<div style="background:'+C.orangeSoft+';border:0.5px solid '+C.orange+'55;border-radius:14px;padding:14px;margin-bottom:16px;font-size:12px;color:'+C.orange+';font-weight:600">\uD83D\uDD25 '+s.rsiDivergence+'</div>':'')+
-    '<button onclick="closeDetail()" style="width:100%;background:'+C.surface+';border:0.5px solid '+C.border+';border-radius:10px;padding:12px 0;color:'+C.text2+';font-size:12px;cursor:pointer;font-family:inherit">\u2190 Back to Dashboard</button></div></div>';
+    '<button onclick="closeDetail()" style="width:100%;background:#0A0A0A;border:0.5px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px 0;color:#5F5F5F;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:24px;font-family:inherit">\u2190 Back to Dashboard</button></div></div>';
 }
 
 function renderLogin(m){
   var app=document.getElementById('app');
-  app.innerHTML='<div style="min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom));text-align:center;background:#000;color:#FFF">'+
-    '<div style="font-weight:900;font-size:34px;letter-spacing:-1px;text-transform:uppercase;margin-bottom:4px">'+
-    '<span style="color:#FFF">THE </span><span style="color:#A3E635;text-shadow:0 0 40px rgba(163,230,53,0.33)">SLAYERS</span></div>'+
-    '<div style="color:#8E8E93;font-size:12px;margin-bottom:32px">v10</div>'+
-    '<div style="background:#141416;border-radius:20px;width:100%;max-width:300px;padding:28px 24px;border:0.5px solid rgba(163,230,53,0.2)">'+
-    '<div style="font-size:14px;font-weight:700;color:#FFF;margin-bottom:12px">Enter your access code</div>'+
-    '<input id="ci" type="text" placeholder="SLAY-XXXXXX" autocapitalize="characters" autocomplete="off" style="width:100%;background:rgba(0,0,0,0.35);border:0.5px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px;color:#FFF;font-size:16px;text-align:center;letter-spacing:2px;margin-bottom:14px;outline:none;font-family:monospace;box-sizing:border-box"/>'+
-    (m?'<div style="color:#EF4444;font-size:12px;margin-bottom:14px">'+m+'</div>':'')+
-    '<button id="lb" style="width:100%;background:#A3E635;border:none;border-radius:12px;padding:15px 0;color:#000;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit">Unlock</button>'+
-    '<div id="ls" style="color:#8E8E93;font-size:11px;margin-top:14px"></div></div>'+
-    '<div style="color:#48484A;font-size:11px;margin-top:40px">Don\'t have a code? Message Rexroz on Telegram.</div></div>';
+  app.innerHTML='<div style="min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom));text-align:center;background:#050505;color:#FFF">'+
+    '<div style="font-weight:800;font-size:36px;letter-spacing:-1px;text-transform:uppercase;margin-bottom:2px">'+
+    '<span style="color:#FFF">THE </span><span style="color:#B7FF2A;text-shadow:0 0 50px rgba(183,255,42,0.3)">SLAYERS.</span></div>'+
+    '<div style="color:#5F5F5F;font-size:12px;font-weight:500;margin-bottom:40px">Signal Center</div>'+
+    '<div style="background:#151515;border-radius:24px;width:100%;max-width:300px;padding:32px 24px;border:0.5px solid rgba(183,255,42,0.12);box-shadow:0 8px 40px rgba(0,0,0,0.4)">'+
+    '<div style="font-size:14px;font-weight:600;color:#FFF;margin-bottom:16px">Access code</div>'+
+    '<input id="ci" type="text" placeholder="SLAY-XXXXXX" autocapitalize="characters" autocomplete="off" style="width:100%;background:#0A0A0A;border:0.5px solid rgba(255,255,255,0.06);border-radius:14px;padding:14px;color:#FFF;font-size:16px;text-align:center;letter-spacing:2px;margin-bottom:16px;outline:none;font-family:monospace;box-sizing:border-box"/>'+
+    (m?'<div style="color:#FF5252;font-size:12px;margin-bottom:14px">'+m+'</div>':'')+
+    '<button id="lb" style="width:100%;background:#B7FF2A;border:none;border-radius:14px;padding:16px 0;color:#050505;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit;box-shadow:0 0 20px rgba(183,255,42,0.2)">Unlock</button>'+
+    '<div id="ls" style="color:#5F5F5F;font-size:11px;margin-top:16px"></div></div>'+
+    '<div style="color:#5F5F5F;font-size:11px;margin-top:48px">Don\'t have a code? Message Rexroz on Telegram.</div></div>';
   document.getElementById('lb').onclick=attemptLogin;
   document.getElementById('ci').addEventListener('keypress',function(e){if(e.key==='Enter')attemptLogin();});
 }
@@ -549,7 +544,7 @@ document.addEventListener('touchstart',function(e){
   if(!ptr.indicator){
     ptr.indicator=document.createElement('div');
     ptr.indicator.textContent='\u2193 Refresh';
-    ptr.indicator.style.cssText='position:fixed;top:calc(12px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);color:'+C.lime+';font-size:11px;font-weight:700;z-index:999;opacity:0;transition:opacity 0.15s;pointer-events:none';
+    ptr.indicator.style.cssText='position:fixed;top:calc(12px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);color:#B7FF2A;font-size:11px;font-weight:600;z-index:999;opacity:0;transition:opacity 0.15s;pointer-events:none';
     document.body.appendChild(ptr.indicator);
   }
 },{passive:true});
