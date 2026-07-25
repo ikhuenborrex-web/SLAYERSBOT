@@ -547,5 +547,5 @@ document.addEventListener('click',function(e){
 });
 document.addEventListener('focusin',function(e){var t=e.target.tagName;if(t==='INPUT'||t==='TEXTAREA'||t==='SELECT')state.userBusy=true;});
 document.addEventListener('focusout',function(e){var t=e.target.tagName;if(t==='INPUT'||t==='TEXTAREA'||t==='SELECT')setTimeout(function(){state.userBusy=false;},200);});
-if(getCode()){fetchAll();}else{renderLogin();}
+if(getCode()){render();fetchAll();}else{renderLogin();}
 setInterval(function(){if(getCode())fetchAll(true);},120000);
