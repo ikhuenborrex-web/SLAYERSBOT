@@ -1722,7 +1722,11 @@ app.use((req,res,next)=>{
 // Apply rate limiting to all /api/ routes
 app.use('/api',rlMiddleware(60,'api')); // 60 req/min general cap
 app.use('/api/member/stats',rlMiddleware(10,'auth')); // tighter on login
-app.use('/app', express.static(path.join(__dirname, 'public_app')));
+app.use('/app', express.static(path.join(__dirname, 'public_app'),{
+  setHeaders: function(res,path){
+    if(path.endsWith('.html')||path.endsWith('.js'))res.set('Cache-Control','no-cache, no-store, must-revalidate');
+  }
+}));
 app.use('/admin', express.static(path.join(__dirname, 'public_admin')));
 app.post('/api/admin/login',(req,res)=>{
   if(!ADMIN_PASSWORD)return res.status(500).json({error:'Admin password not configured on server'});
