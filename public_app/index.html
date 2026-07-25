@@ -38,7 +38,7 @@
   .glow-small{position:absolute;bottom:-60px;left:-60px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(183,255,42,.04),transparent 70%);pointer-events:none;animation:drift2 30s ease-in-out infinite reverse}
 
   /* ===== FLOATING GLASS NAV ===== */
-  .nav-wrap{position:absolute;bottom:calc(24px + env(safe-area-inset-bottom));left:0;right:0;display:flex;justify-content:center;pointer-events:none;z-index:10}
+  .nav-wrap{position:absolute;bottom:calc(10px + env(safe-area-inset-bottom));left:0;right:0;display:flex;justify-content:center;pointer-events:none;z-index:10}
   .nav-inner{width:88%;max-width:340px;height:72px;border-radius:999px;display:flex;align-items:center;justify-content:space-around;padding:0 8px;position:relative;background:rgba(20,20,20,0.45);backdrop-filter:blur(30px) saturate(180%);-webkit-backdrop-filter:blur(30px) saturate(180%);box-shadow:0 12px 40px rgba(0,0,0,0.45),0 0 30px rgba(183,255,42,0.04);border:1px solid rgba(255,255,255,0.10);pointer-events:auto;overflow:visible}
   .nav-inner::before{content:'';position:absolute;top:0;left:8%;right:8%;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.10),transparent);border-radius:999px}
   .nav-inner::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;border-radius:999px;background:linear-gradient(180deg,rgba(255,255,255,0.03) 0%,transparent 50%);pointer-events:none}

@@ -544,9 +544,9 @@ function journalScreen(){
   timeHtml+='</div>';
 
   // ====== HEADER ======
-  var header='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0">'+
+  var header='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'+
     '<div><div style="font-size:24px;font-weight:800;color:#FFF;letter-spacing:-0.04em">Journal</div>'+
-    '<div style="font-size:11px;color:#5F5F5F;margin-top:2px">Every trade. Every lesson.</div></div>'+
+    '<div style="font-size:11px;color:#5F5F5F;margin-top:4px">Every trade. Every lesson.</div></div>'+
     '<div></div></div>';
 
   // ====== EQUITY HERO ======
