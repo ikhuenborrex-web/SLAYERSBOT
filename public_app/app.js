@@ -460,8 +460,8 @@ function detailPage(s){
   var trackBtnShad=s.isTracked?'none':'0 0 30px rgba(183,255,42,0.12)';
 
   // Mascot watermark
-  var mascot='<div style="position:absolute;bottom:0;right:0;width:100px;height:120px;opacity:0.08;pointer-events:none;overflow:hidden">'+
-    '<img src="/app/mascot.png" style="width:100%;height:100%;object-fit:contain;display:block">'+
+  var mascot='<div style="position:absolute;bottom:0;right:0;width:120px;height:140px;opacity:0.18;pointer-events:none;overflow:hidden">'+
+    '<img src="/app/mascot.png" style="width:100%;height:100%;object-fit:contain;display:block;filter:brightness(1.4)">'+
     '</div>';
 
   // Chart image
