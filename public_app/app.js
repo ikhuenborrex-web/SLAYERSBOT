@@ -411,8 +411,8 @@ function overviewScreen(){
   }
   if(!sigCount&&!state.signals.length)sigsHtml=emptyState('Waiting for market data...');
 
-  return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+'">'+
-    '<div style="flex:1;overflow-y:auto;padding:calc(30px + env(safe-area-inset-top)) 16px 0;-webkit-overflow-scrolling:touch">'+
+  return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+';position:relative">'+
+    '<div style="flex:1;overflow-y:auto;padding:calc(30px + env(safe-area-inset-top)) 16px calc(100px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch">'+
       hero+mc+mp+actCards+sigHeader+filterHtml+sigsHtml+
     '</div>'+navBar()+'</div>';
 }
@@ -420,14 +420,18 @@ function overviewScreen(){
 function navBar(){
   var tabs=['dash','journal','scalp','intel','settings'];
   var icons={dash:I.dash,journal:I.journal,scalp:I.pulse,intel:I.intel,settings:I.gear};
-  var btns='';
+  var labels={dash:'Dash',journal:'Journal',scalp:'Scalp',intel:'Intel',settings:'Settings'};
+  var html='<div class="nav-wrap"><div class="nav-inner">'+
+    '<div class="nav-indicator" id="nvi" style="left:8px"></div>';
   for(var i=0;i<tabs.length;i++){
     var t=tabs[i],a=state.tab===t;
-    var c=a?'#050505':'#5F5F5F';
-    btns+='<button class="nav-btn'+(a?' active':'')+'" onclick="setTab(&#39;'+t+'&#39;)">'+
-      icon(icons[t],c,18)+'</button>';
+    var c=a?'#B7FF2A':'rgba(255,255,255,0.65)';
+    var s=a?'scale(1.12)':'scale(1)';
+    html+='<button class="nav-btn'+(a?' active':'')+'" data-tab="'+t+'" onclick="setTab(\''+t+'\')" style="transform:'+s+'">'+
+      '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="'+c+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+icons[t]+'</svg>'+
+      '<span class="label" style="color:'+c+'">'+labels[t]+'</span></button>';
   }
-  return '<div class="nav-wrap"><div class="nav-inner">'+btns+'</div></div>';
+  return html+'</div></div>';
 }
 
 function scalpScreen(){
@@ -450,8 +454,8 @@ function scalpScreen(){
       '<span style="font-size:8px;color:'+C.text3+'">'+timeAgo(s.time)+'</span>'+
       '<button onclick="event.stopPropagation();toggleTrack(&#39;'+s.id+'&#39;,'+!!(s.isTracked)+')" style="display:inline-flex;align-items:center;gap:3px;background:'+(s.isTracked?C.limeSoft:C.surface)+';border:0.5px solid '+(s.isTracked?C.lime:C.border)+';border-radius:99px;padding:3px 10px;font-size:8px;color:'+(s.isTracked?C.lime:C.text2)+';cursor:pointer;font-family:inherit;font-weight:600">'+icon(I.crosshair,s.isTracked?C.lime:C.text2,10)+(s.isTracked?'Tracking':'Track')+'</button></div></div>';
   }).join('');
-  return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+'">'+
-    '<div style="flex:1;overflow-y:auto;padding:calc(30px + env(safe-area-inset-top)) 16px 0;-webkit-overflow-scrolling:touch">'+
+  return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+';position:relative">'+
+    '<div style="flex:1;overflow-y:auto;padding:calc(30px + env(safe-area-inset-top)) 16px calc(100px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch">'+
     '<div style="font-size:22px;font-weight:700;color:#FFF;margin-bottom:2px">Scalp</div>'+
     '<div style="font-size:12px;color:#5F5F5F;margin-bottom:20px">Session momentum + FVG breakout</div>'+
     statsHtml+(sigs||emptyState('No scalp signals yet'))+
@@ -659,8 +663,8 @@ function journalScreen(){
       '<button onclick="setTab(\'dash\')" style="margin-top:20px;background:#B7FF2A;border:none;border-radius:14px;padding:14px 32px;color:#090909;font-weight:600;font-size:13px;font-family:inherit;cursor:pointer;box-shadow:0 0 24px rgba(183,255,42,0.15)">Start Trading</button></div>';
   }
 
-  return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+'">'+
-    '<div style="flex:1;overflow-y:auto;padding:calc(34px + env(safe-area-inset-top)) 18px 0;-webkit-overflow-scrolling:touch">'+
+  return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+';position:relative">'+
+    '<div style="flex:1;overflow-y:auto;padding:calc(34px + env(safe-area-inset-top)) 18px calc(100px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch">'+
       header+timeHtml+equityHero+statsHtml+tabHtml+(cardsHtml||empty)+
     '</div>'+navBar()+'</div>';
 }
@@ -919,8 +923,8 @@ function intelScreen(){
     (items||emptyState('No news for this category'))+
     '<div style="height:20px"></div>';
 
-  return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+'">'+
-    '<div style="flex:1;overflow-y:auto;padding:calc(34px + env(safe-area-inset-top)) 18px 0;-webkit-overflow-scrolling:touch">'+
+  return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+';position:relative">'+
+    '<div style="flex:1;overflow-y:auto;padding:calc(34px + env(safe-area-inset-top)) 18px calc(100px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch">'+
       content+
     '</div>'+navBar()+'</div>';
 }
@@ -940,8 +944,8 @@ function settingsScreen(){
   else if(window.pushStatus==='denied')pushBtns='<div style="font-size:11px;color:'+C.red+';text-align:center;padding:10px">Push blocked</div>';
   else if(!swRegistration)pushBtns='<div style="font-size:11px;color:#5F5F5F;text-align:center;padding:10px">Setting up notifications...</div>';
   else if(typeof Notification!=='undefined'&&Notification.permission!=='denied')pushBtns='<button onclick="enablePush()" style="width:100%;background:#B7FF2A;border:none;border-radius:14px;padding:14px 0;color:#050505;font-weight:600;font-size:13px;cursor:pointer;margin-top:12px;font-family:inherit;box-shadow:0 0 20px rgba(183,255,42,0.2)">Enable Push</button>';
-  return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+'">'+
-    '<div style="flex:1;overflow-y:auto;padding:calc(30px + env(safe-area-inset-top)) 16px 0;-webkit-overflow-scrolling:touch">'+
+  return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+';position:relative">'+
+    '<div style="flex:1;overflow-y:auto;padding:calc(30px + env(safe-area-inset-top)) 16px calc(100px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch">'+
     '<div style="font-size:22px;font-weight:700;color:#FFF;margin-bottom:2px">Settings</div>'+
     '<div style="font-size:12px;color:#5F5F5F;margin-bottom:20px">v10</div>'+
     '<div style="margin-bottom:16px"><div style="font-size:10px;font-weight:600;color:#5F5F5F;text-transform:uppercase;margin-bottom:8px;padding:0 4px;letter-spacing:0.04em">Notifications</div>'+
@@ -978,6 +982,20 @@ function render(){
   else if(t==='settings'){app.innerHTML=settingsScreen();}
   else{app.innerHTML=overviewScreen();}
   void app.offsetWidth;
+  positionNavIndicator();
+}
+
+function positionNavIndicator(){
+  var indicator=document.getElementById('nvi');
+  var activeBtn=document.querySelector('.nav-btn.active');
+  if(!indicator||!activeBtn)return;
+  var dock=activeBtn.closest('.nav-inner');
+  if(!dock)return;
+  var dockRect=dock.getBoundingClientRect();
+  var btnRect=activeBtn.getBoundingClientRect();
+  var offset=btnRect.left-dockRect.left;
+  var indW=parseInt(getComputedStyle(indicator).width)||52;
+  indicator.style.left=(offset+(btnRect.width-indW)/2)+'px';
 }
 
 function detailPage(s){
