@@ -2001,6 +2001,23 @@ app.post('/api/subscribe',(req,res)=>{
   log('Push subscription registered for '+code+'. Total: '+pushSubscriptions.length);
   res.json({ok:true});
 });
+app.post('/api/test-push',async (req,res)=>{
+  const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:'Invalid code'});
+  const code=req.query.code||req.headers['x-access-code'];
+  const sub=pushSubscriptions.find(s=>s.code===code);
+  if(!sub)return res.json({error:'No push subscription found. Enable push first.'});
+  const {code:c,...subData}=sub;
+  try{
+    var msg='Good '+(new Date().getHours()<12?'morning':new Date().getHours()<18?'afternoon':'evening')+' Slayers';
+    await webpush.sendNotification(subData,JSON.stringify({title:msg,body:'Test push \u2014 working!','url':'/'}));
+    res.json({ok:true});
+  }catch(e){
+    if(e.statusCode===410||e.statusCode===404){
+      pushSubscriptions=pushSubscriptions.filter(s=>s!==sub);saveState();
+      res.json({error:'Subscription expired. Re-enable push.'});
+    }else{res.json({error:e.message});}
+  }
+});
 app.post('/api/member/notif-prefs',(req,res)=>{
   const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
   const code=req.query.code||req.headers['x-access-code'];

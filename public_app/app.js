@@ -925,7 +925,8 @@ function settingsScreen(){
       '<div style="width:20px;height:20px;border-radius:99px;background:#FFF;position:absolute;top:2px;left:'+(val?'22px':'2px')+';transition:left 0.2s"></div></button></div>';
   }
   var pushBtns='';
-  if(window.pushStatus==='subscribed')pushBtns='<div style="font-size:11px;color:'+C.lime+';text-align:center;padding:10px;font-weight:600">\u2713 Push active</div>';
+  if(window.pushStatus==='subscribed')pushBtns='<div style="font-size:11px;color:'+C.lime+';text-align:center;padding:10px;font-weight:600">\u2713 Push active</div>'+
+    '<button onclick="testPush()" style="width:100%;background:rgba(255,255,255,0.04);border:0.5px solid rgba(255,255,255,0.06);border-radius:14px;padding:12px 0;color:#8E8E8E;font-size:11px;font-weight:600;cursor:pointer;margin-top:6px;font-family:inherit">Send Test Notification</button>';
   else if(window.pushStatus==='denied')pushBtns='<div style="font-size:11px;color:'+C.red+';text-align:center;padding:10px">Push blocked</div>';
   else if(!swRegistration)pushBtns='<div style="font-size:11px;color:#5F5F5F;text-align:center;padding:10px">Setting up notifications...</div>';
   else if(typeof Notification!=='undefined'&&Notification.permission!=='denied')pushBtns='<button onclick="enablePush()" style="width:100%;background:#B7FF2A;border:none;border-radius:14px;padding:14px 0;color:#050505;font-weight:600;font-size:13px;cursor:pointer;margin-top:12px;font-family:inherit;box-shadow:0 0 20px rgba(183,255,42,0.2)">Enable Push</button>';
@@ -1233,6 +1234,13 @@ async function enablePush(){
     window.pushStatus='subscribed';render();
   }catch(e){console.error('Push failed',e);alert('Could not enable notifications.');}
 }
+window.testPush=async function(){
+  try{
+    var r=await fetch(withCode('/api/test-push'),{method:'POST'});
+    var d=await r.json();
+    if(d.error){alert(d.error);}else{showToast('Test push sent');}
+  }catch(e){alert('Could not send test.');}
+};
 function urlBase64ToUint8Array(b){
   var p='='.repeat((4-b.length%4)%4),s=(b+p).replace(/-/g,'+').replace(/_/g,'/');
   return Uint8Array.from([...atob(s)].map(function(c){return c.charCodeAt(0);}));
