@@ -469,42 +469,70 @@ function journalScreen(){
   var tab=state.journalTab||'all';
   var entries=tab==='all'?allEntries.slice():tab==='wins'?allEntries.filter(isW):tab==='losses'?allEntries.filter(isL):tab==='be'?allEntries.filter(isB):tab==='notes'?allEntries.filter(function(e){return e.notes&&e.notes.trim();}):allEntries.slice();
   var wins=entries.filter(isW),losses=entries.filter(isL),bes=entries.filter(isB);
-  var totalR=0,posR=0,negR=0,bestR=0,bestPair='',pairR={},dayR={};
+  var totalR=0,posR=0,negR=0,bestR=0,bestPair='',worstR=0,worstPair='',pairR={},dayR={};
   for(var si=0;si<entries.length;si++){
     var e=entries[si],rv=e.rMultiple||e.r||0;totalR+=rv;
     if(rv>0)posR+=rv;else if(rv<0)negR+=Math.abs(rv);
     if(rv>bestR){bestR=rv;bestPair=e.pair||'';}
+    if(rv<worstR){worstR=rv;worstPair=e.pair||'';}
     var p=e.pair||'X';pairR[p]=(pairR[p]||0)+rv;
     var d=new Date(e.createdAt||e.time||0).getDay();dayR[d]=(dayR[d]||0)+rv;
   }
   var wr=wins.length+losses.length?Math.round(wins.length/(wins.length+losses.length)*100):0;
-  var pf=negR?(posR/negR).toFixed(2):'∞';
+  var pf=negR?(posR/negR).toFixed(2):'\u221e';
   var expV=entries.length?(totalR/entries.length).toFixed(2):'0';
-  var bestDay=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];var bD='—',bDR=0;for(var k in dayR){if(dayR[k]>bDR){bDR=dayR[k];bD=bestDay[parseInt(k)];}}
-  var bestP='—',bPR=0;for(var k in pairR){if(pairR[k]>bPR){bPR=pairR[k];bestP=k;}}
-  var avgRR=entries.length?Math.abs(totalR/(wins.length+losses.length||1)).toFixed(1):'—';
+
+  // Win streak
+  var winStreak=0,curStreak=0;
+  for(var si=0;si<entries.length;si++){
+    if(isW(entries[si])){curStreak++;if(curStreak>winStreak)winStreak=curStreak;}
+    else curStreak=0;
+  }
+
+  // Drawdown & Sharpe
+  var sorted=entries.slice().sort(function(a,b){return(a.createdAt||a.time||'').localeCompare(b.createdAt||b.time||'');});
+  var cum=0,pts=[],peak=100,runs=100;
+  var maxDD=0;
+  for(var ei=0;ei<sorted.length;ei++){
+    var rv_=sorted[ei].rMultiple||sorted[ei].r||0;
+    cum+=rv_;pts.push(cum);
+    runs+=rv_;
+    if(runs>peak)peak=runs;
+    var dd=((peak-runs)/peak)*100;
+    if(dd>maxDD)maxDD=dd;
+  }
+  var drawdownPct=-maxDD;
+  var mean=entries.length?totalR/entries.length:0;
+  var sqDiffs=0;
+  for(var si=0;si<entries.length;si++){
+    var rv_=(entries[si].rMultiple||entries[si].r||0);
+    sqDiffs+=(rv_-mean)*(rv_-mean);
+  }
+  var stdDev=Math.sqrt(sqDiffs/(entries.length||1));
+  var sharpe=stdDev?(mean/stdDev)*Math.sqrt(365):0;
+  var bestDays=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];var bD='\u2014',bDR=0;for(var k in dayR){if(dayR[k]>bDR){bDR=dayR[k];bD=bestDays[parseInt(k)];}}
+  var bestP='\u2014',bPR=0;for(var k in pairR){if(pairR[k]>bPR){bPR=pairR[k];bestP=k;}}
+  var avgRR=entries.length?Math.abs(totalR/(wins.length+losses.length||1)).toFixed(1):'\u2014';
+  var peakEq=pts.length?100+Math.max.apply(null,pts):0;
 
   // Equity curve
-  var sorted=entries.slice().sort(function(a,b){return(a.createdAt||a.time||'').localeCompare(b.createdAt||b.time||'');});
-  var cum=0,pts=[];for(var ei=0;ei<sorted.length;ei++){cum+=sorted[ei].rMultiple||sorted[ei].r||0;pts.push(cum);}
   var eqSvg='';
   if(pts.length>1){
-    var mn=Math.min(0,Math.min.apply(null,pts)),mx=Math.max(0,Math.max.apply(null,pts)),rg=mx-mn||1,eW=320,eH=48;
+    var mn=Math.min(0,Math.min.apply(null,pts)),mx=Math.max(0,Math.max.apply(null,pts)),rg=mx-mn||1,eW=320,eH=64;
     function ey(v){return eH-6-((v-mn)/rg)*(eH-16);}
     function ex(i2){return(i2/(pts.length-1))*(eW-10)+5;}
     var ed='';for(var ei=0;ei<pts.length;ei++)ed+=(ei===0?'M':'L')+ex(ei).toFixed(1)+','+ey(pts[ei]).toFixed(1);
     var eC=cum>=0?C.lime:C.red;
-    eqSvg='<div style="height:48px;margin:10px 0 2px">'+
-      '<svg viewBox="0 0 '+eW+' '+eH+'" preserveAspectRatio="none" style="width:100%;height:100%;display:block">'+
+    eqSvg='<div class="chart" style="height:64px;margin:8px 0 10px"><svg viewBox="0 0 '+eW+' '+eH+'" preserveAspectRatio="none" style="width:100%;height:100%;display:block">'+
       '<defs><linearGradient id="jeg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'+eC+'" stop-opacity="0.12"/><stop offset="100%" stop-color="'+eC+'" stop-opacity="0"/></linearGradient></defs>'+
       '<path d="'+ed+'" fill="url(#jeg)"/>'+
-      '<path d="'+ed+'" fill="none" stroke="'+eC+'" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>'+
-      '<circle cx="'+ex(pts.length-1).toFixed(1)+'" cy="'+ey(cum).toFixed(1)+'" r="2.5" fill="'+eC+'"/></svg></div>';
+      '<path d="'+ed+'" fill="none" stroke="'+eC+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'+
+      '<circle cx="'+ex(pts.length-1).toFixed(1)+'" cy="'+ey(cum).toFixed(1)+'" r="3" fill="'+eC+'"/></svg></div>';
   }
 
-  // ====== TIMEFILTER ======
+  // ====== TIME FILTER ======
   var times=['1W','2W','1M','3M','6M','ALL'];
-  var timeHtml='<div style="display:flex;gap:4px;margin:16px 0 20px;background:#121212;border-radius:99px;padding:3px">';
+  var timeHtml='<div style="display:flex;gap:4px;margin:0 0 14px;background:#121212;border-radius:99px;padding:3px">';
   for(var ti=0;ti<times.length;ti++){
     var a=state.journalTime===times[ti];
     timeHtml+='<button onclick="state.journalTime=\''+times[ti]+'\';state.journalTab=\'all\';render()" style="flex:1;border-radius:99px;padding:8px 0;font-size:10px;font-weight:600;font-family:inherit;cursor:pointer;background:'+(a?'#B7FF2A':'transparent')+';color:'+(a?'#090909':'#5F5F5F')+';border:none;transition:all .2s;box-shadow:'+(a?'0 0 12px rgba(183,255,42,0.2)':'none')+'">'+times[ti]+'</button>';
@@ -513,48 +541,65 @@ function journalScreen(){
 
   // ====== HEADER ======
   var header='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0">'+
-    '<div><div style="font-size:24px;font-weight:700;color:#FFF;letter-spacing:-0.03em">Journal</div>'+
-    '<div style="font-size:12px;color:#5F5F5F;margin-top:2px">Every trade. Every lesson.</div></div>'+
-    '<div style="display:flex;gap:12px">'+
-    '<button onclick="state.showJournalSearch=!state.showJournalSearch;render()" style="width:44px;height:44px;border-radius:99px;background:rgba(255,255,255,0.04);border:0.5px solid rgba(255,255,255,0.06);cursor:pointer;color:#8E8E8E;font-size:16px;display:flex;align-items:center;justify-content:center;font-family:inherit">\u{1F50D}</button>'+
-    '<button onclick="state.showJournalFilter=!state.showJournalFilter;render()" style="width:44px;height:44px;border-radius:99px;background:rgba(255,255,255,0.04);border:0.5px solid rgba(255,255,255,0.06);cursor:pointer;color:#8E8E8E;font-size:16px;display:flex;align-items:center;justify-content:center;font-family:inherit">\u2699</button>'+
-    '</div></div>'+
-    (state.showJournalSearch?'<input placeholder="Search pair..." value="'+esc(state.journalSearch||'')+'" oninput="state.journalSearch=this.value.toUpperCase();render()" style="width:100%;margin-top:12px;background:#151515;border:0.5px solid rgba(255,255,255,0.06);border-radius:14px;padding:12px 16px;color:#FFF;font-size:13px;outline:none;font-family:inherit;box-sizing:border-box">':'');
+    '<div><div style="font-size:24px;font-weight:800;color:#FFF;letter-spacing:-0.04em">Journal</div>'+
+    '<div style="font-size:11px;color:#5F5F5F;margin-top:2px">Every trade. Every lesson.</div></div>'+
+    '<div></div></div>';
 
-  // ====== STATS WIDGETS ======
-  var statsDash='<div style="margin-bottom:20px">'+
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">'+
-    '<div class="card" style="padding:18px;margin-bottom:0;border-radius:24px;background:#151515">'+
-      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span style="font-size:10px;color:#5F5F5F;font-weight:500;letter-spacing:0.04em;text-transform:uppercase">Total Return</span></div>'+
-      '<div class="count-up" style="font-size:28px;font-weight:700;color:'+(totalR>=0?C.lime:C.red)+';letter-spacing:-0.03em">'+(totalR>0?'+':'')+totalR.toFixed(1)+'<span style="font-size:14px;color:#5F5F5F;font-weight:600;margin-left:4px">R</span></div>'+
-      '<div style="font-size:10px;color:#5F5F5F;margin-top:4px">'+(wins.length+losses.length+bes.length)+' trades \u00b7 '+(wins.length+losses.length?wr+'% WR':'')+'</div></div>'+
-    '<div class="card" style="padding:18px;margin-bottom:0;border-radius:24px;background:#151515">'+
-      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span style="font-size:10px;color:#5F5F5F;font-weight:500;letter-spacing:0.04em;text-transform:uppercase">Win Rate</span></div>'+
-      '<div class="count-up" style="font-size:28px;font-weight:700;color:#FFF;letter-spacing:-0.03em">'+wr+'<span style="font-size:14px;color:#5F5F5F;font-weight:600;margin-left:2px">%</span></div>'+
-      '<div style="font-size:10px;color:'+C.lime+';margin-top:4px">'+wins.length+'W <span style="color:'+C.red+'">'+losses.length+'L</span> <span style="color:'+C.text2+'">'+bes.length+'BE</span></div></div></div>'+
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'+
-    '<div class="card" style="padding:14px;margin-bottom:0;border-radius:20px;background:#151515">'+
-      '<div style="font-size:9px;color:#5F5F5F;font-weight:500;margin-bottom:4px">Profit Factor</div>'+
-      '<div class="count-up" style="font-size:20px;font-weight:700;color:'+(parseFloat(pf)>1?C.lime:'#FFF')+'">'+pf+'</div></div>'+
-    '<div class="card" style="padding:14px;margin-bottom:0;border-radius:20px;background:#151515">'+
-      '<div style="font-size:9px;color:#5F5F5F;font-weight:500;margin-bottom:4px">Best Trade</div>'+
-      '<div class="count-up" style="font-size:20px;font-weight:700;color:#FFF">'+(bestR>0?'+':'')+bestR.toFixed(1)+'R</div></div></div>'+
-    eqSvg+'</div>';
+  // ====== EQUITY HERO ======
+  var equityHero='<div style="background:#151515;border-radius:16px;padding:16px;margin:14px 0;border:0.5px solid rgba(255,255,255,0.03)">'+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-end">'+
+      '<div><div style="font-size:9px;color:#5F5F5F;font-weight:500;text-transform:uppercase;letter-spacing:0.06em">Total P&amp;L</div>'+
+      '<div style="font-size:32px;font-weight:800;letter-spacing:-0.05em;line-height:1;color:'+(totalR>=0?C.lime:C.red)+'">'+(totalR>0?'+':'')+totalR.toFixed(1)+'<span style="font-size:14px;color:#5F5F5F;font-weight:600;margin-left:4px">R</span></div>'+
+      '<div style="font-size:10px;color:#8E8E8E;margin-top:2px">Start: 100R \u00b7 Peak: '+(peakEq>100?'+':'')+(peakEq-100).toFixed(1)+'R</div></div>'+
+      '<div style="display:flex;gap:14px">'+
+        '<div style="text-align:right"><div style="font-size:12px;font-weight:700;color:'+C.lime+'">'+(bestR>0?'+':'')+bestR.toFixed(1)+'R</div><div style="font-size:7px;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.05em;margin-top:1px">Best</div></div>'+
+        '<div style="text-align:right"><div style="font-size:12px;font-weight:700;color:'+C.red+'">'+worstR.toFixed(1)+'R</div><div style="font-size:7px;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.05em;margin-top:1px">Worst</div></div>'+
+        '<div style="text-align:right"><div style="font-size:12px;font-weight:700;color:#FFF">'+winStreak+'</div><div style="font-size:7px;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.05em;margin-top:1px">Streak</div></div>'+
+      '</div></div>'+
+    eqSvg+
+    '<div style="display:flex;justify-content:space-between;margin-bottom:12px">'+
+      '<span style="font-size:7px;color:#5F5F5F">Mon</span><span style="font-size:7px;color:#5F5F5F">Tue</span><span style="font-size:7px;color:#5F5F5F">Wed</span><span style="font-size:7px;color:#5F5F5F">Thu</span>'+
+      '<span style="font-size:7px;color:#5F5F5F">Fri</span><span style="font-size:7px;color:#5F5F5F">Sat</span><span style="font-size:7px;color:#5F5F5F">Sun</span></div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;padding-top:12px;border-top:0.5px solid rgba(255,255,255,0.05)">'+
+      '<div><div style="font-size:7px;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.05em">Drawdown</div><div style="font-size:10px;font-weight:700;margin-top:1px;color:'+C.red+'">'+drawdownPct.toFixed(1)+'%</div></div>'+
+      '<div><div style="font-size:7px;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.05em">Sharpe</div><div style="font-size:10px;font-weight:700;margin-top:1px;color:#FFF">'+sharpe.toFixed(2)+'</div></div>'+
+      '<div><div style="font-size:7px;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.05em">Avg R</div><div style="font-size:10px;font-weight:700;margin-top:1px;color:'+(mean>=0?C.lime:C.red)+'">'+(mean>0?'+':'')+mean.toFixed(2)+'R</div></div>'+
+      '<div><div style="font-size:7px;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.05em">Expectancy</div><div style="font-size:10px;font-weight:700;margin-top:1px;color:'+(parseFloat(expV)>=0?C.lime:C.red)+'">'+(parseFloat(expV)>0?'+':'')+expV+'R</div></div>'+
+    '</div></div>';
+
+  // ====== 2x2 STAT GRID ======
+  var statsHtml='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0 0 14px">'+
+    '<div style="background:#151515;border-radius:16px;padding:14px 16px;border:0.5px solid rgba(255,255,255,0.03)">'+
+      '<div style="font-size:9px;color:#5F5F5F;font-weight:500;text-transform:uppercase;letter-spacing:0.06em">Win Rate</div>'+
+      '<div style="font-size:22px;font-weight:800;color:#FFF;letter-spacing:-0.04em;line-height:1.1;margin-top:2px">'+wr+'<span style="font-size:12px;color:#5F5F5F;font-weight:600;margin-left:2px">%</span></div>'+
+      '<div style="font-size:10px;color:#8E8E8E;margin-top:2px">'+wins.length+'W \u00b7 '+losses.length+'L \u00b7 '+bes.length+'BE</div></div>'+
+    '<div style="background:#151515;border-radius:16px;padding:14px 16px;border:0.5px solid rgba(255,255,255,0.03)">'+
+      '<div style="font-size:9px;color:#5F5F5F;font-weight:500;text-transform:uppercase;letter-spacing:0.06em">Profit Factor</div>'+
+      '<div style="font-size:22px;font-weight:800;letter-spacing:-0.04em;line-height:1.1;margin-top:2px;color:'+(parseFloat(pf)>1?C.lime:'#FFF')+'">'+pf+'</div>'+
+      '<div style="font-size:10px;color:#8E8E8E;margin-top:2px">Gross +'+posR.toFixed(1)+' / -'+negR.toFixed(1)+'</div></div>'+
+    '<div style="background:#151515;border-radius:16px;padding:14px 16px;border:0.5px solid rgba(255,255,255,0.03)">'+
+      '<div style="font-size:9px;color:#5F5F5F;font-weight:500;text-transform:uppercase;letter-spacing:0.06em">Total Trades</div>'+
+      '<div style="font-size:22px;font-weight:800;color:#FFF;letter-spacing:-0.04em;line-height:1.1;margin-top:2px">'+(wins.length+losses.length+bes.length)+'</div>'+
+      '<div style="font-size:10px;color:#8E8E8E;margin-top:2px">'+allEntries.filter(function(e){return e.notes&&e.notes.trim();}).length+' with notes</div></div>'+
+    '<div style="background:#151515;border-radius:16px;padding:14px 16px;border:0.5px solid rgba(255,255,255,0.03)">'+
+      '<div style="font-size:9px;color:#5F5F5F;font-weight:500;text-transform:uppercase;letter-spacing:0.06em">Avg Win</div>'+
+      '<div style="font-size:22px;font-weight:800;letter-spacing:-0.04em;line-height:1.1;margin-top:2px;color:'+C.lime+'">'+(wins.length?'+'+posR.toFixed(2):'0')+'R</div>'+
+      '<div style="font-size:10px;color:#8E8E8E;margin-top:2px">Avg Loss: '+(losses.length?'-'+((negR||0)/losses.length).toFixed(2):'0')+'R</div></div>'+
+    '</div>';
 
   // ====== CATEGORY TABS ======
-  var tabs=['all','wins','losses','be','notes'];
-  var tabLabels={all:'All',wins:'Wins',losses:'Losses',be:'BE',notes:'Notes'};
-  var tabCounts={all:allEntries.length,wins:allEntries.filter(isW).length,losses:allEntries.filter(isL).length,be:allEntries.filter(isB).length,notes:allEntries.filter(function(e){return e.notes&&e.notes.trim();}).length};
-  var tabHtml='<div style="display:flex;gap:0;margin-bottom:18px;background:#151515;border-radius:14px;padding:3px">';
+  var tabs=['all','wins','losses','notes'];
+  var tabLabels={all:'All',wins:'Wins',losses:'Losses',notes:'Notes'};
+  var tabCounts={all:allEntries.length,wins:allEntries.filter(isW).length,losses:allEntries.filter(isL).length,notes:allEntries.filter(function(e){return e.notes&&e.notes.trim();}).length};
+  var tabHtml='<div style="display:flex;gap:4px;margin-bottom:14px;overflow-x:auto;scrollbar-width:none">';
   for(var ti=0;ti<tabs.length;ti++){
     var t=tabs[ti],a=tab===t;
-    tabHtml+='<button onclick="state.journalTab=\''+t+'\';render()" style="flex:1;padding:9px 0;border-radius:11px;font-size:10px;font-weight:'+(a?'700':'500')+';font-family:inherit;cursor:pointer;background:'+(a?'rgba(183,255,42,0.12)':'transparent')+';color:'+(a?C.lime:'#5F5F5F')+';border:none;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:4px;box-shadow:'+(a?'0 0 16px rgba(183,255,42,0.08)':'none')+'">'+tabLabels[t]+' <span style="font-size:8px;opacity:0.4">'+tabCounts[t]+'</span></button>';
+    tabHtml+='<button onclick="state.journalTab=\''+t+'\';render()" style="flex-shrink:0;border:0.5px solid '+(a?'rgba(183,255,42,0.25)':'rgba(255,255,255,0.06)')+';border-radius:99px;padding:7px 16px;font-size:11px;font-weight:600;font-family:inherit;cursor:pointer;background:'+(a?'rgba(183,255,42,0.1)':'#121212')+';color:'+(a?C.lime:'#5F5F5F')+';transition:all .2s;white-space:nowrap">'+tabLabels[t]+' <span style="font-size:9px;opacity:0.4">'+tabCounts[t]+'</span></button>';
   }
   tabHtml+='</div>';
 
   // ====== TRADE CARDS ======
-  var searchQ=(state.journalSearch||'').toUpperCase();
-  var displayEntries=searchQ?entries.filter(function(e){return(e.pair||'').toUpperCase().indexOf(searchQ)>-1;}):entries;
+  var displayEntries=entries;
   _journalDisplayEntries=displayEntries;
   var cardsHtml='';
   for(var i=0;i<displayEntries.length;i++){
@@ -563,95 +608,60 @@ function journalScreen(){
     var col=iw?C.lime:il?C.red:ib?C.text2:'rgba(255,255,255,0.3)';
     var dir=e.direction||'';
     var dirCol=dir==='BUY'||dir==='BULLISH'?C.lime:C.red;
-    var dirBg=dir==='BUY'||dir==='BULLISH'?C.limeSoft:C.redSoft;
+    var dirBg=dir==='BUY'||dir==='BULLISH'?'rgba(183,255,42,0.1)':'rgba(255,82,82,0.1)';
+    var dirLabel=dir==='BUY'||dir==='BULLISH'?'B':'S';
     var exp=_journalExp[i];
-    var criteria=(e.criteria||[]).slice(0,4);
-    cardsHtml+='<div class="card" style="padding:0;overflow:hidden;margin-bottom:12px;cursor:pointer;border-radius:24px;background:#151515" onclick="toggleJournalExp('+i+')">'+
-      '<div style="padding:18px 20px 14px">'+
-      '<div style="display:flex;align-items:center;gap:12px">'+
-        assetIcon(e.pair||'')+
+    var criteria=(e.criteria||[]).slice(0,5);
+    var isBest=rv>=bestR&&rv>0;
+    cardsHtml+='<div style="background:#151515;border-radius:16px;padding:14px 16px;margin-bottom:8px;border:0.5px solid rgba(255,255,255,0.03);cursor:pointer;transition:all .2s'+(isBest?';border-left:3px solid #B7FF2A':'')+'" onclick="toggleJournalExp('+i+')">'+
+      '<div style="display:flex;align-items:flex-start;gap:10px">'+
+        '<div style="width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;background:'+dirBg+';color:'+dirCol+'">'+dirLabel+'</div>'+
         '<div style="flex:1;min-width:0">'+
-          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
-            '<span style="font-size:16px;font-weight:700;color:#FFF;letter-spacing:-0.02em">'+esc(e.pair||'')+'</span>'+
-            (dir?'<span style="font-size:8px;font-weight:700;padding:3px 8px;border-radius:4px;background:'+dirBg+';color:'+dirCol+'">'+dir+'</span>':'')+
-            (e.tf?'<span style="font-size:9px;color:#5F5F5F;font-family:monospace;font-weight:500">'+e.tf+'</span>':'')+
+          '<div style="font-size:15px;font-weight:700;letter-spacing:-0.02em;display:flex;align-items:center;gap:6px;color:#FFF">'+esc(e.pair||'')+
+            (isBest?'<span style="font-size:7px;font-weight:700;padding:2px 5px;border-radius:3px;background:rgba(183,255,42,0.12);color:#B7FF2A;text-transform:uppercase">BEST</span>':'')+
           '</div>'+
-          '<div style="display:flex;align-items:center;gap:10px;margin-top:5px">'+
-            '<span style="font-size:10px;color:#5F5F5F">'+timeAgo(e.createdAt||e.time)+'</span>'+
-            '<span style="font-size:8px;padding:2px 8px;border-radius:4px;background:rgba(255,255,255,0.03);color:#5F5F5F;font-weight:500">'+(e.notes?'Manual':'Auto Logged')+'</span>'+
+          '<div style="font-size:10px;color:#5F5F5F;margin-top:3px;display:flex;align-items:center;gap:6px">'+
+            '<span>'+timeAgo(e.createdAt||e.time)+'</span>'+
+            (e.tf?' \u00b7 <span>'+e.tf+'</span>':'')+
+            ' \u00b7 <span>'+(e.notes?'Manual':'Auto')+'</span>'+
           '</div></div>'+
-        '<div style="text-align:right;flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:2px">'+
-          '<div style="font-size:20px;font-weight:800;color:'+col+'">'+(rv>0?'+':'')+rv+'R</div>'+
-          '<div style="font-size:16px;color:#5F5F5F;line-height:1">\u203A</div>'+
-        '</div></div>'+
-      (criteria.length?'<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:10px;padding-top:10px;border-top:0.5px solid rgba(255,255,255,0.04)">'+
-        criteria.map(function(c){return '<span style="font-size:8px;padding:3px 9px;border-radius:6px;background:rgba(183,255,42,0.06);color:'+C.lime+';font-weight:600;border:0.5px solid rgba(183,255,42,0.15)">'+esc(c)+'</span>';}).join('')+
-        (e.criteria.length>4?'<span style="font-size:8px;padding:3px 9px;border-radius:6px;background:rgba(255,255,255,0.03);color:#5F5F5F;font-weight:500">+'+(e.criteria.length-4)+'</span>':'')+
+        '<div style="text-align:right;flex-shrink:0">'+
+          '<div style="font-size:18px;font-weight:800;letter-spacing:-0.03em;line-height:1;color:'+col+'">'+(rv>0?'+':'')+rv+'R</div>'+
+          '<div style="font-size:9px;font-weight:600;margin-top:2px;color:'+col+'">'+esc(e.outcome||'')+'</div></div></div>'+
+      (criteria.length?'<div style="display:flex;gap:3px;margin-top:8px;flex-wrap:wrap">'+
+        criteria.map(function(c){return '<span style="font-size:8px;padding:2px 8px;border-radius:4px;background:rgba(183,255,42,0.04);color:#8E8E8E;border:0.5px solid rgba(183,255,42,0.06)">'+esc(c)+'</span>';}).join('')+
+        (e.criteria.length>5?'<span style="font-size:8px;padding:2px 8px;border-radius:4px;background:rgba(255,255,255,0.03);color:#5F5F5F">+'+(e.criteria.length-5)+'</span>':'')+
       '</div>':'')+
-      (exp?'<div style="margin-top:12px;padding-top:14px;border-top:0.5px solid rgba(255,255,255,0.06);animation:fadeIn .2s ease">'+
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px;margin-bottom:12px">'+
-          (e.entry?'<div><div style="color:#5F5F5F;font-size:9px;margin-bottom:2px">Entry</div><div style="color:#FFF;font-weight:600;font-family:monospace">'+fmt(e.entry)+'</div></div>':'')+
-          (e.sl?'<div><div style="color:#5F5F5F;font-size:9px;margin-bottom:2px">Stop Loss</div><div style="color:'+C.red+';font-weight:600;font-family:monospace">'+fmt(e.sl)+'</div></div>':'')+
-          (e.tp1?'<div><div style="color:#5F5F5F;font-size:9px;margin-bottom:2px">TP1</div><div style="color:'+C.lime+';font-weight:600;font-family:monospace">'+fmt(e.tp1)+'</div></div>':'')+
-          (e.tp2?'<div><div style="color:#5F5F5F;font-size:9px;margin-bottom:2px">TP2</div><div style="color:'+C.lime+';font-weight:600;font-family:monospace">'+fmt(e.tp2)+'</div></div>':'')+
+      (exp?'<div style="margin-top:10px;padding-top:8px;border-top:0.5px solid rgba(255,255,255,0.05)">'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;margin-bottom:8px">'+
+          (e.entry?'<div><div style="font-size:8px;color:#5F5F5F">Entry</div><div style="font-size:11px;font-weight:600;font-family:monospace;color:#FFF">'+fmt(e.entry)+'</div></div>':'')+
+          (e.sl?'<div><div style="font-size:8px;color:#5F5F5F">Stop</div><div style="font-size:11px;font-weight:600;font-family:monospace;color:'+C.red+'">'+fmt(e.sl)+'</div></div>':'')+
+          (e.tp1?'<div><div style="font-size:8px;color:#5F5F5F">TP1</div><div style="font-size:11px;font-weight:600;font-family:monospace;color:'+C.lime+'">'+fmt(e.tp1)+'</div></div>':'')+
+          (e.tp2?'<div><div style="font-size:8px;color:#5F5F5F">TP2</div><div style="font-size:11px;font-weight:600;font-family:monospace;color:'+C.lime+'">'+fmt(e.tp2)+'</div></div>':'')+
         '</div>'+
-        (e.criteria&&e.criteria.length?'<div style="margin-bottom:10px"><div style="font-size:9px;color:#5F5F5F;font-weight:500;margin-bottom:6px">Setup Criteria</div>'+
-          e.criteria.map(function(c){return '<div style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:11px"><span style="color:'+C.lime+';font-size:10px">\u2713</span><span style="color:#8E8E8E">'+esc(c)+'</span></div>';}).join('')+'</div>':'')+
-        (e.notes?'<div style="padding:10px 12px;background:rgba(255,255,255,0.02);border-radius:10px;font-size:11px;color:#8E8E8E;line-height:1.6">'+esc(e.notes)+'</div>':'')+
-        (!e.notes?'<div style="padding:10px 12px;background:rgba(255,255,255,0.02);border-radius:10px;font-size:10px;color:#5F5F5F;font-style:italic">No notes recorded for this trade. <span style="color:'+C.lime+';font-style:normal">Add note</span></div>':'')+
-        (e.entry&&e.direction?'<button onclick="event.stopPropagation();showTradeReplay('+i+')" style="display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:12px;padding:10px 0;border-radius:12px;background:rgba(183,255,42,0.06);border:0.5px solid rgba(183,255,42,0.15);color:#B7FF2A;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit">'+icon(I.replay,'#B7FF2A',14)+' Replay Trade</button>':'')+
-      '</div>':'')+
-      '</div></div>';
+        (e.notes?'<div style="font-size:10px;color:#8E8E8E;line-height:1.5;padding:6px 10px;background:rgba(255,255,255,0.02);border-radius:8px;margin-bottom:8px"><div style="font-size:7px;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:3px">Journal Entry</div>'+esc(e.notes)+'</div>':'')+
+        (!e.notes?'<div style="font-size:10px;color:#5F5F5F;padding:6px 10px;background:rgba(255,255,255,0.02);border-radius:8px;font-style:italic;margin-bottom:8px">No notes. <span style="color:'+C.lime+';font-style:normal">Add note</span></div>':'')+
+        '<div style="display:flex;gap:6px">'+
+          (e.entry&&e.direction?'<button onclick="event.stopPropagation();showTradeReplay('+i+')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:7px 0;border-radius:10px;border:none;font-size:9px;font-weight:600;cursor:pointer;font-family:inherit;background:rgba(183,255,42,0.06);color:#B7FF2A;border:0.5px solid rgba(183,255,42,0.15);transition:all .2s">'+icon(I.replay,'#B7FF2A',10)+' Replay</button>':'')+
+          '<button onclick="event.stopPropagation();navigator.clipboard.writeText(\''+esc((e.direction||'')+' '+(e.pair||'')+' | Entry: '+(e.entry||'')+' | SL: '+(e.sl||'')+(e.tp1?' | TP1: '+(e.tp1||''):'')+(e.tp2?' | TP2: '+(e.tp2||''):''))+'").then(function(){showToast(\'Copied\');}).catch(function(){})" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:7px 0;border-radius:10px;border:none;font-size:9px;font-weight:600;cursor:pointer;font-family:inherit;background:rgba(255,255,255,0.03);color:#8E8E8E;border:0.5px solid rgba(255,255,255,0.06);transition:all .2s">'+icon(I.copy,'#8E8E8E',10)+' Copy</button>'+
+        '</div></div>':'')+
+    '</div>';
   }
 
   // ====== EMPTY STATE ======
   var empty='';
   if(!displayEntries.length){
-    empty='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center">'+
-      '<div style="width:72px;height:72px;border-radius:99px;background:#151515;display:flex;align-items:center;justify-content:center;margin-bottom:20px;border:0.5px solid rgba(255,255,255,0.04)">'+
-      '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#5F5F5F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M8 7h8M8 11h6"/></svg></div>'+
-      '<div style="font-size:16px;font-weight:600;color:#FFF;margin-bottom:8px">No trades yet</div>'+
-      '<div style="font-size:12px;color:#5F5F5F;line-height:1.6;max-width:300px">Every great trading journal starts with the first disciplined execution.</div>'+
-      '<button onclick="setTab(\'dash\')" style="margin-top:24px;background:#B7FF2A;border:none;border-radius:14px;padding:14px 32px;color:#090909;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;box-shadow:0 0 24px rgba(183,255,42,0.15)">Start Trading</button></div>';
-  }
-
-  // ====== INSIGHTS ======
-  var insightsHtml='';
-  if(entries.length>=3){
-    insightsHtml='<div style="margin-bottom:18px"><div class="section-label" style="margin-bottom:12px">Insights</div>'+
-      '<div class="card" style="padding:18px;margin-bottom:0;border-radius:24px;background:#151515">'+
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'+
-      '<div><div style="font-size:9px;color:#5F5F5F;font-weight:500;margin-bottom:2px">Best Day</div><div style="font-size:14px;font-weight:600;color:#FFF">'+bD+'</div></div>'+
-      '<div><div style="font-size:9px;color:#5F5F5F;font-weight:500;margin-bottom:2px">Best Pair</div><div style="font-size:14px;font-weight:600;color:#FFF">'+esc(bestP)+'</div></div>'+
-      '<div><div style="font-size:9px;color:#5F5F5F;font-weight:500;margin-bottom:2px">Avg R:R</div><div style="font-size:14px;font-weight:600;color:#FFF">1 : '+avgRR+'</div></div>'+
-      '<div><div style="font-size:9px;color:#5F5F5F;font-weight:500;margin-bottom:2px">Expectancy</div><div style="font-size:14px;font-weight:600;color:'+(parseFloat(expV)>=0?C.lime:C.red)+'">'+(parseFloat(expV)>0?'+':'')+expV+'R</div></div>'+
-      '</div></div></div>';
-  }
-
-  // ====== WEEKLY/MONTHLY SUMMARY ======
-  var ws=state.weeklyStats||{},ds=state.detailedStats||{};
-  var weekR=ws.totalR||0,weekW=ws.wins||0,weekL=ws.losses||0;
-  var monthR=ds.monthTotalR||0,monthW=ds.monthWins||0,monthL=ds.monthLosses||0;
-  var summaryHtml='';
-  if(weekR||monthR){
-    summaryHtml='<div style="margin-bottom:18px"><div class="section-label" style="margin-bottom:12px">Summary</div>'+
-      '<div style="display:flex;gap:12px">'+
-      (weekR||weekW?'<div class="card" style="flex:1;padding:16px;margin-bottom:0;border-radius:20px;background:#151515">'+
-        '<div style="font-size:9px;color:#5F5F5F;font-weight:500;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px">This Week</div>'+
-        '<div style="font-size:22px;font-weight:700;color:'+(weekR>=0?C.lime:C.red)+'">'+(weekR>0?'+':'')+weekR.toFixed(1)+'R</div>'+
-        '<div style="display:flex;gap:10px;margin-top:6px"><span style="font-size:10px;color:'+C.lime+';font-weight:600">'+weekW+'W</span><span style="font-size:10px;color:'+C.red+';font-weight:600">'+weekL+'L</span></div>'+
-      '</div>':'')+
-      (monthR||monthW?'<div class="card" style="flex:1;padding:16px;margin-bottom:0;border-radius:20px;background:#151515">'+
-        '<div style="font-size:9px;color:#5F5F5F;font-weight:500;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px">This Month</div>'+
-        '<div style="font-size:22px;font-weight:700;color:'+(monthR>=0?C.lime:C.red)+'">'+(monthR>0?'+':'')+monthR.toFixed(1)+'R</div>'+
-        '<div style="display:flex;gap:10px;margin-top:6px"><span style="font-size:10px;color:'+C.lime+';font-weight:600">'+monthW+'W</span><span style="font-size:10px;color:'+C.red+';font-weight:600">'+monthL+'L</span></div>'+
-      '</div>':'')+
-      '</div></div>';
+    empty='<div style="display:flex;flex-direction:column;align-items:center;padding:60px 20px;text-align:center">'+
+      '<div style="width:56px;height:56px;border-radius:99px;background:#151515;display:flex;align-items:center;justify-content:center;margin-bottom:16px;border:0.5px solid rgba(255,255,255,0.04)">'+
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5F5F5F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>'+
+      '<div style="font-size:16px;font-weight:600;color:#FFF;margin-bottom:6px">No trades yet</div>'+
+      '<div style="font-size:12px;color:#5F5F5F;line-height:1.5;max-width:260px">Every great trading journal starts with the first disciplined execution.</div>'+
+      '<button onclick="setTab(\'dash\')" style="margin-top:20px;background:#B7FF2A;border:none;border-radius:14px;padding:14px 32px;color:#090909;font-weight:600;font-size:13px;font-family:inherit;cursor:pointer;box-shadow:0 0 24px rgba(183,255,42,0.15)">Start Trading</button></div>';
   }
 
   return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+'">'+
     '<div style="flex:1;overflow-y:auto;padding:calc(34px + env(safe-area-inset-top)) 18px 0;-webkit-overflow-scrolling:touch">'+
-      header+timeHtml+statsDash+tabHtml+(cardsHtml||empty)+insightsHtml+summaryHtml+
+      header+timeHtml+equityHero+statsHtml+tabHtml+(cardsHtml||empty)+
     '</div>'+navBar()+'</div>';
 }
 
