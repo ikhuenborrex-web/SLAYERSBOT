@@ -117,7 +117,7 @@ function overviewScreen(){
   var hero= '<div class="hero">'+
     '<div class="glow"></div><div class="glow-2"></div>'+
     '<div style="font-size:11px;color:rgba(255,255,255,0.3);font-weight:600;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:4px;position:relative;z-index:1">'+greeting()+'</div>'+
-    '<div style="font-size:32px;font-weight:800;letter-spacing:-0.03em;line-height:1.05;margin-bottom:6px;position:relative;z-index:1">SLAYERS<span style="color:'+C.lime+'">.</span></div>'+
+    '<div style="font-size:32px;font-weight:800;letter-spacing:-0.03em;line-height:1.05;margin-bottom:6px;position:relative;z-index:1;color:#FFF">SLAYERS</div>'+
     '<div style="font-size:12px;color:rgba(255,255,255,0.3);font-weight:500;position:relative;z-index:1">'+tr+'R total \u00b7 '+wr+'% WR \u00b7 '+state.active.length+' active</div>'+
     '<div style="display:flex;gap:16px;margin-top:14px;padding-top:14px;border-top:0.5px solid rgba(255,255,255,0.06);position:relative;z-index:1">'+
     heroStat((ws.totalR>0?'+':'')+(ws.totalR||'0'),'R',C.lime)+
@@ -225,8 +225,10 @@ function overviewScreen(){
   }
   if(!sigCount&&!state.signals.length)sigsHtml=emptyState('Waiting for market data...');
 
-  return '<div style="padding:calc(30px + env(safe-area-inset-top)) 16px 0;background:'+C.bg+';min-height:100dvh">'+
-    hero+mc+mp+actCards+sigHeader+filterHtml+sigsHtml+navBar()+'</div>';
+  return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+'">'+
+    '<div style="flex:1;overflow-y:auto;padding:calc(30px + env(safe-area-inset-top)) 16px 0;-webkit-overflow-scrolling:touch">'+
+      hero+mc+mp+actCards+sigHeader+filterHtml+sigsHtml+
+    '</div>'+navBar()+'</div>';
 }
 
 function navBar(){
@@ -265,10 +267,12 @@ function scalpScreen(){
       '<span style="font-size:8px;color:'+C.text3+'">'+timeAgo(s.time)+'</span>'+
       '<button onclick="event.stopPropagation();toggleTrack(&#39;'+s.id+'&#39;,'+!!(s.isTracked)+')" style="background:'+(s.isTracked?C.limeSoft:C.surface)+';border:0.5px solid '+(s.isTracked?C.lime:C.border)+';border-radius:99px;padding:3px 10px;font-size:8px;color:'+(s.isTracked?C.lime:C.text2)+';cursor:pointer;font-family:inherit;font-weight:600">'+(s.isTracked?'Tracking':'Track')+'</button></div></div>';
   }).join('');
-  return '<div style="padding:calc(30px + env(safe-area-inset-top)) 16px 0;background:'+C.bg+';min-height:100dvh">'+
+  return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+'">'+
+    '<div style="flex:1;overflow-y:auto;padding:calc(30px + env(safe-area-inset-top)) 16px 0;-webkit-overflow-scrolling:touch">'+
     '<div style="font-size:22px;font-weight:800;color:#FFF;margin-bottom:4px">Scalp</div>'+
     '<div style="font-size:11px;color:'+C.text2+';margin-bottom:12px">Session momentum + FVG breakout</div>'+
-    statsHtml+(sigs||emptyState('No scalp signals yet'))+navBar()+'</div>';
+    statsHtml+(sigs||emptyState('No scalp signals yet'))+
+    '</div>'+navBar()+'</div>';
 }
 
 function journalScreen(){
@@ -290,7 +294,8 @@ function journalScreen(){
       '<span>'+(e.direction||'')+'</span><span>'+(e.tf||e.timeframe||'')+'</span><span>'+timeAgo(e.createdAt||e.time)+'</span></div>'+
       (e.notes?'<div style="font-size:10px;color:'+C.text2+';margin-top:4px;line-height:1.4">'+esc(e.notes).slice(0,80)+'</div>':'')+'</div>';
   }).join('');
-  return '<div style="padding:calc(30px + env(safe-area-inset-top)) 16px 0;background:'+C.bg+';min-height:100dvh">'+
+  return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+'">'+
+    '<div style="flex:1;overflow-y:auto;padding:calc(30px + env(safe-area-inset-top)) 16px 0;-webkit-overflow-scrolling:touch">'+
     '<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">'+
     '<span style="font-size:22px;font-weight:800;color:#FFF">Journal</span>'+
     '<span style="font-size:10px;color:'+C.lime+';font-weight:600">'+wins.length+'W</span>'+
@@ -299,7 +304,8 @@ function journalScreen(){
     (wins.length+losses.length?'<span style="font-size:10px;font-weight:700;color:#FFF">'+wr+'%</span>':'')+
     '</div>'+
     '<div style="font-size:11px;color:'+C.text2+';margin-bottom:12px">'+entries.length+' total entries</div>'+
-    (entries.length?rows:emptyState('No journal entries yet'))+navBar()+'</div>';
+    (entries.length?rows:emptyState('No journal entries yet'))+
+    '</div>'+navBar()+'</div>';
 }
 
 function intelScreen(){
@@ -309,7 +315,7 @@ function intelScreen(){
   var catList=Object.keys(cats);
   var catChips=catList.map(function(c){
     var a=(state.newsCat||'All')===c;
-    return '<span onclick="window.newsCat=state.newsCat===c?null:c;render()" style="display:inline-block;font-size:9px;padding:4px 10px;border-radius:99px;background:'+(a?C.limeSoft:C.surface)+';color:'+(a?C.lime:C.text2)+';cursor:pointer;font-weight:'+(a?'700':'400')+';border:0.5px solid '+(a?C.limeBorder:C.border)+'">'+c+' '+cats[c]+'</span>';
+    return '<span onclick="window.newsCat=state.newsCat===&#39;'+c+'&#39;?null:&#39;'+c+'&#39;;render()" style="display:inline-block;font-size:9px;padding:4px 10px;border-radius:99px;background:'+(a?C.limeSoft:C.surface)+';color:'+(a?C.lime:C.text2)+';cursor:pointer;font-weight:'+(a?'700':'400')+';border:0.5px solid '+(a?C.limeBorder:C.border)+'">'+c+' '+cats[c]+'</span>';
   }).join('');
   var filtered=state.newsCat&&state.newsCat!=='All'?arts.filter(function(a){return a.category===state.newsCat;}):arts;
   var items=filtered.slice(0,30).map(function(a){
@@ -324,11 +330,13 @@ function intelScreen(){
       (a.source?'<span style="font-size:8px;color:'+C.text3+';background:'+C.surface+';padding:1px 6px;border-radius:4px">'+esc(a.source)+'</span>':'')+
       '<span style="font-size:8px;color:'+C.text3+';margin-left:auto">'+timeAgo(a.time||a.publishedAt||a.createdAt)+'</span></div></div></div></a>';
   }).join('');
-  return '<div style="padding:calc(30px + env(safe-area-inset-top)) 16px 0;background:'+C.bg+';min-height:100dvh">'+
+  return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+'">'+
+    '<div style="flex:1;overflow-y:auto;padding:calc(30px + env(safe-area-inset-top)) 16px 0;-webkit-overflow-scrolling:touch">'+
     '<div style="font-size:22px;font-weight:800;color:#FFF;margin-bottom:4px">Intel</div>'+
     '<div style="font-size:11px;color:'+C.text2+';margin-bottom:10px">Market news & analysis</div>'+
     (catChips?'<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:4px;scrollbar-width:none">'+catChips+'</div>':'')+
-    (items||emptyState('No news available'))+navBar()+'</div>';
+    (items||emptyState('No news available'))+
+    '</div>'+navBar()+'</div>';
 }
 
 function settingsScreen(){
@@ -344,7 +352,8 @@ function settingsScreen(){
   if(window.pushStatus==='subscribed')pushBtns='<div style="font-size:11px;color:'+C.lime+';text-align:center;padding:10px;font-weight:600">\u2713 Push active</div>';
   else if(window.pushStatus==='denied')pushBtns='<div style="font-size:11px;color:'+C.red+';text-align:center;padding:10px">Push blocked</div>';
   else if(typeof Notification!=='undefined'&&Notification.permission!=='denied')pushBtns='<button onclick="enablePush()" style="width:100%;background:'+C.lime+';border:none;border-radius:10px;padding:12px 0;color:#000;font-weight:700;font-size:13px;cursor:pointer;margin-top:8px;font-family:inherit">Enable Push</button>';
-  return '<div style="padding:calc(30px + env(safe-area-inset-top)) 16px 0;background:'+C.bg+';min-height:100dvh">'+
+  return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+'">'+
+    '<div style="flex:1;overflow-y:auto;padding:calc(30px + env(safe-area-inset-top)) 16px 0;-webkit-overflow-scrolling:touch">'+
     '<div style="font-size:22px;font-weight:800;color:#FFF;margin-bottom:4px">Settings</div>'+
     '<div style="font-size:11px;color:'+C.text2+';margin-bottom:16px">v10</div>'+
     '<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:700;color:'+C.text2+';text-transform:uppercase;margin-bottom:6px;padding:0 4px;letter-spacing:0.06em">Notifications</div>'+
@@ -355,7 +364,8 @@ function settingsScreen(){
     '<div style="margin-bottom:16px"><div style="font-size:11px;font-weight:700;color:'+C.text2+';text-transform:uppercase;margin-bottom:6px;padding:0 4px;letter-spacing:0.06em">Account</div>'+
     '<div style="background:#141416;border-radius:14px;overflow:hidden">'+
     '<button onclick="logout()" style="width:100%;background:transparent;border:none;padding:14px 16px;color:'+C.red+';font-size:13px;font-weight:600;cursor:pointer;text-align:left;font-family:inherit">Disconnect / Logout</button></div></div>'+
-    '<div style="text-align:center;padding:20px;color:'+C.text3+';font-size:9px">Made by roz & n8s \u00b7 QMR</div>'+navBar()+'</div>';
+    '<div style="text-align:center;padding:20px;color:'+C.text3+';font-size:9px">Made by roz & n8s \u00b7 QMR</div>'+
+    '</div>'+navBar()+'</div>';
 }
 
 function render(){
@@ -382,7 +392,8 @@ function detailPage(s){
      '<div style="display:flex;justify-content:space-between;font-size:9px;color:rgba(255,255,255,0.4);margin-bottom:18px">'+
      '<span style="color:#FFF">Entry: '+fmt(s.consEntry)+'</span><span style="color:'+C.red+'">SL: '+fmt(s.consSl)+'</span><span style="color:'+C.lime+'">TP2: '+fmt(s.consTp2)+'</span></div>':'')
     :(s.chartUrl?'<img src="'+withCode(s.chartUrl)+'" style="width:100%;border-radius:14px">':'<div style="height:140px;background:'+C.surface+';border-radius:14px;display:flex;align-items:center;justify-content:center;color:'+C.text2+';font-size:11px">Chart unavailable</div>');
-  return '<div style="min-height:100dvh;background:'+C.bg+';padding:calc(30px + env(safe-area-inset-top)) 16px 24px">'+
+  return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+'">'+
+    '<div style="flex:1;overflow-y:auto;padding:calc(30px + env(safe-area-inset-top)) 16px 24px;-webkit-overflow-scrolling:touch">'+
     '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">'+
     '<button onclick="closeDetail()" style="background:'+C.surface+';border:0.5px solid '+C.border+';border-radius:99px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#FFF;font-size:16px">\u2190</button>'+
     '<div><div style="font-weight:800;font-size:18px;color:#FFF">'+s.pair+' \u00b7 '+s.tf+'</div>'+
@@ -420,7 +431,7 @@ function detailPage(s){
     '<div class="card" style="margin-bottom:16px">'+crit+'</div>'+
     (s.counterTrend?'<div style="background:'+C.redSoft+';border:0.5px solid '+C.red+'55;border-radius:14px;padding:14px;margin-bottom:16px;font-size:12px;color:'+C.red+';font-weight:600">\u26A0 Counter-trend \u2014 '+(s.htfBias||'')+'. Reduce size.</div>':'')+
     (s.rsiDivergence?'<div style="background:'+C.orangeSoft+';border:0.5px solid '+C.orange+'55;border-radius:14px;padding:14px;margin-bottom:16px;font-size:12px;color:'+C.orange+';font-weight:600">\uD83D\uDD25 '+s.rsiDivergence+'</div>':'')+
-    '<button onclick="closeDetail()" style="width:100%;background:'+C.surface+';border:0.5px solid '+C.border+';border-radius:10px;padding:12px 0;color:'+C.text2+';font-size:12px;cursor:pointer;font-family:inherit">\u2190 Back to Dashboard</button></div>';
+    '<button onclick="closeDetail()" style="width:100%;background:'+C.surface+';border:0.5px solid '+C.border+';border-radius:10px;padding:12px 0;color:'+C.text2+';font-size:12px;cursor:pointer;font-family:inherit">\u2190 Back to Dashboard</button></div></div>';
 }
 
 function renderLogin(m){

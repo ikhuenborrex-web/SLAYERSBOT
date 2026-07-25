@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" href="/app/icon-192.png">
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { margin: 0; background: #020403; font-family: -apple-system, Helvetica, Arial, sans-serif; overflow-x: hidden; }
+  html, body { margin: 0; background: #000; font-family: -apple-system, Helvetica, Arial, sans-serif; overflow: hidden; height: 100%; }
 
   /* ===== FIXED FLOWING BACKGROUND — sits behind everything, never wiped by re-renders ===== */
   #bg { position: fixed; inset: 0; overflow: hidden; z-index: 0; pointer-events: none; }
@@ -31,7 +31,7 @@
   .ember { position: absolute; width: 3px; height: 3px; border-radius: 99px; background: #3ECF8E; box-shadow: 0 0 6px #3ECF8E; opacity: 0; animation: float-up linear infinite; }
   @keyframes float-up { 0% { transform: translateY(0) translateX(0); opacity: 0; } 10% { opacity: 0.7; } 90% { opacity: 0.4; } 100% { transform: translateY(-100vh) translateX(20px); opacity: 0; } }
 
-  #app { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+  #app { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
 
   .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; border-radius: 99px; padding: 4px 10px; border: 1px solid; }
 
@@ -69,7 +69,7 @@
   .card{background:#141416;border-radius:16px;padding:16px;margin-bottom:8px;position:relative;overflow:hidden;animation:fadeUp .5s cubic-bezier(.16,1,.3,1) both}
   .card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(163,230,53,.1),transparent)}
   .card:active{transform:scale(.985)}
-  .hero{background:linear-gradient(135deg,#141416,#0F0F10);border-radius:18px;padding:20px 18px;margin-bottom:16px;position:relative;overflow:hidden}
+  .hero{background:#0C0C0D;border-radius:18px;padding:20px 18px;margin-bottom:16px;position:relative;overflow:hidden;color:#FFF}
   .glow{position:absolute;top:-60px;right:-60px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(163,230,53,.08),transparent 70%);pointer-events:none;animation:drift 25s ease-in-out infinite}
   .glow-2{position:absolute;bottom:-80px;left:-40px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(163,230,53,.05),transparent 70%);pointer-events:none;animation:drift 30s ease-in-out infinite reverse}
   .h-scroll{display:flex;gap:10px;overflow-x:auto;padding:2px 0 6px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
