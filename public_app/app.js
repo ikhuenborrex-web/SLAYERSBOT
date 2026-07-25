@@ -922,6 +922,7 @@ function settingsScreen(){
   var pushBtns='';
   if(window.pushStatus==='subscribed')pushBtns='<div style="font-size:11px;color:'+C.lime+';text-align:center;padding:10px;font-weight:600">\u2713 Push active</div>';
   else if(window.pushStatus==='denied')pushBtns='<div style="font-size:11px;color:'+C.red+';text-align:center;padding:10px">Push blocked</div>';
+  else if(!swRegistration)pushBtns='<div style="font-size:11px;color:#5F5F5F;text-align:center;padding:10px">Setting up notifications...</div>';
   else if(typeof Notification!=='undefined'&&Notification.permission!=='denied')pushBtns='<button onclick="enablePush()" style="width:100%;background:#B7FF2A;border:none;border-radius:14px;padding:14px 0;color:#050505;font-weight:600;font-size:13px;cursor:pointer;margin-top:12px;font-family:inherit;box-shadow:0 0 20px rgba(183,255,42,0.2)">Enable Push</button>';
   return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+'">'+
     '<div style="flex:1;overflow-y:auto;padding:calc(30px + env(safe-area-inset-top)) 16px 0;-webkit-overflow-scrolling:touch">'+
@@ -935,7 +936,7 @@ function settingsScreen(){
     '<div style="margin-bottom:16px"><div style="font-size:10px;font-weight:600;color:#5F5F5F;text-transform:uppercase;margin-bottom:8px;padding:0 4px;letter-spacing:0.04em">Account</div>'+
     '<div style="background:#151515;border-radius:22px;overflow:hidden;border:0.5px solid rgba(255,255,255,0.04)">'+
     '<button onclick="logout()" style="width:100%;background:transparent;border:none;padding:16px 16px;color:#FF5252;font-size:13px;font-weight:500;cursor:pointer;text-align:left;font-family:inherit">Disconnect / Logout</button></div></div>'+
-    '<div style="text-align:center;padding:24px;color:#5F5F5F;font-size:9px">Made by roz & n8s \u00b7 QMR</div>'+
+    '<div style="text-align:center;padding:24px;color:#5F5F5F;font-size:9px">Made by REXROZ \u00b7 QMR</div>'+
     '</div>'+navBar()+'</div>';
 }
 
@@ -1211,7 +1212,8 @@ window.copyTrade=function(id){
   }
 };
 async function enablePush(){
-  if(!swRegistration||!getCode())return;
+  if(!swRegistration){window.pushStatus='unsupported';render();return;}
+  if(!getCode())return;
   try{
     var kr=await fetch(withCode('/api/vapid-key')),kd=await kr.json();
     if(!kd.enabled||!kd.key){alert('Push not configured on server yet.');return;}
