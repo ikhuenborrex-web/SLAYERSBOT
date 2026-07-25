@@ -267,21 +267,70 @@ async function fetchAll(bg){
 }
 
 function miniChart(entries){
-  if(!entries||entries.length<2)return '';
-  var sorted=entries.slice().sort(function(a,b){return(a.createdAt||a.time||'').localeCompare(b.createdAt||b.time||'');});
-  var cumR=0,pts=[];
-  for(var i=0;i<sorted.length;i++){cumR+=(sorted[i].rMultiple||sorted[i].r||0);pts.push(cumR);}
-  var mn=Math.min(0,Math.min.apply(null,pts)),mx=Math.max(0,Math.max.apply(null,pts)),rng=mx-mn||1,w=340,h=50;
-  function y(v){return h-6-((v-mn)/rng)*(h-16);}
-  function x(i){return(i/(pts.length-1))*(w-10)+5;}
-  var d='';for(var i=0;i<pts.length;i++)d+=(i===0?'M':'L')+x(i).toFixed(1)+','+y(pts[i]).toFixed(1);
-  var lv=pts[pts.length-1],col=lv>=0?C.lime:C.red;
-  return '<div style="height:50px;margin:8px 0 4px">'+
-    '<svg viewBox="0 0 '+w+' 50" preserveAspectRatio="none" style="width:100%;height:100%;display:block">'+
-    '<defs><linearGradient id="eqg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'+col+'" stop-opacity="0.2"/><stop offset="100%" stop-color="'+col+'" stop-opacity="0"/></linearGradient></defs>'+
-    '<path d="'+d+'" fill="url(#eqg)" opacity="0.3"/>'+
-    '<path d="'+d+'" fill="none" stroke="'+col+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'+
-    '<circle cx="'+x(pts.length-1).toFixed(1)+'" cy="'+y(lv).toFixed(1)+'" r="3" fill="'+col+'"/></svg></div>';
+  var eqPts=null;
+  if(entries&&entries.length>=2){
+    var sorted=entries.slice().sort(function(a,b){return(a.createdAt||a.time||'').localeCompare(b.createdAt||b.time||'');});
+    var cum=0;eqPts=[];
+    for(var i=0;i<sorted.length;i++){cum+=(sorted[i].rMultiple||sorted[i].r||0);eqPts.push(cum);}
+  }
+  var pts=eqPts||[-0.5,-0.8,-1.2,-0.3,0.5,0.8,1.2,1.5,2.0,2.5,3.0,3.35];
+  var mn=Math.min(0,Math.min.apply(null,pts)),mx=Math.max(0,Math.max.apply(null,pts)),rng=mx-mn||1;
+  var n=pts.length;
+  function py(v){return 8+(mx-v)/rng*(50-8);}
+  function px(i){return(i/(n-1))*310+30;}
+  var d='';
+  for(var i=0;i<n;i++){
+    var xi=px(i),yi=py(pts[i]);
+    if(i===0){d+='M'+xi.toFixed(1)+','+yi.toFixed(1);continue;}
+    var xim1=px(i-1),yim1=py(pts[i-1]);
+    var tx1,ty1;
+    if(i<2){tx1=xim1+(xi-xim1)*0.25;ty1=yim1;}
+    else{var xim2=px(i-2),yim2=py(pts[i-2]);tx1=xim1+(xi-xim2)/6;ty1=yim1+(yi-yim2)/6;}
+    var tx2,ty2;
+    if(i>=n-1){tx2=xi-(xi-xim1)*0.25;ty2=yi;}
+    else{var xip1=px(i+1),yip1=py(pts[i+1]);tx2=xi-(xip1-xim1)/6;ty2=yi-(yip1-yim1)/6;}
+    d+='C'+tx1.toFixed(1)+','+ty1.toFixed(1)+' '+tx2.toFixed(1)+','+ty2.toFixed(1)+' '+xi.toFixed(1)+','+yi.toFixed(1);
+  }
+  var lastV=pts[n-1],col=lastV>=0?'#C7FF38':'#FF5252';
+  var lx=px(n-1),ly=py(lastV);
+  var eqVal=(lastV>0?'+':'')+lastV.toFixed(2)+'R';
+  return '<div style="background:#111111;border-radius:20px;padding:16px 20px 14px;border:1px solid rgba(255,255,255,0.04);position:relative;overflow:hidden;margin-top:12px">'+
+    '<div style="position:absolute;top:-60px;right:-40px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(199,255,56,0.05) 0%,transparent 70%);pointer-events:none"></div>'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;position:relative;z-index:1">'+
+      '<div style="font-size:9px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.06em">Equity Curve <span style="color:rgba(255,255,255,0.12);font-weight:400;text-transform:none">· '+(eqPts?entries.length+' trades':'')+'</span></div>'+
+      '<div style="font-size:11px;font-weight:700;color:#C7FF38;display:flex;align-items:center;gap:4px">'+
+        '<span style="width:3px;height:3px;border-radius:50%;background:#C7FF38;box-shadow:0 0 4px rgba(199,255,56,0.4)"></span>'+eqVal+'</div></div>'+
+    '<div style="height:64px;position:relative;z-index:1">'+
+      '<svg viewBox="0 0 340 64" style="width:100%;height:100%;display:block">'+
+        '<defs>'+
+          '<linearGradient id="eqFill" x1="0" y1="0" x2="0" y2="1">'+
+            '<stop offset="0%" stop-color="'+col+'" stop-opacity="0.18"/>'+
+            '<stop offset="100%" stop-color="'+col+'" stop-opacity="0"/></linearGradient>'+
+          '<filter id="eqBlur"><feGaussianBlur stdDeviation="2.5"/></filter>'+
+          '<radialGradient id="endGlow" cx="50%" cy="50%" r="50%">'+
+            '<stop offset="0%" stop-color="'+col+'" stop-opacity="0.35"/>'+
+            '<stop offset="100%" stop-color="'+col+'" stop-opacity="0"/></radialGradient></defs>'+
+        '<line x1="30" y1="8" x2="338" y2="8" stroke="rgba(255,255,255,0.06)" stroke-width="0.5" stroke-dasharray="2 3"/>'+
+        '<line x1="30" y1="22" x2="338" y2="22" stroke="rgba(255,255,255,0.06)" stroke-width="0.5" stroke-dasharray="2 3"/>'+
+        '<line x1="30" y1="36" x2="338" y2="36" stroke="rgba(255,255,255,0.08)" stroke-width="0.5" stroke-dasharray="2 3"/>'+
+        '<line x1="30" y1="50" x2="338" y2="50" stroke="rgba(255,255,255,0.06)" stroke-width="0.5" stroke-dasharray="2 3"/>'+
+        '<text x="26" y="11" fill="rgba(255,255,255,0.18)" font-size="5.5" font-weight="500" text-anchor="end">+4R</text>'+
+        '<text x="26" y="25" fill="rgba(255,255,255,0.18)" font-size="5.5" font-weight="500" text-anchor="end">+2R</text>'+
+        '<text x="26" y="39" fill="rgba(255,255,255,0.22)" font-size="5.5" font-weight="500" text-anchor="end">0R</text>'+
+        '<text x="26" y="53" fill="rgba(255,255,255,0.18)" font-size="5.5" font-weight="500" text-anchor="end">-2R</text>'+
+        '<text x="58" y="62.5" fill="rgba(255,255,255,0.12)" font-size="5" font-weight="500" text-anchor="middle">Mon</text>'+
+        '<text x="106" y="62.5" fill="rgba(255,255,255,0.12)" font-size="5" font-weight="500" text-anchor="middle">Tue</text>'+
+        '<text x="154" y="62.5" fill="rgba(255,255,255,0.12)" font-size="5" font-weight="500" text-anchor="middle">Wed</text>'+
+        '<text x="202" y="62.5" fill="rgba(255,255,255,0.12)" font-size="5" font-weight="500" text-anchor="middle">Thu</text>'+
+        '<text x="250" y="62.5" fill="rgba(255,255,255,0.12)" font-size="5" font-weight="500" text-anchor="middle">Fri</text>'+
+        '<text x="290" y="62.5" fill="rgba(255,255,255,0.10)" font-size="5" font-weight="500" text-anchor="middle">Sat</text>'+
+        '<text x="330" y="62.5" fill="rgba(255,255,255,0.10)" font-size="5" font-weight="500" text-anchor="middle">Sun</text>'+
+        '<path d="'+d+'" fill="none" stroke="'+col+'" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.2" filter="url(#eqBlur)"/>'+
+        '<path d="'+d+' L338,64 L30,64 Z" fill="url(#eqFill)"/>'+
+        '<path d="'+d+'" fill="none" stroke="'+col+'" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'+
+        '<circle cx="'+lx.toFixed(1)+'" cy="'+ly.toFixed(1)+'" r="12" fill="url(#endGlow)"/>'+
+        '<circle cx="'+lx.toFixed(1)+'" cy="'+ly.toFixed(1)+'" r="5" fill="#FFF" style="filter:drop-shadow(0 0 8px rgba(199,255,56,0.4))"/>'+
+        '<circle cx="'+lx.toFixed(1)+'" cy="'+ly.toFixed(1)+'" r="5" fill="none" stroke="'+col+'" stroke-width="2"/></svg></div></div>';
 }
 
 function calcPos(s){
@@ -301,14 +350,18 @@ function calcPos(s){
 function overviewScreen(){
   var st=state.stats||{},ws=state.weeklyStats||{},m=state.myStats||state.stats||{};
   var wr=st.winRate||0,tr=st.totalR||0;
-  var hero= '<div class="hero">'+
-    '<div class="glow-large"></div><div class="glow-small"></div>'+
-    '<div style="font-size:12px;color:#8E8E8E;font-weight:500;margin-bottom:6px;position:relative;z-index:1">'+greeting()+'</div>'+
-    '<div style="font-size:38px;font-weight:800;letter-spacing:-0.04em;line-height:1;margin-bottom:16px;position:relative;z-index:1;color:#FFF">SLAYERS.</div>'+
-    '<div style="display:flex;gap:24px;padding-top:16px;border-top:0.5px solid rgba(255,255,255,0.06);position:relative;z-index:1">'+
-    '<div><div class="count-up" style="font-size:24px;font-weight:700;color:'+C.lime+';letter-spacing:-0.02em">'+(ws.totalR>0?'+':'')+(ws.totalR||'0')+'<span style="font-size:14px;font-weight:600;color:#8E8E8E;margin-left:2px">R</span></div><div style="font-size:10px;color:#5F5F5F;font-weight:500;margin-top:2px">Week</div></div>'+
-    '<div><div class="count-up" style="font-size:24px;font-weight:700;color:#FFF;letter-spacing:-0.02em">'+(ws.winRate||wr)+'<span style="font-size:14px;font-weight:600;color:#8E8E8E;margin-left:2px">%</span></div><div style="font-size:10px;color:#5F5F5F;font-weight:500;margin-top:2px">Win Rate</div></div>'+
-    '<div><div class="count-up" style="font-size:24px;font-weight:700;color:#FFF;letter-spacing:-0.02em">'+state.active.length+'<span style="font-size:14px;font-weight:600;color:#8E8E8E;margin-left:2px"></span></div><div style="font-size:10px;color:#5F5F5F;font-weight:500;margin-top:2px">Active</div></div>'+
+  var rVal=(ws.totalR>0?'+':'')+(ws.totalR||'0')+'R';
+  var hero='<div style="background:#111111;border-radius:28px;padding:24px;border:1px solid rgba(255,255,255,0.05);position:relative;overflow:hidden">'+
+    '<div style="position:absolute;top:-100px;right:-80px;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(199,255,56,0.07) 0%,transparent 70%);pointer-events:none"></div>'+
+    '<div style="position:absolute;top:0;left:12%;right:12%;height:1px;background:linear-gradient(90deg,transparent,rgba(199,255,56,0.15),transparent)"></div>'+
+    '<div style="font-size:12px;font-weight:500;color:#7E7E7E;letter-spacing:-0.01em;margin-bottom:2px;position:relative;z-index:1">'+greeting()+'</div>'+
+    '<div style="font-size:38px;font-weight:800;color:#FFF;letter-spacing:-0.04em;line-height:1;margin-bottom:20px;position:relative;z-index:1">SLAYERS.</div>'+
+    '<div style="display:flex;align-items:center;position:relative;z-index:1;padding:16px 0 0;border-top:1px solid rgba(255,255,255,0.04)">'+
+    '<div style="flex:1;text-align:center"><div style="font-size:22px;font-weight:800;letter-spacing:-0.02em;line-height:1;background:linear-gradient(180deg,#C7FF38,rgba(199,255,56,0.7));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">'+rVal+'</div><div style="font-size:8px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.07em;margin-top:3px">Week R</div></div>'+
+    '<div style="width:1px;height:28px;background:rgba(255,255,255,0.05);flex-shrink:0"></div>'+
+    '<div style="flex:1;text-align:center"><div style="font-size:22px;font-weight:800;letter-spacing:-0.02em;line-height:1;background:linear-gradient(180deg,#FFF,rgba(255,255,255,0.7));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">'+(ws.winRate||wr)+'%</div><div style="font-size:8px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.07em;margin-top:3px">Win Rate</div></div>'+
+    '<div style="width:1px;height:28px;background:rgba(255,255,255,0.05);flex-shrink:0"></div>'+
+    '<div style="flex:1;text-align:center"><div style="font-size:22px;font-weight:800;letter-spacing:-0.02em;line-height:1;background:linear-gradient(180deg,#FFF,rgba(255,255,255,0.7));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">'+state.active.length+'</div><div style="font-size:8px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.07em;margin-top:3px">Active</div></div>'+
     '</div></div>';
 
   var mc=miniChart(state.journal);
