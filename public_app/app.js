@@ -149,7 +149,7 @@ function overviewScreen(){
     for(var j=0;j<myAct.length;j++){
       var t=myAct[j],isB=t.type==='BULLISH';var col=isB?C.lime:C.red;
       var pct=t.tp1Fired?75:t.beFired?99:t.slFired?100:25;
-      actCards+='<div class="card" style="flex-shrink:0;width:230px;padding:14px;cursor:pointer;margin-bottom:0" onclick="openDetail(\''+t.sigId+'\')">'+
+      actCards+='<div class="card" style="flex-shrink:0;width:230px;padding:14px;cursor:pointer;margin-bottom:0" onclick="openDetail(&#39;'+t.sigId+'&#39;)">'+
         '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="font-size:14px;font-weight:800;color:#FFF">'+t.instName+'</span>'+
         '<span style="font-size:8px;font-weight:700;padding:2px 6px;border-radius:3px;background:'+(isB?C.limeSoft:C.redSoft)+';color:'+col+'">'+(isB?'BUY':'SELL')+'</span></div>'+
         '<div style="display:flex;gap:12px;font-size:10px;color:rgba(255,255,255,0.3);margin-bottom:6px">'+
@@ -200,7 +200,7 @@ function overviewScreen(){
     var isN=s.time&&(Date.now()-new Date(s.time).getTime())<300000;
     var criteriaChips=(s.criteria||[]).map(function(c){return '<span style="font-size:8px;padding:3px 6px;border-radius:3px;background:rgba(163,230,53,0.08);color:'+C.lime+';font-weight:600">'+c+'</span>';}).join('');
     var isT=s.isTracked;
-    sigsHtml+='<div class="card'+(isN?' flash-row':'')+'" style="cursor:pointer;border-left:2.5px solid '+(isD?C.orange:tc)+'" onclick="openDetail(\''+s.id+'\')">'+
+    sigsHtml+='<div class="card'+(isN?' flash-row':'')+'" style="cursor:pointer;border-left:2.5px solid '+(isD?C.orange:tc)+'" onclick="openDetail(&#39;+s.id+'&#39;)">'+
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">'+
       '<div style="display:flex;align-items:center;gap:6px"><span style="font-size:14px;font-weight:800;color:#FFF">'+s.pair+'</span>'+
       '<span style="font-size:8px;font-weight:700;padding:2px 8px;border-radius:3px;background:'+(isE?'rgba(255,255,255,0.1)':'rgba(255,255,255,0.05)')+';color:'+tc+'">'+s.tier+'</span>'+
@@ -237,7 +237,7 @@ function navBar(){
   for(var i=0;i<tabs.length;i++){
     var t=tabs[i],a=state.tab===t;
     var c=a?'#000':'rgba(255,255,255,0.35)';
-    btns+='<button class="nav-btn" onclick="setTab(\''+t+'\')" style="background:'+(a?C.lime:'transparent')+'">'+
+    btns+='<button class="nav-btn" onclick="setTab(&#39;+t+'&#39;)" style="background:'+(a?C.lime:'transparent')+'">'+
       icon(icons[t],c,16)+
       '<span style="font-size:7px;font-weight:700;color:'+c+';letter-spacing:0.02em">'+labels[t]+'</span></button>';
   }
@@ -253,7 +253,7 @@ function scalpScreen(){
     '<div class="card" style="flex:1;text-align:center;padding:12px 8px;animation-delay:0s"><div style="font-size:9px;color:'+C.text2+'">Active</div><div style="font-size:18px;font-weight:800;color:'+C.white+';margin-top:4px">'+state.scalpActive.length+'</div></div></div>';
   var sigs=(state.scalpSignals||[]).map(function(s,i){
     var isB=s.type==='BULLISH'||s.direction==='LONG';var col=isB?C.lime:C.red;var bg=isB?C.limeSoft:C.redSoft;
-    return '<div class="card" style="border-left:2.5px solid '+col+'" onclick="openScalpDetail(\''+s.id+'\')">'+
+    return '<div class="card" style="border-left:2.5px solid '+col+'" onclick="openScalpDetail(&#39;+s.id+'&#39;)">'+
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+
       '<div style="display:flex;align-items:center;gap:6px"><span style="font-weight:800;font-size:14px;color:#FFF">'+(s.name||s.pair)+'</span>'+
       '<span style="font-size:8px;font-weight:700;padding:2px 6px;border-radius:3px;background:'+bg+';color:'+col+'">'+(isB?'BUY':'SELL')+'</span></div>'+
@@ -263,7 +263,7 @@ function scalpScreen(){
       (s.fib?'<div style="font-size:9px;color:'+C.lime+';margin-top:4px">Fib: '+s.fib+' \u00b7 Vol: '+(s.volRatio||'')+'x</div>':'')+
       '<div style="display:flex;justify-content:space-between;margin-top:6px;padding-top:6px;border-top:0.5px solid rgba(255,255,255,0.04)">'+
       '<span style="font-size:8px;color:'+C.text3+'">'+timeAgo(s.time)+'</span>'+
-      '<button onclick="event.stopPropagation();toggleTrack(\''+s.id+'\','+!!(s.isTracked)+')" style="background:'+(s.isTracked?C.limeSoft:C.surface)+';border:0.5px solid '+(s.isTracked?C.lime:C.border)+';border-radius:99px;padding:3px 10px;font-size:8px;color:'+(s.isTracked?C.lime:C.text2)+';cursor:pointer;font-family:inherit;font-weight:600">'+(s.isTracked?'Tracking':'Track')+'</button></div></div>';
+      '<button onclick="event.stopPropagation();toggleTrack(&#39;+s.id+'&#39;,+!!(s.isTracked)+')" style="background:'+(s.isTracked?C.limeSoft:C.surface)+';border:0.5px solid '+(s.isTracked?C.lime:C.border)+';border-radius:99px;padding:3px 10px;font-size:8px;color:'+(s.isTracked?C.lime:C.text2)+';cursor:pointer;font-family:inherit;font-weight:600">'+(s.isTracked?'Tracking':'Track')+'</button></div></div>';
   }).join('');
   return '<div style="padding:calc(30px + env(safe-area-inset-top)) 16px 0;background:'+C.bg+';min-height:100dvh">'+
     '<div style="font-size:22px;font-weight:800;color:#FFF;margin-bottom:4px">Scalp</div>'+
@@ -337,7 +337,7 @@ function settingsScreen(){
     var val=prefs[key];
     return '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:0.5px solid rgba(255,255,255,0.04)">'+
       '<div style="flex:1"><div style="font-size:13px;font-weight:600;color:#FFF">'+label+'</div>'+(desc?'<div style="font-size:9px;color:'+C.text2+'">'+desc+'</div>':'')+'</div>'+
-      '<button onclick="toggleNotifPref(\''+key+'\')" style="width:44px;height:26px;border-radius:99px;background:'+(val?C.lime:'rgba(255,255,255,0.1)')+';border:none;position:relative;cursor:pointer;flex-shrink:0">'+
+      '<button onclick="toggleNotifPref(&#39;+key+'&#39;)" style="width:44px;height:26px;border-radius:99px;background:'+(val?C.lime:'rgba(255,255,255,0.1)')+';border:none;position:relative;cursor:pointer;flex-shrink:0">'+
       '<div style="width:20px;height:20px;border-radius:99px;background:#FFF;position:absolute;top:2px;left:'+(val?'22px':'2px')+';transition:left 0.2s"></div></button></div>';
   }
   var pushBtns='';
@@ -404,9 +404,9 @@ function detailPage(s){
     (!isD?s.tp2?'<div style="display:flex;justify-content:space-between;padding:8px 0"><span style="color:'+C.text2+'">TP2</span><span style="font-weight:700;color:'+C.lime+'">'+fmt(s.tp2)+'</span></div>':'':'')+
     '</div>'+
     (isD?'<div style="font-size:13px;font-weight:700;color:#FFF;margin:12px 0 8px">Track Your Entry</div>'+
-    '<button onclick="toggleTrack(\''+s.id+'-agg\','+!!s.isTrackedAgg+')" style="width:100%;background:'+(s.isTrackedAgg?C.lime:C.surface)+';border:0.5px solid '+(s.isTrackedAgg?C.lime:C.border)+';border-radius:10px;padding:12px 0;font-size:12px;font-weight:700;cursor:pointer;color:'+(s.isTrackedAgg?'#000':'rgba(255,255,255,0.6)')+';margin-bottom:8px;font-family:inherit">'+(s.isTrackedAgg?'\u2713 Tracking aggressive at '+fmt(s.aggEntry):'\u26A1 Aggressive entry at '+fmt(s.aggEntry))+'</button>'+
-    (s.consEntry?'<button onclick="toggleTrack(\''+s.id+'-cons\','+!!s.isTrackedCons+')" style="width:100%;background:'+(s.isTrackedCons?C.lime:C.surface)+';border:0.5px solid '+(s.isTrackedCons?C.lime:C.border)+';border-radius:10px;padding:12px 0;font-size:12px;font-weight:700;cursor:pointer;color:'+(s.isTrackedCons?'#000':'rgba(255,255,255,0.6)')+';margin-bottom:12px;font-family:inherit">'+(s.isTrackedCons?'\u2713 Conservative at '+fmt(s.consEntry):'\uD83C\uDFAF Conservative at '+fmt(s.consEntry))+'</button>':'')
-    :'<button onclick="toggleTrack(\''+s.id+'\','+!!s.isTracked+')" style="width:100%;background:'+(s.isTracked?C.lime:C.surface)+';border:0.5px solid '+(s.isTracked?C.lime:C.border)+';border-radius:10px;padding:12px 0;font-size:12px;font-weight:700;cursor:pointer;color:'+(s.isTracked?'#000':'rgba(255,255,255,0.6)')+';margin-bottom:12px;font-family:inherit">'+(s.isTracked?"\u2713 Tracking – you'll get updates":"I'm in this trade")+'</button>')+
+    '<button onclick="toggleTrack(&#39;+s.id+'-agg&#39;,+!!s.isTrackedAgg+')" style="width:100%;background:'+(s.isTrackedAgg?C.lime:C.surface)+';border:0.5px solid '+(s.isTrackedAgg?C.lime:C.border)+';border-radius:10px;padding:12px 0;font-size:12px;font-weight:700;cursor:pointer;color:'+(s.isTrackedAgg?'#000':'rgba(255,255,255,0.6)')+';margin-bottom:8px;font-family:inherit">'+(s.isTrackedAgg?'\u2713 Tracking aggressive at '+fmt(s.aggEntry):'\u26A1 Aggressive entry at '+fmt(s.aggEntry))+'</button>'+
+    (s.consEntry?'<button onclick="toggleTrack(&#39;+s.id+'-cons&#39;,+!!s.isTrackedCons+')" style="width:100%;background:'+(s.isTrackedCons?C.lime:C.surface)+';border:0.5px solid '+(s.isTrackedCons?C.lime:C.border)+';border-radius:10px;padding:12px 0;font-size:12px;font-weight:700;cursor:pointer;color:'+(s.isTrackedCons?'#000':'rgba(255,255,255,0.6)')+';margin-bottom:12px;font-family:inherit">'+(s.isTrackedCons?'\u2713 Conservative at '+fmt(s.consEntry):'\uD83C\uDFAF Conservative at '+fmt(s.consEntry))+'</button>':'')
+    :'<button onclick="toggleTrack(&#39;+s.id+'&#39;,+!!s.isTracked+')" style="width:100%;background:'+(s.isTracked?C.lime:C.surface)+';border:0.5px solid '+(s.isTracked?C.lime:C.border)+';border-radius:10px;padding:12px 0;font-size:12px;font-weight:700;cursor:pointer;color:'+(s.isTracked?'#000':'rgba(255,255,255,0.6)')+';margin-bottom:12px;font-family:inherit">'+(s.isTracked?"\u2713 Tracking – you'll get updates":"I'm in this trade")+'</button>')+
     '<button onclick="toggleCalc()" style="width:100%;background:'+C.lime+';border:none;border-radius:10px;padding:12px 0;color:#000;font-weight:700;font-size:12px;cursor:pointer;margin-bottom:12px;font-family:inherit">'+(state.showCalc?'Close Calculator':'Calculate Position Size')+'</button>'+
     (state.showCalc?'<div style="background:'+C.surface+';border:0.5px solid '+C.border+';border-radius:14px;padding:14px;margin-bottom:16px">'+
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'+
