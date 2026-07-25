@@ -459,13 +459,10 @@ function detailPage(s){
   var trackBtnBdr=s.isTracked?'none':'0.5px solid rgba(255,255,255,0.04)';
   var trackBtnShad=s.isTracked?'none':'0 0 30px rgba(183,255,42,0.12)';
 
-  // Mascot watermark (simplified abstract hooded figure)
+  // Mascot watermark
   var mascot='<div style="position:absolute;bottom:0;right:0;width:100px;height:120px;opacity:0.08;pointer-events:none;overflow:hidden">'+
-    '<svg viewBox="0 0 100 120" fill="none" style="width:100%;height:100%">'+
-    '<path d="M50 10C30 10 15 25 15 45v5h8v-5c0-14 12-26 27-26s27 12 27 26v5h8v-5c0-20-15-35-35-35z" fill="#FFF"/>'+
-    '<path d="M35 45h30v8H35z" fill="#FFF" opacity="0.3"/>'+
-    '<path d="M50 55c-8 0-15 7-15 15v10c0 3 2 5 5 5h20c3 0 5-2 5-5V70c0-8-7-15-15-15z" fill="#FFF"/>'+
-    '</svg></div>';
+    '<img src="/app/mascot.png" style="width:100%;height:100%;object-fit:contain;display:block">'+
+    '</div>';
 
   // Chart image
   var chartImg='';
