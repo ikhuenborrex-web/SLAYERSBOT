@@ -200,7 +200,7 @@ function overviewScreen(){
     var isN=s.time&&(Date.now()-new Date(s.time).getTime())<300000;
     var criteriaChips=(s.criteria||[]).map(function(c){return '<span style="font-size:8px;padding:3px 6px;border-radius:3px;background:rgba(163,230,53,0.08);color:'+C.lime+';font-weight:600">'+c+'</span>';}).join('');
     var isT=s.isTracked;
-    sigsHtml+='<div class="card'+(isN?' flash-row':'')+'" style="cursor:pointer;border-left:2.5px solid '+(isD?C.orange:tc)+'" onclick="openDetail(\''+s.id+'\')">'+
+    sigsHtml+='<div class="card'+(isN?' flash-row':'')+'" style="cursor:pointer;border-left:2.5px solid '+(isD?C.orange:tc)+'" onclick="openDetail(&#39;'+s.id+'&#39;)">'+
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">'+
       '<div style="display:flex;align-items:center;gap:6px"><span style="font-size:14px;font-weight:800;color:#FFF">'+s.pair+'</span>'+
       '<span style="font-size:8px;font-weight:700;padding:2px 8px;border-radius:3px;background:'+(isE?'rgba(255,255,255,0.1)':'rgba(255,255,255,0.05)')+';color:'+tc+'">'+s.tier+'</span>'+
