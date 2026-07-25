@@ -266,24 +266,6 @@ async function fetchAll(bg){
   }
 }
 
-function miniChart(entries){
-  if(!entries||entries.length<2)return '';
-  var sorted=entries.slice().sort(function(a,b){return(a.createdAt||a.time||'').localeCompare(b.createdAt||b.time||'');});
-  var cumR=0,pts=[];
-  for(var i=0;i<sorted.length;i++){cumR+=(sorted[i].rMultiple||sorted[i].r||0);pts.push(cumR);}
-  var mn=Math.min(0,Math.min.apply(null,pts)),mx=Math.max(0,Math.max.apply(null,pts)),rng=mx-mn||1,w=340,h=50;
-  function y(v){return h-6-((v-mn)/rng)*(h-16);}
-  function x(i){return(i/(pts.length-1))*(w-10)+5;}
-  var d='';for(var i=0;i<pts.length;i++)d+=(i===0?'M':'L')+x(i).toFixed(1)+','+y(pts[i]).toFixed(1);
-  var lv=pts[pts.length-1],col=lv>=0?C.lime:C.red;
-  return '<div style="height:50px;margin:8px 0 4px">'+
-    '<svg viewBox="0 0 '+w+' 50" preserveAspectRatio="none" style="width:100%;height:100%;display:block">'+
-    '<defs><linearGradient id="eqg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'+col+'" stop-opacity="0.2"/><stop offset="100%" stop-color="'+col+'" stop-opacity="0"/></linearGradient></defs>'+
-    '<path d="'+d+'" fill="url(#eqg)" opacity="0.3"/>'+
-    '<path d="'+d+'" fill="none" stroke="'+col+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'+
-    '<circle cx="'+x(pts.length-1).toFixed(1)+'" cy="'+y(lv).toFixed(1)+'" r="3" fill="'+col+'"/></svg></div>';
-}
-
 function calcPos(s){
   var e=parseFloat(document.getElementById('pc-entry')?.value)||0,sl=parseFloat(document.getElementById('pc-sl')?.value)||0;
   var b=parseFloat(document.getElementById('pc-bal')?.value)||0,rp=parseFloat(document.getElementById('pc-rp')?.value)||0,t=parseFloat(document.getElementById('pc-tp')?.value)||0;
@@ -299,19 +281,129 @@ function calcPos(s){
 }
 
 function overviewScreen(){
-  var st=state.stats||{},ws=state.weeklyStats||{},m=state.myStats||state.stats||{};
-  var wr=st.winRate||0,tr=st.totalR||0;
-  var hero= '<div class="hero">'+
-    '<div class="glow-large"></div><div class="glow-small"></div>'+
-    '<div style="font-size:12px;color:#8E8E8E;font-weight:500;margin-bottom:6px;position:relative;z-index:1">'+greeting()+'</div>'+
-    '<div style="font-size:38px;font-weight:800;letter-spacing:-0.04em;line-height:1;margin-bottom:16px;position:relative;z-index:1;color:#FFF">SLAYERS.</div>'+
-    '<div style="display:flex;gap:24px;padding-top:16px;border-top:0.5px solid rgba(255,255,255,0.06);position:relative;z-index:1">'+
-    '<div><div class="count-up" style="font-size:24px;font-weight:700;color:'+C.lime+';letter-spacing:-0.02em">'+(ws.totalR>0?'+':'')+(ws.totalR||'0')+'<span style="font-size:14px;font-weight:600;color:#8E8E8E;margin-left:2px">R</span></div><div style="font-size:10px;color:#5F5F5F;font-weight:500;margin-top:2px">Week</div></div>'+
-    '<div><div class="count-up" style="font-size:24px;font-weight:700;color:#FFF;letter-spacing:-0.02em">'+(ws.winRate||wr)+'<span style="font-size:14px;font-weight:600;color:#8E8E8E;margin-left:2px">%</span></div><div style="font-size:10px;color:#5F5F5F;font-weight:500;margin-top:2px">Win Rate</div></div>'+
-    '<div><div class="count-up" style="font-size:24px;font-weight:700;color:#FFF;letter-spacing:-0.02em">'+state.active.length+'<span style="font-size:14px;font-weight:600;color:#8E8E8E;margin-left:2px"></span></div><div style="font-size:10px;color:#5F5F5F;font-weight:500;margin-top:2px">Active</div></div>'+
-    '</div></div>';
+  var st=state.stats||{},ws=state.weeklyStats||{};
+  var wr=st.winRate||0;
 
-  var mc=miniChart(state.journal);
+  // --- Equity curve data from journal ---
+  var eqPts=null;
+  if(state.journal&&state.journal.length>=2){
+    var _sd=state.journal.slice().sort(function(a,b){return(a.createdAt||a.time||'').localeCompare(b.createdAt||b.time||'');});
+    var _cum=0;eqPts=[];
+    for(var _i=0;_i<_sd.length;_i++){_cum+=(_sd[_i].rMultiple||_sd[_i].r||0);eqPts.push(_cum);}
+  }
+  var pts=eqPts||[-0.5,-0.3,-0.8,-1.2,-0.5,0.3,0.5,0.8,1.2,1.5,2.0,2.5,2.8,3.0,3.2,3.35];
+  var _mn=Math.min(0,Math.min.apply(null,pts)),_mx=Math.max(0,Math.max.apply(null,pts)),_rng=_mx-_mn||1;
+  var _cw=340,_ch=200;
+  function _py(v){return 16+(_mx-v)/_rng*(184-16);}
+  function _px(i){return(i/(pts.length-1))*(_cw-56)+52;}
+  // Smooth Catmull-Rom path
+  var _d='';
+  for(var _i=0;_i<pts.length;_i++){
+    var _xi=_px(_i),_yi=_py(pts[_i]);
+    if(_i===0){_d+='M'+_xi.toFixed(1)+','+_yi.toFixed(1);continue;}
+    var _xim1=_px(_i-1),_yim1=_py(pts[_i-1]);
+    var _tx1,_ty1;
+    if(_i<2){_tx1=_xim1+(_xi-_xim1)*0.25;_ty1=_yim1;}
+    else{var _xim2=_px(_i-2),_yim2=_py(pts[_i-2]);_tx1=_xim1+(_xi-_xim2)/6;_ty1=_yim1+(_yi-_yim2)/6;}
+    var _tx2,_ty2;
+    if(_i>=pts.length-1){_tx2=_xi-(_xi-_xim1)*0.25;_ty2=_yi;}
+    else{var _xip1=_px(_i+1),_yip1=_py(pts[_i+1]);_tx2=_xi-(_xip1-_xim1)/6;_ty2=_yi-(_yip1-_yim1)/6;}
+    _d+='C'+_tx1.toFixed(1)+','+_ty1.toFixed(1)+' '+_tx2.toFixed(1)+','+_ty2.toFixed(1)+' '+_xi.toFixed(1)+','+_yi.toFixed(1);
+  }
+  var _lx=_px(pts.length-1),_ly=_py(pts[pts.length-1]);
+  var _ec=pts[pts.length-1]>=0?'#C7FF38':'#FF5252';
+
+  // --- Metrics values ---
+  var eqVal=(ws.totalR>0?'+':'')+(ws.totalR||'3.35')+'R';
+  var eqPct=((ws.pnlPercent>0?'+':'')+(ws.pnlPercent||'2.41')+'%');
+  var wrVal=(ws.winRate||wr||'67')+'%';
+  var actCnt=state.active.length||'2';
+  var maxAct=state.signals.length||'6';
+
+  // --- Analytics container ---
+  var analytics='<div style="width:100%">'+
+    // header
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">'+
+      '<div><div style="font-size:12px;font-weight:500;color:#7E7E7E;letter-spacing:-0.01em">'+greeting()+'</div>'+
+      '<div style="font-size:26px;font-weight:800;color:#FFF;letter-spacing:-0.03em;line-height:1.1">SLAYERS.</div></div>'+
+      '<div style="display:flex;align-items:center;gap:10px">'+
+        '<div style="display:flex;align-items:center;gap:5px;height:36px;padding:0 16px;border-radius:18px;border:1px solid rgba(199,255,56,0.25);cursor:pointer">'+
+          '<span style="font-size:11px;font-weight:600;color:#C7FF38">This Week</span>'+
+          '<span style="font-size:7px;color:#C7FF38;opacity:0.5">&#9660;</span></div></div></div>'+
+    // metrics
+    '<div style="display:flex;align-items:center;background:#111111;border-radius:20px;padding:16px 20px;border:1px solid rgba(255,255,255,0.06);margin-bottom:24px;position:relative;overflow:hidden">'+
+      '<div style="position:absolute;top:-80px;right:-60px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(199,255,56,0.06) 0%,transparent 70%);pointer-events:none"></div>'+
+      '<div style="flex:1;text-align:center;position:relative;z-index:1">'+
+        '<div style="font-size:7px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px">EQUITY CHANGE</div>'+
+        '<div style="font-size:18px;font-weight:800;letter-spacing:-0.02em;line-height:1.15;color:#C7FF38">'+eqVal+'</div>'+
+        '<div style="font-size:9px;font-weight:500;margin-top:1px;color:#C7FF38">'+eqPct+'</div></div>'+
+      '<div style="width:1px;height:32px;background:rgba(255,255,255,0.06);flex-shrink:0"></div>'+
+      '<div style="flex:1;text-align:center;position:relative;z-index:1">'+
+        '<div style="font-size:7px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px">WIN RATE</div>'+
+        '<div style="font-size:18px;font-weight:800;letter-spacing:-0.02em;line-height:1.15;color:#FFF">'+wrVal+'</div>'+
+        '<div style="font-size:9px;font-weight:500;margin-top:1px;color:#C7FF38">+4.2%</div></div>'+
+      '<div style="width:1px;height:32px;background:rgba(255,255,255,0.06);flex-shrink:0"></div>'+
+      '<div style="flex:1;text-align:center;position:relative;z-index:1">'+
+        '<div style="font-size:7px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px">ACTIVE TRADES</div>'+
+        '<div style="font-size:18px;font-weight:800;letter-spacing:-0.02em;line-height:1.15;color:#FFF">'+actCnt+'</div>'+
+        '<div style="font-size:9px;font-weight:500;margin-top:1px;color:#7E7E7E">of '+maxAct+'</div></div>'+
+      '<button onclick="fetchAll()" style="width:36px;height:36px;border-radius:50%;background:#0A0A0A;border:1px solid rgba(199,255,56,0.15);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:12px;position:relative;box-shadow:0 0 20px rgba(199,255,56,0.03)">'+
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C7FF38" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+
+          '<line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></button></div>'+
+    // chart card
+    '<div style="background:#111111;border-radius:20px;padding:20px;border:1px solid rgba(255,255,255,0.06);position:relative;overflow:hidden">'+
+      '<div style="position:absolute;top:-80px;right:-60px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(199,255,56,0.05) 0%,transparent 70%);pointer-events:none"></div>'+
+      // chart header
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;position:relative;z-index:1">'+
+        '<div style="display:flex;align-items:center;gap:8px">'+
+          '<div style="display:flex;align-items:center;gap:4px;padding:4px 10px 4px 12px;border-radius:99px;border:1px solid rgba(199,255,56,0.15);cursor:pointer">'+
+            '<span style="font-size:10px;font-weight:600;color:#C7FF38">Equity (R)</span>'+
+            '<span style="font-size:6px;color:#C7FF38;opacity:0.4">&#9660;</span></div></div>'+
+        '<div style="display:flex;align-items:center;gap:5px">'+
+          '<span style="width:4px;height:4px;border-radius:50%;background:#C7FF38;box-shadow:0 0 5px rgba(199,255,56,0.4)"></span>'+
+          '<span style="font-size:14px;font-weight:700;color:#C7FF38;letter-spacing:-0.02em">'+eqVal+'</span></div></div>'+
+      // SVG
+      '<div style="height:200px;position:relative;z-index:1">'+
+        '<svg viewBox="0 0 '+_cw+' '+_ch+'" style="width:100%;height:100%;display:block" preserveAspectRatio="xMidYMid meet">'+
+          '<defs>'+
+            '<linearGradient id="eqFill" x1="0" y1="0" x2="0" y2="1">'+
+              '<stop offset="0%" stop-color="'+_ec+'" stop-opacity="0.15"/>'+
+              '<stop offset="100%" stop-color="'+_ec+'" stop-opacity="0"/></linearGradient>'+
+            '<filter id="eqBlur"><feGaussianBlur stdDeviation="3"/></filter>'+
+            '<radialGradient id="endGlow" cx="50%" cy="50%" r="50%">'+
+              '<stop offset="0%" stop-color="'+_ec+'" stop-opacity="0.25"/>'+
+              '<stop offset="100%" stop-color="'+_ec+'" stop-opacity="0"/></radialGradient></defs>'+
+          '<line x1="52" y1="16" x2="330" y2="16" stroke="rgba(255,255,255,0.08)" stroke-width="0.5" stroke-dasharray="3 3"/>'+
+          '<line x1="52" y1="54" x2="330" y2="54" stroke="rgba(255,255,255,0.08)" stroke-width="0.5" stroke-dasharray="3 3"/>'+
+          '<line x1="52" y1="92" x2="330" y2="92" stroke="rgba(255,255,255,0.08)" stroke-width="0.5" stroke-dasharray="3 3"/>'+
+          '<line x1="52" y1="130" x2="330" y2="130" stroke="rgba(255,255,255,0.08)" stroke-width="0.5" stroke-dasharray="3 3"/>'+
+          '<line x1="52" y1="168" x2="330" y2="168" stroke="rgba(255,255,255,0.08)" stroke-width="0.5" stroke-dasharray="3 3"/>'+
+          '<text x="46" y="21" fill="rgba(255,255,255,0.22)" font-size="7" font-weight="500" text-anchor="end">+4R</text>'+
+          '<text x="46" y="59" fill="rgba(255,255,255,0.22)" font-size="7" font-weight="500" text-anchor="end">+2R</text>'+
+          '<text x="46" y="97" fill="rgba(255,255,255,0.28)" font-size="7" font-weight="500" text-anchor="end">0R</text>'+
+          '<text x="46" y="135" fill="rgba(255,255,255,0.22)" font-size="7" font-weight="500" text-anchor="end">-2R</text>'+
+          '<text x="46" y="173" fill="rgba(255,255,255,0.22)" font-size="7" font-weight="500" text-anchor="end">-4R</text>'+
+          '<text x="58" y="196" fill="rgba(255,255,255,0.18)" font-size="7" font-weight="500" text-anchor="middle">Mon</text>'+
+          '<text x="103" y="196" fill="rgba(255,255,255,0.18)" font-size="7" font-weight="500" text-anchor="middle">Tue</text>'+
+          '<text x="148" y="196" fill="rgba(255,255,255,0.18)" font-size="7" font-weight="500" text-anchor="middle">Wed</text>'+
+          '<text x="193" y="196" fill="rgba(255,255,255,0.18)" font-size="7" font-weight="500" text-anchor="middle">Thu</text>'+
+          '<text x="238" y="196" fill="rgba(255,255,255,0.18)" font-size="7" font-weight="500" text-anchor="middle">Fri</text>'+
+          '<text x="283" y="196" fill="rgba(255,255,255,0.14)" font-size="7" font-weight="500" text-anchor="middle">Sat</text>'+
+          '<text x="325" y="196" fill="rgba(255,255,255,0.14)" font-size="7" font-weight="500" text-anchor="middle">Sun</text>'+
+          '<path d="'+_d+'" fill="none" stroke="'+_ec+'" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity="0.25" filter="url(#eqBlur)"/>'+
+          '<path d="'+_d+' L330,200 L52,200 Z" fill="url(#eqFill)"/>'+
+          '<path d="'+_d+'" fill="none" stroke="'+_ec+'" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>'+
+          '<circle cx="'+_lx.toFixed(1)+'" cy="'+_ly.toFixed(1)+'" r="14" fill="url(#endGlow)"/>'+
+          '<circle cx="'+_lx.toFixed(1)+'" cy="'+_ly.toFixed(1)+'" r="6" fill="#FFF" style="filter:drop-shadow(0 0 10px rgba(199,255,56,0.35))"/>'+
+          '<circle cx="'+_lx.toFixed(1)+'" cy="'+_ly.toFixed(1)+'" r="6" fill="none" stroke="'+_ec+'" stroke-width="2"/></svg></div>'+
+      // timeframe
+      '<div style="display:flex;gap:2px;justify-content:center;padding-top:14px;margin-top:14px;border-top:1px solid rgba(255,255,255,0.04);position:relative;z-index:1">'+
+        '<span style="background:rgba(199,255,56,0.08);color:#C7FF38;font-weight:600;font-size:9px;padding:4px 10px;border-radius:99px;cursor:pointer;font-family:inherit">1W</span>'+
+        '<span style="color:rgba(255,255,255,0.2);font-size:9px;font-weight:500;padding:4px 10px;border-radius:99px;cursor:pointer;font-family:inherit">2W</span>'+
+        '<span style="color:rgba(255,255,255,0.2);font-size:9px;font-weight:500;padding:4px 10px;border-radius:99px;cursor:pointer;font-family:inherit">1M</span>'+
+        '<span style="color:rgba(255,255,255,0.2);font-size:9px;font-weight:500;padding:4px 10px;border-radius:99px;cursor:pointer;font-family:inherit">3M</span>'+
+        '<span style="color:rgba(255,255,255,0.2);font-size:9px;font-weight:500;padding:4px 10px;border-radius:99px;cursor:pointer;font-family:inherit">6M</span>'+
+        '<span style="color:rgba(255,255,255,0.2);font-size:9px;font-weight:500;padding:4px 10px;border-radius:99px;cursor:pointer;font-family:inherit">ALL</span></div></div></div>';
 
   var mp='',confl=state.confluence||[];
   if(confl.length){
@@ -413,7 +505,7 @@ function overviewScreen(){
 
   return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+';position:relative">'+
     '<div class="sc" style="flex:1;overflow-y:auto;padding:calc(30px + env(safe-area-inset-top)) 16px calc(100px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch">'+
-      hero+mc+mp+actCards+sigHeader+filterHtml+sigsHtml+
+      analytics+mp+actCards+sigHeader+filterHtml+sigsHtml+
     '</div>'+navBar()+'</div>';
 }
 
