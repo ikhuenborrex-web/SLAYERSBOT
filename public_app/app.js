@@ -1554,7 +1554,7 @@ function renderShareCard(){
       '</div>';
     },
     story:function(){
-      return '<div class="share-card" style="background:#111111;border-radius:24px;border:1px solid rgba(255,255,255,0.06);overflow:hidden;position:relative;width:80%;aspect-ratio:9/16;display:flex;flex-direction:column">'+
+      return '<div class="share-card" style="background:#111111;border-radius:24px;border:1px solid rgba(255,255,255,0.06);overflow:hidden;position:relative;width:100%;aspect-ratio:9/16;display:flex;flex-direction:column">'+
         '<div style="position:absolute;inset:0;pointer-events:none"><img src="'+getMascotSrc()+'" style="width:100%;height:100%;object-fit:cover;opacity:0.08"></div>'+
         '<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0.15) 0%,rgba(0,0,0,0.02) 40%,rgba(17,17,17,0.3) 70%,#111111 100%);pointer-events:none"></div>'+
         '<div style="position:relative;z-index:1;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;text-align:center">'+
@@ -1616,7 +1616,7 @@ function renderShareCard(){
       '</div>';
     },
     poster:function(){
-      return '<div class="share-card" style="background:#0E0E0E;border-radius:24px;border:1px solid rgba(255,255,255,0.06);overflow:hidden;position:relative;width:80%;aspect-ratio:9/16;display:flex;flex-direction:column">'+
+      return '<div class="share-card" style="background:#0E0E0E;border-radius:24px;border:1px solid rgba(255,255,255,0.06);overflow:hidden;position:relative;width:100%;aspect-ratio:9/16;display:flex;flex-direction:column">'+
         '<div style="position:absolute;top:-20px;left:50%;transform:translateX(-50%);width:340px;height:340px;border-radius:50%;background:radial-gradient(circle,rgba(199,255,56,0.025) 0%,rgba(199,255,56,0.008) 40%,transparent 70%);pointer-events:none"></div>'+
         '<div style="position:absolute;top:0;left:0;right:0;height:70%;pointer-events:none">'+
           '<img src="'+getMascotSrc()+'" style="width:100%;height:100%;object-fit:cover;opacity:0.6">'+
@@ -1649,7 +1649,7 @@ function captureAndDownload(){
   var el=document.getElementById('shareCardPreview');
   if(!el||!el.children.length)return;
   waitForImages(el).then(function(){
-    html2canvas(el,{backgroundColor:'#0A0A0A',scale:2,useCORS:true,allowTaint:true}).then(function(canvas){
+    html2canvas(el,{backgroundColor:'#0A0A0A',scale:3,useCORS:true,allowTaint:true,logging:false}).then(function(canvas){
       var link=document.createElement('a');
       link.download='slayers-trade-'+_shareStyle+'.png';
       link.href=canvas.toDataURL('image/png');
@@ -1663,7 +1663,7 @@ function captureAndShare(){
   var el=document.getElementById('shareCardPreview');
   if(!el||!el.children.length)return;
   waitForImages(el).then(function(){
-    html2canvas(el,{backgroundColor:'#0A0A0A',scale:2,useCORS:true,allowTaint:true}).then(function(canvas){
+    html2canvas(el,{backgroundColor:'#0A0A0A',scale:3,useCORS:true,allowTaint:true,logging:false}).then(function(canvas){
       canvas.toBlob(function(blob){
         if(!blob)return;
         if(navigator.share&&navigator.canShare({files:[new File([blob],'slayers-trade.png',{type:'image/png'})]})){
