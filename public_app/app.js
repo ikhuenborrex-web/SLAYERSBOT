@@ -592,7 +592,7 @@ function journalScreen(){
   var timeHtml='<div style="display:flex;gap:4px;margin:0 0 14px;background:#121212;border-radius:99px;padding:3px">';
   for(var ti=0;ti<times.length;ti++){
     var a=state.journalTime===times[ti];
-    timeHtml+='<button onclick="state.journalTime=\''+times[ti]+'\';state.journalTab=\'all\';render()" style="flex:1;border-radius:99px;padding:8px 0;font-size:10px;font-weight:600;font-family:inherit;cursor:pointer;background:'+(a?'#B7FF2A':'transparent')+';color:'+(a?'#090909':'#5F5F5F')+';border:none;transition:all .2s;box-shadow:'+(a?'0 0 12px rgba(183,255,42,0.2)':'none')+'">'+times[ti]+'</button>';
+    timeHtml+='<button onclick="state.journalTime=\''+times[ti]+'\';state.journalTab=\'all\';render()" style="flex:1;border-radius:99px;padding:8px 0;font-size:10px;font-weight:600;font-family:inherit;cursor:pointer;background:'+(a?'#C7FF38':'transparent')+';color:'+(a?'#090909':'#5F5F5F')+';border:none;transition:all .2s;box-shadow:'+(a?'0 0 12px rgba(199,255,56,0.2)':'none')+'">'+times[ti]+'</button>';
   }
   timeHtml+='</div>';
 
@@ -603,8 +603,9 @@ function journalScreen(){
     '<div></div></div>';
 
   // ====== EQUITY HERO ======
-  var equityHero='<div style="background:#151515;border-radius:16px;padding:16px;margin:14px 0;border:0.5px solid rgba(255,255,255,0.03)">'+
-    '<div style="display:flex;justify-content:space-between;align-items:flex-end">'+
+  var equityHero='<div style="background:#111111;border-radius:20px;padding:20px;margin:14px 0;border:1px solid rgba(255,255,255,0.05);position:relative;overflow:hidden">'+
+    '<div style="position:absolute;top:-80px;right:-60px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(199,255,56,0.06) 0%,transparent 70%);pointer-events:none"></div>'+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-end;position:relative;z-index:1">'+
       '<div><div style="font-size:9px;color:#5F5F5F;font-weight:500;text-transform:uppercase;letter-spacing:0.06em">Total P&amp;L</div>'+
       '<div style="font-size:32px;font-weight:800;letter-spacing:-0.05em;line-height:1;color:'+(totalR>=0?C.lime:C.red)+'">'+(totalR>0?'+':'')+totalR.toFixed(1)+'<span style="font-size:14px;color:#5F5F5F;font-weight:600;margin-left:4px">R</span></div>'+
       '<div style="font-size:10px;color:#8E8E8E;margin-top:2px">Start: 100R \u00b7 Peak: '+(peakEq>100?'+':'')+(peakEq-100).toFixed(1)+'R</div></div>'+
@@ -626,19 +627,19 @@ function journalScreen(){
 
   // ====== 2x2 STAT GRID ======
   var statsHtml='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0 0 14px">'+
-    '<div style="background:#151515;border-radius:16px;padding:14px 16px;border:0.5px solid rgba(255,255,255,0.03)">'+
+    '<div style="background:#111111;border-radius:16px;padding:14px 16px;border:1px solid rgba(255,255,255,0.04)">'+
       '<div style="font-size:9px;color:#5F5F5F;font-weight:500;text-transform:uppercase;letter-spacing:0.06em">Win Rate</div>'+
       '<div style="font-size:22px;font-weight:800;color:#FFF;letter-spacing:-0.04em;line-height:1.1;margin-top:2px">'+wr+'<span style="font-size:12px;color:#5F5F5F;font-weight:600;margin-left:2px">%</span></div>'+
       '<div style="font-size:10px;color:#8E8E8E;margin-top:2px">'+wins.length+'W \u00b7 '+losses.length+'L \u00b7 '+bes.length+'BE</div></div>'+
-    '<div style="background:#151515;border-radius:16px;padding:14px 16px;border:0.5px solid rgba(255,255,255,0.03)">'+
+    '<div style="background:#111111;border-radius:16px;padding:14px 16px;border:1px solid rgba(255,255,255,0.04)">'+
       '<div style="font-size:9px;color:#5F5F5F;font-weight:500;text-transform:uppercase;letter-spacing:0.06em">Profit Factor</div>'+
       '<div style="font-size:22px;font-weight:800;letter-spacing:-0.04em;line-height:1.1;margin-top:2px;color:'+(parseFloat(pf)>1?C.lime:'#FFF')+'">'+pf+'</div>'+
       '<div style="font-size:10px;color:#8E8E8E;margin-top:2px">Gross +'+posR.toFixed(1)+' / -'+negR.toFixed(1)+'</div></div>'+
-    '<div style="background:#151515;border-radius:16px;padding:14px 16px;border:0.5px solid rgba(255,255,255,0.03)">'+
+    '<div style="background:#111111;border-radius:16px;padding:14px 16px;border:1px solid rgba(255,255,255,0.04)">'+
       '<div style="font-size:9px;color:#5F5F5F;font-weight:500;text-transform:uppercase;letter-spacing:0.06em">Total Trades</div>'+
       '<div style="font-size:22px;font-weight:800;color:#FFF;letter-spacing:-0.04em;line-height:1.1;margin-top:2px">'+(wins.length+losses.length+bes.length)+'</div>'+
       '<div style="font-size:10px;color:#8E8E8E;margin-top:2px">'+allEntries.filter(function(e){return e.notes&&e.notes.trim();}).length+' with notes</div></div>'+
-    '<div style="background:#151515;border-radius:16px;padding:14px 16px;border:0.5px solid rgba(255,255,255,0.03)">'+
+    '<div style="background:#111111;border-radius:16px;padding:14px 16px;border:1px solid rgba(255,255,255,0.04)">'+
       '<div style="font-size:9px;color:#5F5F5F;font-weight:500;text-transform:uppercase;letter-spacing:0.06em">Avg Win</div>'+
       '<div style="font-size:22px;font-weight:800;letter-spacing:-0.04em;line-height:1.1;margin-top:2px;color:'+C.lime+'">'+(wins.length?'+'+posR.toFixed(2):'0')+'R</div>'+
       '<div style="font-size:10px;color:#8E8E8E;margin-top:2px">Avg Loss: '+(losses.length?'-'+((negR||0)/losses.length).toFixed(2):'0')+'R</div></div>'+
@@ -651,7 +652,7 @@ function journalScreen(){
   var tabHtml='<div style="display:flex;gap:4px;margin-bottom:14px;overflow-x:auto;scrollbar-width:none">';
   for(var ti=0;ti<tabs.length;ti++){
     var t=tabs[ti],a=tab===t;
-    tabHtml+='<button onclick="state.journalTab=\''+t+'\';render()" style="flex-shrink:0;border:0.5px solid '+(a?'rgba(183,255,42,0.25)':'rgba(255,255,255,0.06)')+';border-radius:99px;padding:7px 16px;font-size:11px;font-weight:600;font-family:inherit;cursor:pointer;background:'+(a?'rgba(183,255,42,0.1)':'#121212')+';color:'+(a?C.lime:'#5F5F5F')+';transition:all .2s;white-space:nowrap">'+tabLabels[t]+' <span style="font-size:9px;opacity:0.4">'+tabCounts[t]+'</span></button>';
+    tabHtml+='<button onclick="state.journalTab=\''+t+'\';render()" style="flex-shrink:0;border:0.5px solid '+(a?'rgba(199,255,56,0.25)':'rgba(255,255,255,0.06)')+';border-radius:99px;padding:7px 16px;font-size:11px;font-weight:600;font-family:inherit;cursor:pointer;background:'+(a?'rgba(199,255,56,0.1)':'#121212')+';color:'+(a?C.lime:'#5F5F5F')+';transition:all .2s;white-space:nowrap">'+tabLabels[t]+' <span style="font-size:9px;color:'+(a?C.lime:'#5F5F5F')+';opacity:0.5">'+tabCounts[t]+'</span></button>';
   }
   tabHtml+='</div>';
 
@@ -664,44 +665,45 @@ function journalScreen(){
     var iw=isW(e),il=isL(e),ib=isB(e);
     var col=iw?C.lime:il?C.red:ib?C.text2:'rgba(255,255,255,0.3)';
     var dir=e.direction||'';
-    var dirCol=dir==='BUY'||dir==='BULLISH'?C.lime:C.red;
-    var dirBg=dir==='BUY'||dir==='BULLISH'?'rgba(183,255,42,0.1)':'rgba(255,82,82,0.1)';
-    var dirLabel=dir==='BUY'||dir==='BULLISH'?'B':'S';
-    var exp=_journalExp[i];
+    var isBuy=dir==='BUY'||dir==='BULLISH';
+    var dirCol=isBuy?C.lime:C.red;
+    var dirBg=isBuy?'rgba(199,255,56,0.1)':'rgba(255,82,82,0.1)';
+    var dirLabel=isBuy?'BUY':'SELL';
     var criteria=(e.criteria||[]).slice(0,5);
     var isBest=rv>=bestR&&rv>0;
-    cardsHtml+='<div style="background:#151515;border-radius:16px;padding:14px 16px;margin-bottom:8px;border:0.5px solid rgba(255,255,255,0.03);cursor:pointer;transition:all .2s'+(isBest?';border-left:3px solid #B7FF2A':'')+'" onclick="toggleJournalExp('+i+')">'+
+    cardsHtml+='<div style="background:#111111;border-radius:16px;padding:12px 14px;margin-bottom:6px;border:1px solid rgba(255,255,255,0.04);cursor:pointer;transition:all .2s'+(isBest?';border-left:2.5px solid #C7FF38':'')+'" onclick="this.querySelector(\'.trade-expand\').classList.toggle(\'open\')">'+
       '<div style="display:flex;align-items:flex-start;gap:10px">'+
-        '<div style="width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;background:'+dirBg+';color:'+dirCol+'">'+dirLabel+'</div>'+
+        '<div style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;flex-shrink:0;letter-spacing:0.02em;background:'+dirBg+';color:'+dirCol+'">'+dirLabel+'</div>'+
         '<div style="flex:1;min-width:0">'+
-          '<div style="font-size:15px;font-weight:700;letter-spacing:-0.02em;display:flex;align-items:center;gap:6px;color:#FFF">'+esc(e.pair||'')+
-            (isBest?'<span style="font-size:7px;font-weight:700;padding:2px 5px;border-radius:3px;background:rgba(183,255,42,0.12);color:#B7FF2A;text-transform:uppercase">BEST</span>':'')+
+          '<div style="font-size:13px;font-weight:700;letter-spacing:-0.02em;display:flex;align-items:center;gap:6px;color:#FFF">'+esc(e.pair||'')+
+            (isBest?'<span style="font-size:6px;font-weight:700;padding:2px 4px;border-radius:3px;background:rgba(199,255,56,0.12);color:#C7FF38;text-transform:uppercase">BEST</span>':'')+
           '</div>'+
-          '<div style="font-size:10px;color:#5F5F5F;margin-top:3px;display:flex;align-items:center;gap:6px">'+
+          '<div style="font-size:9px;color:#5F5F5F;margin-top:2px;display:flex;align-items:center;gap:6px">'+
             '<span>'+timeAgo(e.createdAt||e.time)+'</span>'+
             (e.tf?' \u00b7 <span>'+e.tf+'</span>':'')+
             ' \u00b7 <span>'+(e.notes?'Manual':'Auto')+'</span>'+
           '</div></div>'+
         '<div style="text-align:right;flex-shrink:0">'+
-          '<div style="font-size:18px;font-weight:800;letter-spacing:-0.03em;line-height:1;color:'+col+'">'+(rv>0?'+':'')+rv+'R</div>'+
-          '<div style="font-size:9px;font-weight:600;margin-top:2px;color:'+col+'">'+esc(e.outcome||'')+'</div></div></div>'+
+          '<div style="font-size:15px;font-weight:800;letter-spacing:-0.03em;line-height:1;color:'+col+'">'+(rv>0?'+':'')+rv+'R</div>'+
+          '<div style="font-size:8px;font-weight:600;margin-top:1px;color:'+col+'">'+esc(e.outcome||'')+'</div></div></div>'+
       (criteria.length?'<div style="display:flex;gap:3px;margin-top:8px;flex-wrap:wrap">'+
-        criteria.map(function(c){return '<span style="font-size:8px;padding:2px 8px;border-radius:4px;background:rgba(183,255,42,0.04);color:#8E8E8E;border:0.5px solid rgba(183,255,42,0.06)">'+esc(c)+'</span>';}).join('')+
-        (e.criteria.length>5?'<span style="font-size:8px;padding:2px 8px;border-radius:4px;background:rgba(255,255,255,0.03);color:#5F5F5F">+'+(e.criteria.length-5)+'</span>':'')+
+        criteria.map(function(c){return '<span style="font-size:7px;padding:2px 7px;border-radius:4px;background:rgba(199,255,56,0.04);color:#8E8E8E;border:0.5px solid rgba(199,255,56,0.06)">'+esc(c)+'</span>';}).join('')+
+        (e.criteria.length>5?'<span style="font-size:7px;padding:2px 7px;border-radius:4px;background:rgba(255,255,255,0.03);color:#5F5F5F">+'+(e.criteria.length-5)+'</span>':'')+
       '</div>':'')+
-      (exp?'<div style="margin-top:10px;padding-top:8px;border-top:0.5px solid rgba(255,255,255,0.05)">'+
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;margin-bottom:8px">'+
-          (e.entry?'<div><div style="font-size:8px;color:#5F5F5F">Entry</div><div style="font-size:11px;font-weight:600;font-family:monospace;color:#FFF">'+fmt(e.entry)+'</div></div>':'')+
-          (e.sl?'<div><div style="font-size:8px;color:#5F5F5F">Stop</div><div style="font-size:11px;font-weight:600;font-family:monospace;color:'+C.red+'">'+fmt(e.sl)+'</div></div>':'')+
-          (e.tp1?'<div><div style="font-size:8px;color:#5F5F5F">TP1</div><div style="font-size:11px;font-weight:600;font-family:monospace;color:'+C.lime+'">'+fmt(e.tp1)+'</div></div>':'')+
-          (e.tp2?'<div><div style="font-size:8px;color:#5F5F5F">TP2</div><div style="font-size:11px;font-weight:600;font-family:monospace;color:'+C.lime+'">'+fmt(e.tp2)+'</div></div>':'')+
-        '</div>'+
-        (e.notes?'<div style="font-size:10px;color:#8E8E8E;line-height:1.5;padding:6px 10px;background:rgba(255,255,255,0.02);border-radius:8px;margin-bottom:8px"><div style="font-size:7px;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:3px">Journal Entry</div>'+esc(e.notes)+'</div>':'')+
-        (!e.notes?'<div style="font-size:10px;color:#5F5F5F;padding:6px 10px;background:rgba(255,255,255,0.02);border-radius:8px;font-style:italic;margin-bottom:8px">No notes. <span style="color:'+C.lime+';font-style:normal">Add note</span></div>':'')+
-        '<div style="display:flex;gap:6px">'+
-          (e.entry&&e.direction?'<button onclick="event.stopPropagation();showTradeReplay('+i+')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:7px 0;border-radius:10px;border:none;font-size:9px;font-weight:600;cursor:pointer;font-family:inherit;background:rgba(183,255,42,0.06);color:#B7FF2A;border:0.5px solid rgba(183,255,42,0.15);transition:all .2s">'+icon(I.replay,'#B7FF2A',10)+' Replay</button>':'')+
-          '<button onclick="event.stopPropagation();navigator.clipboard.writeText(\''+esc((e.direction||'')+' '+(e.pair||'')+' | Entry: '+(e.entry||'')+' | SL: '+(e.sl||'')+(e.tp1?' | TP1: '+(e.tp1||''):'')+(e.tp2?' | TP2: '+(e.tp2||''):''))+'").then(function(){showToast(\'Copied\');}).catch(function(){})" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:7px 0;border-radius:10px;border:none;font-size:9px;font-weight:600;cursor:pointer;font-family:inherit;background:rgba(255,255,255,0.03);color:#8E8E8E;border:0.5px solid rgba(255,255,255,0.06);transition:all .2s">'+icon(I.copy,'#8E8E8E',10)+' Copy</button>'+
-        '</div></div>':'')+
+      '<div class="trade-expand">'+
+        '<div style="padding-top:8px;border-top:0.5px solid rgba(255,255,255,0.05)">'+
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;margin-bottom:8px">'+
+            (e.entry?'<div><div style="font-size:7px;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.06em;font-weight:600">Entry</div><div style="font-size:10px;font-weight:600;font-family:monospace;color:#FFF;margin-top:1px">'+fmt(e.entry)+'</div></div>':'')+
+            (e.sl?'<div><div style="font-size:7px;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.06em;font-weight:600">Stop</div><div style="font-size:10px;font-weight:600;font-family:monospace;color:'+C.red+';margin-top:1px">'+fmt(e.sl)+'</div></div>':'')+
+            (e.tp1?'<div><div style="font-size:7px;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.06em;font-weight:600">TP1</div><div style="font-size:10px;font-weight:600;font-family:monospace;color:'+C.lime+';margin-top:1px">'+fmt(e.tp1)+'</div></div>':'')+
+            (e.tp2?'<div><div style="font-size:7px;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.06em;font-weight:600">TP2</div><div style="font-size:10px;font-weight:600;font-family:monospace;color:'+C.lime+';margin-top:1px">'+fmt(e.tp2)+'</div></div>':'')+
+          '</div>'+
+          (e.notes?'<div style="font-size:9px;color:#8E8E8E;line-height:1.5;padding:6px 10px;background:rgba(255,255,255,0.02);border-radius:8px;margin-bottom:8px"><div style="font-size:7px;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:3px">Journal Entry</div>'+esc(e.notes)+'</div>':'')+
+          (!e.notes?'<div style="font-size:9px;color:#5F5F5F;padding:6px 10px;background:rgba(255,255,255,0.02);border-radius:8px;font-style:italic;margin-bottom:8px">No notes. <span style="color:'+C.lime+';font-style:normal">Add note</span></div>':'')+
+          '<div style="display:flex;gap:6px">'+
+            (e.entry&&e.direction?'<button onclick="event.stopPropagation();showTradeReplay('+i+')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:6px 0;border-radius:8px;border:none;font-size:8px;font-weight:600;cursor:pointer;font-family:inherit;background:rgba(199,255,56,0.06);color:#C7FF38;border:0.5px solid rgba(199,255,56,0.15);transition:all .2s">'+icon(I.replay,'#C7FF38',9)+' Replay</button>':'')+
+            '<button onclick="event.stopPropagation();navigator.clipboard.writeText(\''+esc((e.direction||'')+' '+(e.pair||'')+' | Entry: '+(e.entry||'')+' | SL: '+(e.sl||'')+(e.tp1?' | TP1: '+(e.tp1||''):'')+(e.tp2?' | TP2: '+(e.tp2||''):''))+'").then(function(){showToast(\'Copied\');}).catch(function(){})" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:6px 0;border-radius:8px;border:none;font-size:8px;font-weight:600;cursor:pointer;font-family:inherit;background:rgba(255,255,255,0.03);color:#8E8E8E;border:0.5px solid rgba(255,255,255,0.06);transition:all .2s">'+icon(I.copy,'#8E8E8E',9)+' Copy</button>'+
+          '</div></div></div>'+
     '</div>';
   }
 
@@ -709,11 +711,11 @@ function journalScreen(){
   var empty='';
   if(!displayEntries.length){
     empty='<div style="display:flex;flex-direction:column;align-items:center;padding:60px 20px;text-align:center">'+
-      '<div style="width:56px;height:56px;border-radius:99px;background:#151515;display:flex;align-items:center;justify-content:center;margin-bottom:16px;border:0.5px solid rgba(255,255,255,0.04)">'+
+      '<div style="width:56px;height:56px;border-radius:99px;background:#111111;display:flex;align-items:center;justify-content:center;margin-bottom:16px;border:1px solid rgba(255,255,255,0.05)">'+
       '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5F5F5F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>'+
       '<div style="font-size:16px;font-weight:600;color:#FFF;margin-bottom:6px">No trades yet</div>'+
       '<div style="font-size:12px;color:#5F5F5F;line-height:1.5;max-width:260px">Every great trading journal starts with the first disciplined execution.</div>'+
-      '<button onclick="setTab(\'dash\')" style="margin-top:20px;background:#B7FF2A;border:none;border-radius:14px;padding:14px 32px;color:#090909;font-weight:600;font-size:13px;font-family:inherit;cursor:pointer;box-shadow:0 0 24px rgba(183,255,42,0.15)">Start Trading</button></div>';
+      '<button onclick="setTab(\'dash\')" style="margin-top:20px;background:#C7FF38;border:none;border-radius:14px;padding:14px 32px;color:#090909;font-weight:600;font-size:13px;font-family:inherit;cursor:pointer;box-shadow:0 0 24px rgba(199,255,56,0.15)">Start Trading</button></div>';
   }
 
   return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+';position:relative">'+
