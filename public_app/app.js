@@ -26,6 +26,7 @@ var state={
   loading:true,showCalc:false,showOnboarding:false,onboardingStep:-1,showFilters:false,userBusy:false,
   filter:{pair:'',tf:'',dir:'',minScore:0,dateFrom:'',dateTo:'',sort:'time'}
 };
+var _progExp={};
 
 async function fetchAll(bg){
   if(bg&&state.userBusy)return;
@@ -400,20 +401,35 @@ function detailPage(s){
   var critChips=(s.criteria||[]).map(function(c,i){return '<div class="chip" onclick="var e=this.nextElementSibling;e.classList.toggle(\'open\')">'+c+'<span style="font-size:8px;opacity:0.5">\u25BC</span></div><div class="chip-explain">'+(critExplain[c]||'Key criterion for this setup.')+'</div>';}).join('');
 
   // Progress timeline
+  var activeTrade=null;
+  for(var ai=0;ai<state.active.length;ai++){if(state.active[ai].sigId===s.id){activeTrade=state.active[ai];break;}}
   var progressSteps=[
-    {label:'Signal Generated',done:true,icon:'\u2713'},
-    {label:'Entry Triggered',done:!!s.isTracked,icon:s.isTracked?'\u2713':'\u25CB'},
-    {label:'TP1 Target',done:false,icon:'\u25CB'},
-    {label:'SL to Breakeven',done:false,icon:'\u25CB'},
-    {label:'TP2 Target',done:false,icon:'\u25CB'}
+    {label:'Signal Generated',desc:'Trade signal created successfully.',done:true,ts:timeAgo(s.time)},
+    {label:'Entry Triggered',desc:'Price entered the execution zone.',done:!!s.isTracked,ts:activeTrade?timeAgo(activeTrade.entryTime):''},
+    {label:'TP1 Target',desc:activeTrade&&activeTrade.tp1Fired?'TP1 hit — partial profit taken.':'Waiting for first target.',done:!!(activeTrade&&activeTrade.tp1Fired)},
+    {label:'Move SL to Breakeven',desc:activeTrade&&activeTrade.beFired?'Stop moved to breakeven.':'Pending.',done:!!(activeTrade&&activeTrade.beFired)},
+    {label:'TP2 Target',desc:activeTrade&&activeTrade.tp2Fired?'TP2 hit — full runner closed.':'Pending.',done:!!(activeTrade&&activeTrade.tp2Fired)}
   ];
-  var progHtml='<div style="position:relative;padding-left:28px">';
+  var lastDone=-1;
+  for(var pi=0;pi<progressSteps.length;pi++)if(progressSteps[pi].done)lastDone=pi;
+  var progExp=_progExp[s.id]||{};
+  var progHtml='<div style="display:flex;flex-direction:column">';
   for(var i=0;i<progressSteps.length;i++){
     var ps=progressSteps[i];
-    progHtml+='<div style="position:relative;padding-bottom:'+(i<progressSteps.length-1?'20px':'0')+'">'+
-      (i<progressSteps.length-1?'<div style="position:absolute;left:7px;top:18px;width:1.5px;bottom:6px;background:'+(ps.done?'rgba(183,255,42,0.3)':'rgba(255,255,255,0.06)')+'"></div>':'')+
-      '<div style="position:absolute;left:0;top:2px;width:16px;height:16px;border-radius:99px;background:'+(ps.done?'#B7FF2A':'rgba(255,255,255,0.06)')+';display:flex;align-items:center;justify-content:center;font-size:8px;color:'+(ps.done?'#090909':'#5F5F5F')+';font-weight:700">'+(ps.done?'\u2713':'\u25CB')+'</div>'+
-      '<div style="font-size:13px;font-weight:'+(ps.done?'600':'400')+';color:'+(ps.done?'#FFF':'#5F5F5F')+'">'+ps.label+'</div></div>';
+    progHtml+='<div style="display:flex;gap:18px">'+
+      '<div style="display:flex;flex-direction:column;align-items:center;width:24px;flex-shrink:0">'+
+        '<div style="width:24px;height:24px;border-radius:99px;flex-shrink:0;display:flex;align-items:center;justify-content:center;'+
+          (ps.done?'background:#B7FF2A;border:none':'background:transparent;border:1.5px solid rgba(255,255,255,0.1)')+
+          '">'+
+          (ps.done?'<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#090909" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>':'')+
+        '</div>'+
+        (i<progressSteps.length-1?'<div style="width:1.5px;flex:1;margin:3px 0;background:'+(i<lastDone?'#B7FF2A':'rgba(255,255,255,0.06)')+'"></div>':'')+
+      '</div>'+
+      '<div style="flex:1;padding:2px 0'+(i<progressSteps.length-1?' 16px':'')+';cursor:pointer" onclick="toggleProgExp(\''+s.id+'\','+i+')">'+
+        '<div style="font-size:15px;font-weight:600;color:'+(ps.done?'#FFF':'rgba(255,255,255,0.5)')+';line-height:1.3">'+esc(ps.label)+'</div>'+
+        '<div style="font-size:13px;color:#8E8E8E;line-height:1.3;margin-top:1px">'+esc(ps.desc)+'</div>'+
+        (ps.ts?'<div style="font-size:11px;color:#5F5F5F;margin-top:3px;'+(progExp[i]?'':'display:none')+'">'+esc(ps.ts)+'</div>':'')+
+      '</div></div>';
   }
   progHtml+='</div>';
 
@@ -510,7 +526,7 @@ function detailPage(s){
 
     // 3. Progress Timeline
     '<div style="margin-bottom:16px"><div class="section-label">Trade Progress</div>'+
-    '<div class="card" style="padding:20px;margin-bottom:0">'+progHtml+'</div></div>'+
+    '<div class="card" style="padding:24px;margin-bottom:0">'+progHtml+'</div></div>'+
 
     // 4. Criteria Chips
     (critChips?'<div style="margin-bottom:16px"><div class="section-label">Setup Criteria</div>'+
@@ -581,6 +597,7 @@ window.setTab=function(t){state.tab=t;state.selected=null;render();};
 window.openDetail=function(id){state.showCalc=false;for(var i=0;i<state.signals.length;i++)if(state.signals[i].id===id){state.selected=state.signals[i];break;}render();};
 window.closeDetail=function(){state.selected=null;state.showCalc=false;render();};
 window.toggleCalc=function(){state.showCalc=!state.showCalc;render();};
+window.toggleProgExp=function(sid,i){if(!_progExp[sid])_progExp[sid]={};_progExp[sid][i]=!_progExp[sid][i];render();};
 window.openScalpDetail=function(id){for(var i=0;i<state.scalpSignals.length;i++)if(state.scalpSignals[i].id===id){state.selected=state.scalpSignals[i];break;}render();};
 window.logout=function(){if(confirm('Logout and clear code?')){clearCode();window.location.reload();}};
 window.calcPos=calcPos;
