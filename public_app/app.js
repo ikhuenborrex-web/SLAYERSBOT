@@ -644,6 +644,7 @@ function journalScreen(){
 }
 
 function intelScreen(){
+  var confl=state.confluence||[];
   var arts=state.articles||state.news||[];
   var activeTab=state.intelTab||'all';
   var sent={};
@@ -661,7 +662,7 @@ function intelScreen(){
     sent.volatility=Math.min(100,Math.round(actC*10+Math.min(sigC,15)*3+Math.min(artC,20)*2));
   }
   var biasData=state.dailyBias||[];
-  var confl=state.confluence||[];
+  // confl already declared above
 
   // ====== HEADER ======
   var header='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">'+
