@@ -98,6 +98,30 @@
   @keyframes fadeIn{0%{opacity:0}100%{opacity:1}}
   @keyframes rpPulse{0%,100%{box-shadow:0 0 20px currentColor;transform:scale(1)}50%{box-shadow:0 0 40px currentColor;transform:scale(1.15)}}
   .rpd{animation:rpPulse 1s ease-in-out infinite}
+
+  /* ===== SHARE MODAL ===== */
+  .share-overlay{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);display:none;align-items:flex-end;justify-content:center;animation:shareFadeIn .3s ease}
+  .share-overlay.open{display:flex}
+  .share-sheet{width:100%;max-width:420px;background:#0E0E0E;border-radius:28px 28px 0 0;border:0.5px solid rgba(255,255,255,0.04);border-bottom:none;padding:20px 16px 32px;max-height:90vh;overflow-y:auto;animation:shareSlideUp .4s cubic-bezier(.16,1,.3,1);position:relative}
+  .share-handle{width:32px;height:3px;border-radius:99px;background:rgba(255,255,255,0.08);margin:0 auto 14px}
+  .share-close{position:absolute;top:14px;right:14px;width:28px;height:28px;border-radius:99px;border:none;background:rgba(255,255,255,0.04);color:#5F5F5F;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;transition:all .2s}
+  .share-close:active{transform:scale(0.9)}
+  .share-title{font-size:12px;font-weight:700;color:#FFF;text-align:center;margin-bottom:2px}
+  .share-subtitle{font-size:9px;color:#5F5F5F;text-align:center;margin-bottom:14px}
+  .share-picker{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding:2px 0 10px;-webkit-overflow-scrolling:touch}
+  .share-picker::-webkit-scrollbar{display:none}
+  .share-btn{flex-shrink:0;border:0.5px solid rgba(255,255,255,0.08);border-radius:99px;padding:6px 14px;font-size:8px;font-weight:600;font-family:inherit;cursor:pointer;background:transparent;color:#5F5F5F;transition:all .25s;white-space:nowrap}
+  .share-btn.active{background:rgba(199,255,56,0.1);border-color:rgba(199,255,56,0.2);color:#C7FF38}
+  .share-card-wrap{width:100%;display:flex;justify-content:center;margin-bottom:14px;min-height:400px}
+  .share-card-preview{width:100%;max-width:360px;animation:shareCardFade 0.35s cubic-bezier(.16,1,.3,1)}
+  .share-actions{display:flex;gap:8px}
+  .share-actions button{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:12px 0;border-radius:12px;border:none;font-size:10px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .2s}
+  .share-actions button:active{transform:scale(0.97)}
+  .share-save{background:#C7FF38;color:#090909;box-shadow:0 0 16px rgba(199,255,56,0.08)}
+  .share-dl{background:rgba(255,255,255,0.04);color:#FFF;border:0.5px solid rgba(255,255,255,0.06)}
+  @keyframes shareFadeIn{from{opacity:0}to{opacity:1}}
+  @keyframes shareSlideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes shareCardFade{from{opacity:0;transform:translateY(10px) scale(0.98)}to{opacity:1;transform:translateY(0) scale(1)}}
 </style>
 </head>
 <body>
@@ -110,6 +134,27 @@
   <div id="embers"></div>
 </div>
 <div id="app"></div>
+<div class="share-overlay" id="shareOverlay">
+  <div class="share-sheet" id="shareSheet">
+    <div class="share-handle"></div>
+    <button class="share-close" onclick="closeShareModal()">✕</button>
+    <div class="share-title">Share Trade</div>
+    <div class="share-subtitle">Choose a style</div>
+    <div class="share-picker" id="sharePicker"></div>
+    <div class="share-card-wrap" id="shareCardWrap"></div>
+    <div class="share-actions">
+      <button class="share-save" onclick="captureAndShare()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        Share
+      </button>
+      <button class="share-dl" onclick="captureAndDownload()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Save Image
+      </button>
+    </div>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="/app/app.js?v=20260725"></script>
 </body>
 </html>

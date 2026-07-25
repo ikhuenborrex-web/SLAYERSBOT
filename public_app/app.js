@@ -3,7 +3,9 @@ window.onerror=function(m,u,l,c,err){try{document.getElementById('app').innerHTM
 
 var C={bg:"#090909",surface:"#121212",card:"#121212",white:"#FFF",text2:"#8E8E8E",text3:"#5F5F5F",lime:"#B7FF2A",limeSoft:"rgba(183,255,42,0.08)",limeBorder:"rgba(183,255,42,0.25)",red:"#FF5252",redSoft:"rgba(255,82,82,0.12)",orange:"#f97316",orangeSoft:"rgba(249,115,22,0.1)",blue:"#3b82f6",blueSoft:"rgba(59,130,246,0.1)",border:"rgba(255,255,255,0.06)"};
 
-var _flagN=0;
+var _mascotData='';
+var IMG_MASCOT='/app/mascot.PNG';
+function getMascotSrc(){return _mascotData||IMG_MASCOT;}
 function flagSVG(code,size){
   var id='fg'+(++_flagN),cx=size/2,cy=size/2,r=size/2-0.5;
   function rect(x,y,w,h,c){return '<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" fill="'+c+'"/>';}
@@ -92,6 +94,7 @@ function showToast(msg){var d=document.createElement('div');d.textContent=msg;d.
 
 function icon(path,color,size){return '<svg width="'+(size||18)+'" height="'+(size||18)+'" viewBox="0 0 24 24" fill="none" stroke="'+color+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+path+'</svg>';}
 var I={dash:'<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',journal:'<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',pulse:'<polygon points="13 2 3 14 12 14 11 22 21 10 12 10"/>',intel:'<path d="M19.07 4.93A10 10 0 0 0 6.99 3.34"/><path d="M4 6h.01"/><path d="M2.29 9.62A10 10 0 1 0 21.31 8.35"/><path d="m12 12-2.83 2.83"/><circle cx="12" cy="12" r="2"/>',gear:'<circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>',crosshair:'<circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/>',chart:'<path d="M9 5v4"/><rect width="4" height="6" x="7" y="9" rx="1"/><path d="M9 15v2"/><path d="M17 3v2"/><rect width="4" height="8" x="15" y="5" rx="1"/><path d="M17 13v3"/><path d="M3 3v16a2 2 0 0 0 2 2h16"/>',copy:'<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',replay:'<polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>',
+share:'<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>',
 search:'<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
 bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
 clock:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
@@ -702,7 +705,8 @@ function journalScreen(){
           (!e.notes?'<div style="font-size:9px;color:#5F5F5F;padding:6px 10px;background:rgba(255,255,255,0.02);border-radius:8px;font-style:italic;margin-bottom:8px">No notes. <span style="color:'+C.lime+';font-style:normal">Add note</span></div>':'')+
           '<div style="display:flex;gap:6px">'+
             (e.entry&&e.direction?'<button onclick="event.stopPropagation();showTradeReplay('+i+')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:6px 0;border-radius:8px;border:none;font-size:8px;font-weight:600;cursor:pointer;font-family:inherit;background:rgba(199,255,56,0.06);color:#C7FF38;border:0.5px solid rgba(199,255,56,0.15);transition:all .2s">'+icon(I.replay,'#C7FF38',9)+' Replay</button>':'')+
-            '<button onclick="event.stopPropagation();navigator.clipboard.writeText(\''+esc((e.direction||'')+' '+(e.pair||'')+' | Entry: '+(e.entry||'')+' | SL: '+(e.sl||'')+(e.tp1?' | TP1: '+(e.tp1||''):'')+(e.tp2?' | TP2: '+(e.tp2||''):''))+'").then(function(){showToast(\'Copied\');}).catch(function(){})" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:6px 0;border-radius:8px;border:none;font-size:8px;font-weight:600;cursor:pointer;font-family:inherit;background:rgba(255,255,255,0.03);color:#8E8E8E;border:0.5px solid rgba(255,255,255,0.06);transition:all .2s">'+icon(I.copy,'#8E8E8E',9)+' Copy</button>'+
+            '<button onclick="event.stopPropagation();openShareModal('+i+')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:6px 0;border-radius:8px;border:none;font-size:8px;font-weight:600;cursor:pointer;font-family:inherit;background:rgba(199,255,56,0.06);color:#C7FF38;border:0.5px solid rgba(199,255,56,0.15);transition:all .2s">'+icon(I.share,'#C7FF38',9)+' Share</button>'+
+            '<button onclick="event.stopPropagation();navigator.clipboard.writeText(\''+esc((e.direction||'')+' '+(e.pair||'')+' | Entry: '+(e.entry||'')+' | SL: '+(e.sl||'')+(e.tp1?' | TP1: '+(e.tp1||''):'')+(e.tp2?' | TP2: '+(e.tp2||''):''))+'").then(function(){showToast(\'Copied\');}).catch(function(){})" style="width:auto;display:flex;align-items:center;justify-content:center;padding:6px 8px;border-radius:8px;border:none;font-size:8px;font-weight:600;cursor:pointer;font-family:inherit;background:rgba(255,255,255,0.03);color:#8E8E8E;border:0.5px solid rgba(255,255,255,0.06);transition:all .2s" title="Copy">'+icon(I.copy,'#8E8E8E',9)+'</button>'+
           '</div></div></div>'+
     '</div>';
   }
@@ -1405,6 +1409,292 @@ var refreshPill={
   }
 };
 
+// ===== SHARE CARDS =====
+var _shareTradeIdx=-1;
+var _shareStyle='hero';
+
+function openShareModal(i){
+  _shareTradeIdx=i;
+  _shareStyle='hero';
+  document.getElementById('shareOverlay').classList.add('open');
+  renderSharePicker();
+  renderShareCard();
+}
+
+function closeShareModal(){
+  document.getElementById('shareOverlay').classList.remove('open');
+}
+
+function renderSharePicker(){
+  var styles=[
+    {id:'hero',label:'Hero'},
+    {id:'achievement',label:'Achievement'},
+    {id:'minimal',label:'Minimal'},
+    {id:'ticket',label:'Ticket'},
+    {id:'certificate',label:'Certificate'},
+    {id:'story',label:'Story'}
+  ];
+  var h='';
+  for(var si=0;si<styles.length;si++){
+    var s=styles[si];
+    h+='<button class="share-btn'+(s.id===_shareStyle?' active':'')+'" onclick="selectShareStyle(\''+s.id+'\')">'+s.label+'</button>';
+  }
+  document.getElementById('sharePicker').innerHTML=h;
+}
+
+function selectShareStyle(s){
+  _shareStyle=s;
+  renderSharePicker();
+  renderShareCard();
+}
+
+function getShareTradeData(){
+  var entries=_journalDisplayEntries||[];
+  var e=entries[_shareTradeIdx];
+  if(!e)return null;
+  var rv=e.rMultiple||e.r||0;
+  return {
+    pair:e.pair||'',
+    direction:e.direction||'',
+    r:(rv>0?'+':'')+(rv||'0')+'R',
+    rNum:rv||0,
+    outcome:e.outcome||'',
+    risk:'1R',
+    duration:'\u2014',
+    entry:e.entry||'',
+    exit:e.exit||'',
+    criteria:(e.criteria||[]).slice(0,5),
+    notes:e.notes||'',
+    date:formatDate(e.createdAt||e.time),
+    tradeNum:_shareTradeIdx+1,
+    method:'Manual',
+    logged:e.notes?'Manual':'Auto'
+  };
+}
+
+function renderShareCard(){
+  var t=getShareTradeData();
+  if(!t){document.getElementById('shareCardWrap').innerHTML='';return;}
+
+  var builders={
+    hero:function(){
+      return '<div class="share-card" style="background:#111111;border-radius:24px;border:1px solid rgba(255,255,255,0.06);overflow:hidden;position:relative;width:100%">'+
+        '<div style="position:absolute;inset:0;background:linear-gradient(135deg,#111111 50%,rgba(199,255,56,0.02) 100%);pointer-events:none"></div>'+
+        '<div style="position:absolute;top:-60px;right:-40px;width:280px;height:280px;border-radius:50%;background:radial-gradient(circle,rgba(199,255,56,0.04) 0%,transparent 70%);pointer-events:none"></div>'+
+        '<div style="position:relative;z-index:1;padding:28px 24px;display:flex;flex-direction:column;align-items:center">'+
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;width:100%;margin-bottom:14px">'+
+            '<span style="font-size:7px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:4px 10px;border-radius:99px;background:rgba(199,255,56,0.08);border:0.5px solid rgba(199,255,56,0.12);color:#C7FF38">'+t.direction+'</span>'+
+            '<div style="width:26px;height:26px;border-radius:99px;overflow:hidden;border:0.5px solid rgba(255,255,255,0.06);flex-shrink:0"><img src="'+getMascotSrc()+'" style="width:100%;height:100%;object-fit:cover"></div>'+
+          '</div>'+
+          '<div style="position:relative;display:flex;justify-content:center;align-items:center;margin-bottom:12px">'+
+            '<div style="position:absolute;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(199,255,56,0.06) 0%,rgba(199,255,56,0.01) 40%,transparent 70%);pointer-events:none"></div>'+
+            '<div style="width:90px;height:90px;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.3);border:0.5px solid rgba(255,255,255,0.04)"><img src="'+getMascotSrc()+'" style="width:100%;height:100%;object-fit:cover"></div>'+
+          '</div>'+
+          '<div style="font-size:8px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#5F5F5F;text-align:center;margin-bottom:2px">THE SLAYERS</div>'+
+          '<div style="font-size:9px;font-weight:500;color:#5F5F5F;text-align:center;letter-spacing:0.03em;margin-bottom:10px">TRADE COMPLETED</div>'+
+          '<div style="font-size:48px;font-weight:900;letter-spacing:-0.04em;line-height:1;color:#C7FF38;text-align:center;margin-bottom:2px">'+t.r+'</div>'+
+          '<div style="font-size:8px;font-weight:600;color:#5F5F5F;text-align:center;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px">Net Return</div>'+
+          '<div style="font-size:13px;font-weight:700;color:#FFF;text-align:center;letter-spacing:-0.02em;margin-bottom:2px">'+t.pair+'</div>'+
+          '<div style="display:inline-flex;align-items:center;gap:4px;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:3px 10px;border-radius:99px;background:rgba(199,255,56,0.1);color:#C7FF38;margin-bottom:14px">'+t.outcome+'</div>'+
+          '<div style="width:100%;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.06),transparent);margin-bottom:12px"></div>'+
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%">'+
+            '<div><div style="font-size:7px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px">Risk</div><div style="font-size:11px;font-weight:700;color:#FFF;letter-spacing:-0.02em">'+t.risk+'</div></div>'+
+            '<div><div style="font-size:7px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px">Duration</div><div style="font-size:11px;font-weight:700;color:#FFF;letter-spacing:-0.02em">'+t.duration+'</div></div>'+
+            (t.entry?'<div><div style="font-size:7px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px">Entry</div><div style="font-size:11px;font-weight:700;color:#FFF;letter-spacing:-0.02em">$'+t.entry+'</div></div>':'')+
+            (t.exit?'<div><div style="font-size:7px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px">Exit</div><div style="font-size:11px;font-weight:700;color:#FFF;letter-spacing:-0.02em">$'+t.exit+'</div></div>':'')+
+          '</div>'+
+          (t.criteria.length?'<div style="display:flex;gap:3px;flex-wrap:wrap;justify-content:center;margin-top:10px">'+
+            t.criteria.map(function(c){return '<span style="font-size:7px;padding:2px 8px;border-radius:4px;background:rgba(199,255,56,0.03);border:0.5px solid rgba(199,255,56,0.06);color:#8E8E8E">'+c+'</span>';}).join('')+
+          '</div>':'')+
+        '</div></div>';
+    },
+    achievement:function(){
+      return '<div class="share-card" style="background:#111111;border-radius:24px;border:1px solid rgba(255,255,255,0.06);overflow:hidden;position:relative;text-align:center;width:100%">'+
+        '<div style="position:absolute;inset:0;background:radial-gradient(ellipse 100% 60% at 50% 0%,rgba(255,215,0,0.02) 0%,transparent 70%);pointer-events:none"></div>'+
+        '<div style="position:relative;z-index:1;padding:32px 24px 28px;display:flex;flex-direction:column;align-items:center">'+
+          '<div style="position:relative;width:80px;height:80px;margin-bottom:8px">'+
+            '<div style="position:absolute;inset:-16px;border-radius:50%;background:radial-gradient(circle,rgba(255,215,0,0.04) 0%,transparent 70%);pointer-events:none"></div>'+
+            '<div style="position:absolute;inset:-6px;border-radius:50%;border:1.5px solid rgba(255,215,0,0.15)"></div>'+
+            '<div style="width:80px;height:80px;border-radius:50%;overflow:hidden;border:1px solid rgba(255,215,0,0.1);box-shadow:0 4px 30px rgba(255,215,0,0.06)"><img src="'+getMascotSrc()+'" style="width:100%;height:100%;object-fit:cover"></div>'+
+          '</div>'+
+          '<div style="display:inline-flex;align-items:center;gap:4px;font-size:7px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:4px 10px;border-radius:99px;background:rgba(255,215,0,0.08);border:0.5px solid rgba(255,215,0,0.15);color:#FFD700;margin:8px auto 6px">Trade #'+t.tradeNum+'</div>'+
+          '<div style="font-size:18px;font-weight:800;color:#FFF;letter-spacing:-0.03em;margin-bottom:2px">NEW HIGH</div>'+
+          '<div style="font-size:38px;font-weight:900;letter-spacing:-0.04em;line-height:1.1;color:#C7FF38;margin:4px 0 2px">'+t.r+'</div>'+
+          '<div style="font-size:11px;font-weight:600;color:#8E8E8E;margin-bottom:10px">'+t.pair+'</div>'+
+          '<div style="width:100%;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.06),transparent);margin:0 0 12px"></div>'+
+          '<div style="display:flex;justify-content:center;gap:28px">'+
+            '<div style="text-align:center"><div style="font-size:12px;font-weight:700;color:#FFF">'+t.risk+'</div><div style="font-size:7px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.06em;margin-top:2px">Risk</div></div>'+
+            '<div style="text-align:center"><div style="font-size:12px;font-weight:700;color:#FFF">'+t.duration+'</div><div style="font-size:7px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.06em;margin-top:2px">Duration</div></div>'+
+          '</div>'+
+        '</div></div>';
+    },
+    minimal:function(){
+      return '<div class="share-card" style="background:#111111;border-radius:24px;border:1px solid rgba(255,255,255,0.06);overflow:hidden;position:relative;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:44px 32px;min-height:360px">'+
+        '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:0.06"><img src="'+getMascotSrc()+'" style="width:140px;height:140px;object-fit:contain;filter:grayscale(1)"></div>'+
+        '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(199,255,56,0.02) 0%,transparent 70%);pointer-events:none"></div>'+
+        '<div style="position:relative;z-index:1;text-align:center">'+
+          '<div style="font-size:7px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#5F5F5F;margin-bottom:24px">THE SLAYERS</div>'+
+          '<div style="font-size:56px;font-weight:200;letter-spacing:-0.06em;line-height:1;color:#FFF;margin-bottom:2px"><span style="font-weight:200;color:#C7FF38">+</span>'+(t.rNum).toFixed(2)+'R</div>'+
+          '<div style="font-size:13px;font-weight:400;color:#5F5F5F;letter-spacing:0.02em;margin-bottom:18px">'+t.pair+'</div>'+
+          '<div style="display:inline-block;font-size:8px;font-weight:600;color:#C7FF38;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:24px">'+t.outcome+'</div>'+
+          '<div style="width:28px;height:1px;background:rgba(255,255,255,0.06);margin:0 auto 18px"></div>'+
+          '<div style="display:flex;justify-content:center;gap:20px">'+
+            '<div><div style="font-size:6px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:2px">Status</div><div style="font-size:9px;font-weight:500;color:#8E8E8E">'+t.logged+'</div></div>'+
+            '<div><div style="font-size:6px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:2px">Date</div><div style="font-size:9px;font-weight:500;color:#8E8E8E">'+t.date+'</div></div>'+
+          '</div>'+
+        '</div></div>';
+    },
+    ticket:function(){
+      return '<div style="background:#111111;border-radius:20px;border:1px solid rgba(255,255,255,0.06);overflow:hidden;position:relative;width:100%">'+
+        '<div style="position:absolute;right:16px;top:50%;transform:translateY(-50%);width:80px;height:80px;opacity:0.04;pointer-events:none"><img src="'+getMascotSrc()+'" style="width:100%;height:100%;object-fit:contain"></div>'+
+        '<div style="position:absolute;top:-40px;right:-40px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(199,255,56,0.03) 0%,transparent 70%);pointer-events:none"></div>'+
+        '<div style="padding:20px 22px 14px;text-align:center;position:relative;z-index:1">'+
+          '<div style="display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:6px">'+
+            '<div style="width:14px;height:14px;border-radius:99px;overflow:hidden;border:0.5px solid rgba(255,255,255,0.06)"><img src="'+getMascotSrc()+'" style="width:100%;height:100%;object-fit:cover"></div>'+
+            '<span style="font-size:6px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#5F5F5F">THE SLAYERS</span>'+
+          '</div>'+
+          '<div style="font-size:18px;font-weight:800;color:#FFF;letter-spacing:-0.03em;margin-bottom:2px">'+t.pair+'</div>'+
+          '<div style="display:inline-flex;align-items:center;gap:3px;font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:2px 8px;border-radius:99px;background:rgba(199,255,56,0.1);color:#C7FF38;margin-bottom:8px">'+t.outcome+'</div>'+
+          '<div style="font-size:28px;font-weight:900;letter-spacing:-0.04em;line-height:1;color:#C7FF38">'+t.r+'</div>'+
+        '</div>'+
+        '<div style="display:flex;align-items:center;padding:0 6px;position:relative;z-index:1">'+
+          '<div style="width:20px;height:20px;border-radius:99px;background:#0A0A0A;border:1px solid rgba(255,255,255,0.05);flex-shrink:0;position:relative"></div>'+
+          '<div style="flex:1;height:2px;background:repeating-linear-gradient(90deg,rgba(255,255,255,0.05) 0,rgba(255,255,255,0.05) 6px,transparent 6px,transparent 12px)"></div>'+
+          '<div style="width:20px;height:20px;border-radius:99px;background:#0A0A0A;border:1px solid rgba(255,255,255,0.05);flex-shrink:0;position:relative"></div>'+
+        '</div>'+
+        '<div style="padding:12px 22px 18px;position:relative;z-index:1">'+
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px">'+
+            (t.entry?'<div><div style="font-size:6px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:2px">Entry</div><div style="font-size:10px;font-weight:700;color:#FFF;letter-spacing:-0.02em">$'+t.entry+'</div></div>':'')+
+            (t.exit?'<div><div style="font-size:6px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:2px">Exit</div><div style="font-size:10px;font-weight:700;color:#FFF;letter-spacing:-0.02em">$'+t.exit+'</div></div>':'')+
+            '<div><div style="font-size:6px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:2px">Risk</div><div style="font-size:10px;font-weight:700;color:#FFF;letter-spacing:-0.02em">'+t.risk+'</div></div>'+
+            '<div><div style="font-size:6px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:2px">Method</div><div style="font-size:10px;font-weight:700;color:#FFF;letter-spacing:-0.02em">'+t.method+'</div></div>'+
+          '</div>'+
+        '</div>'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 22px;border-top:0.5px solid rgba(255,255,255,0.04);position:relative;z-index:1">'+
+          '<span style="font-size:6px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.08em">'+t.logged+'</span>'+
+          '<div style="display:flex;align-items:center;gap:3px"><div style="width:10px;height:10px;border-radius:99px;overflow:hidden"><img src="'+getMascotSrc()+'" style="width:100%;height:100%;object-fit:cover"></div><span style="font-size:7px;font-weight:700;color:#5F5F5F;letter-spacing:0.12em;text-transform:uppercase">The Slayers</span></div>'+
+        '</div></div>';
+    },
+    certificate:function(){
+      return '<div class="share-card" style="background:#111111;border-radius:24px;border:1px solid rgba(255,255,255,0.06);overflow:hidden;position:relative;text-align:center;width:100%">'+
+        '<div style="position:absolute;top:10px;left:10px;right:10px;bottom:10px;border:0.5px solid rgba(199,255,56,0.07);border-radius:18px;pointer-events:none"></div>'+
+        '<div style="position:absolute;width:16px;height:16px;border-color:rgba(199,255,56,0.12);border-style:solid;border-width:1px 0 0 1px;border-radius:3px 0 0 0;top:12px;left:12px;pointer-events:none"></div>'+
+        '<div style="position:absolute;width:16px;height:16px;border-color:rgba(199,255,56,0.12);border-style:solid;border-width:1px 1px 0 0;border-radius:0 3px 0 0;top:12px;right:12px;pointer-events:none"></div>'+
+        '<div style="position:absolute;width:16px;height:16px;border-color:rgba(199,255,56,0.12);border-style:solid;border-width:0 0 1px 1px;border-radius:0 0 0 3px;bottom:12px;left:12px;pointer-events:none"></div>'+
+        '<div style="position:absolute;width:16px;height:16px;border-color:rgba(199,255,56,0.12);border-style:solid;border-width:0 1px 1px 0;border-radius:0 0 3px 0;bottom:12px;right:12px;pointer-events:none"></div>'+
+        '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(199,255,56,0.015) 0%,transparent 70%);pointer-events:none"></div>'+
+        '<div style="padding:32px 24px 28px;position:relative;z-index:1;display:flex;flex-direction:column;align-items:center">'+
+          '<div style="position:relative;width:64px;height:64px;margin-bottom:12px">'+
+            '<div style="position:absolute;inset:-10px;border-radius:50%;border:0.5px solid rgba(199,255,56,0.06)"></div>'+
+            '<div style="position:absolute;inset:-4px;border-radius:50%;border:1px solid rgba(199,255,56,0.12)"></div>'+
+            '<div style="width:64px;height:64px;border-radius:50%;overflow:hidden;border:1.5px solid rgba(199,255,56,0.15);box-shadow:0 0 30px rgba(199,255,56,0.04)"><img src="'+getMascotSrc()+'" style="width:100%;height:100%;object-fit:cover"></div>'+
+          '</div>'+
+          '<div style="font-size:7px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:#C7FF38;margin-bottom:2px">THE SLAYERS</div>'+
+          '<div style="font-size:9px;font-weight:600;color:#5F5F5F;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:14px">CERTIFIED TRADE</div>'+
+          '<div style="font-size:8px;color:#8E8E8E;margin-bottom:2px">This certifies that</div>'+
+          '<div style="font-size:20px;font-weight:800;color:#FFF;letter-spacing:-0.03em;margin:3px 0">'+t.pair+'</div>'+
+          '<div style="font-size:8px;color:#8E8E8E;margin-bottom:2px">returned</div>'+
+          '<div style="font-size:34px;font-weight:900;letter-spacing:-0.04em;line-height:1.1;color:#C7FF38;margin:4px 0">'+t.r+'</div>'+
+          '<div style="font-size:8px;color:#5F5F5F;margin-bottom:2px">using</div>'+
+          '<div style="font-size:11px;font-weight:700;color:#FFF;letter-spacing:0.02em;margin-bottom:10px">'+t.method+'</div>'+
+          '<div style="width:40px;height:1px;background:rgba(199,255,56,0.12);margin:0 0 10px"></div>'+
+          '<div style="font-size:8px;color:#5F5F5F;margin-bottom:2px">Completed '+t.date+'</div>'+
+          '<div style="font-size:7px;font-weight:600;color:#5F5F5F;letter-spacing:0.12em;text-transform:uppercase">The Slayers</div>'+
+        '</div></div>';
+    },
+    story:function(){
+      return '<div style="background:#0A0A0A;border-radius:24px;border:1px solid rgba(255,255,255,0.06);overflow:hidden;position:relative;width:100%;aspect-ratio:9/16;display:flex;flex-direction:column">'+
+        '<div style="position:absolute;inset:0;pointer-events:none"><img src="'+getMascotSrc()+'" style="width:100%;height:100%;object-fit:cover;opacity:0.2"></div>'+
+        '<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0.3) 0%,rgba(0,0,0,0.05) 40%,rgba(17,17,17,0.4) 70%,#111111 100%);pointer-events:none"></div>'+
+        '<div style="position:absolute;top:30%;left:50%;transform:translate(-50%,-50%);width:280px;height:280px;border-radius:50%;background:radial-gradient(circle,rgba(199,255,56,0.03) 0%,transparent 70%);pointer-events:none"></div>'+
+        '<div style="position:relative;z-index:1;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;text-align:center">'+
+          '<div style="font-size:7px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#C7FF38;margin-bottom:auto;padding-top:10px">THE SLAYERS</div>'+
+          '<div style="width:68px;height:68px;border-radius:18px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.4);border:0.5px solid rgba(255,255,255,0.06);margin-bottom:14px"><img src="'+getMascotSrc()+'" style="width:100%;height:100%;object-fit:cover"></div>'+
+          '<div style="font-size:42px;font-weight:900;letter-spacing:-0.05em;line-height:1;color:#FFF;margin-bottom:2px"><span style="color:#C7FF38">+</span>'+(t.rNum).toFixed(2)+'<span style="font-size:24px;font-weight:700;color:#C7FF38">R</span></div>'+
+          '<div style="font-size:12px;font-weight:600;color:#8E8E8E;letter-spacing:0.02em;margin-bottom:5px">'+t.pair+'</div>'+
+          '<div style="display:inline-flex;align-items:center;gap:3px;font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:3px 10px;border-radius:99px;background:rgba(199,255,56,0.08);border:0.5px solid rgba(199,255,56,0.12);color:#C7FF38">'+t.outcome+'</div>'+
+        '</div>'+
+        '<div style="width:100%;padding:12px 24px;border-top:0.5px solid rgba(255,255,255,0.04);display:flex;justify-content:space-between;align-items:center;position:relative;z-index:1">'+
+          '<span style="font-size:7px;color:#5F5F5F">'+t.logged+' \u00b7 <strong style="color:#8E8E8E">'+t.date+'</strong></span>'+
+          '<span style="font-size:6px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#C7FF38">'+t.direction+'</span>'+
+        '</div></div>';
+    }
+  };
+
+  var cardHtml=builders[_shareStyle]();
+  document.getElementById('shareCardWrap').innerHTML='<div class="share-card-preview" id="shareCardPreview">'+cardHtml+'</div>';
+}
+
+function formatDate(ts){
+  if(!ts)return '\u2014';
+  var d=new Date(ts);
+  var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return d.getDate()+' '+months[d.getMonth()]+' '+d.getFullYear();
+}
+
+function captureAndDownload(){
+  var el=document.getElementById('shareCardPreview');
+  if(!el||!el.children.length)return;
+  waitForImages(el).then(function(){
+    html2canvas(el,{backgroundColor:'#0A0A0A',scale:2,useCORS:true,allowTaint:true}).then(function(canvas){
+      var link=document.createElement('a');
+      link.download='slayers-trade-'+_shareStyle+'.png';
+      link.href=canvas.toDataURL('image/png');
+      link.click();
+      showToast('Image saved!');
+    }).catch(function(){showToast('Could not generate image');});
+  });
+}
+
+function captureAndShare(){
+  var el=document.getElementById('shareCardPreview');
+  if(!el||!el.children.length)return;
+  waitForImages(el).then(function(){
+    html2canvas(el,{backgroundColor:'#0A0A0A',scale:2,useCORS:true,allowTaint:true}).then(function(canvas){
+      canvas.toBlob(function(blob){
+        if(!blob)return;
+        if(navigator.share&&navigator.canShare({files:[new File([blob],'slayers-trade.png',{type:'image/png'})]})){
+          navigator.share({files:[new File([blob],'slayers-trade.png',{type:'image/png'})]}).catch(function(){});
+        } else {
+          var link=document.createElement('a');
+          link.download='slayers-trade-'+_shareStyle+'.png';
+          link.href=canvas.toDataURL('image/png');
+          link.click();
+          showToast('Image saved!');
+        }
+      },'image/png');
+    }).catch(function(){showToast('Could not generate image');});
+  });
+}
+
+function waitForImages(el){
+  var imgs=el.querySelectorAll('img');
+  var promises=[];
+  for(var wi=0;wi<imgs.length;wi++){
+    if(imgs[wi].complete)continue;
+    promises.push(new Promise(function(res){
+      imgs[wi].onload=res;
+      imgs[wi].onerror=res;
+    }));
+  }
+  return Promise.all(promises);
+}
+
+function preloadMascot(){
+  var img=new Image();
+  img.onload=function(){
+    var c=document.createElement('canvas');
+    c.width=img.naturalWidth;
+    c.height=img.naturalHeight;
+    var ctx=c.getContext('2d');
+    ctx.drawImage(img,0,0);
+    _mascotData=c.toDataURL('image/png');
+    if(document.getElementById('shareOverlay').classList.contains('open'))renderShareCard();
+  };
+  img.onerror=function(){};
+  img.src='/app/mascot.PNG';
+}
+
 // Pull-to-refresh
 var ptr={startY:0,dy:0,refreshing:false};
 document.addEventListener('touchstart',function(e){
@@ -1426,5 +1716,5 @@ document.addEventListener('touchend',function(e){
   }
   ptr.startY=0;ptr.dy=0;
 },{passive:true});
-if(getCode()){var _localP=JSON.parse(localStorage.getItem('notifPrefs')||'{}');state.notifPrefs=Object.assign({},state.notifPrefs,_localP);render();fetchAll();}else{renderLogin();}
+if(getCode()){preloadMascot();var _localP=JSON.parse(localStorage.getItem('notifPrefs')||'{}');state.notifPrefs=Object.assign({},state.notifPrefs,_localP);render();fetchAll();}else{renderLogin();}
 setInterval(function(){if(getCode())fetchAll(true);},120000);
