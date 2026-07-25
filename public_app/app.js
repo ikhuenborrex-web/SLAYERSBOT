@@ -4,7 +4,7 @@ window.onerror=function(m,u,l,c,err){try{document.getElementById('app').innerHTM
 var C={bg:"#090909",surface:"#121212",card:"#121212",white:"#FFF",text2:"#8E8E8E",text3:"#5F5F5F",lime:"#B7FF2A",limeSoft:"rgba(183,255,42,0.08)",limeBorder:"rgba(183,255,42,0.25)",red:"#FF5252",redSoft:"rgba(255,82,82,0.12)",orange:"#f97316",orangeSoft:"rgba(249,115,22,0.1)",blue:"#3b82f6",blueSoft:"rgba(59,130,246,0.1)",border:"rgba(255,255,255,0.06)"};
 
 var _mascotData='';
-var IMG_MASCOT='/app/mascot.PNG';
+var IMG_MASCOT='/app/mascot.png';
 function getMascotSrc(){return _mascotData||IMG_MASCOT;}
 function flagSVG(code,size){
   var id='fg'+(++_flagN),cx=size/2,cy=size/2,r=size/2-0.5;
@@ -1692,7 +1692,7 @@ function preloadMascot(){
     if(document.getElementById('shareOverlay').classList.contains('open'))renderShareCard();
   };
   img.onerror=function(){};
-  img.src='/app/mascot.PNG';
+  img.src='/app/mascot.png';
 }
 
 // Pull-to-refresh
