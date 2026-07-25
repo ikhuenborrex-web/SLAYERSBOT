@@ -2340,7 +2340,7 @@ loadState().then(()=>{
       log(`Startup: seeded ${seed.length} member code(s) from SEED_MEMBER_CODES`);
     }catch(e){log('Startup: failed to parse SEED_MEMBER_CODES: '+e.message);}
   }
-  if(!memberCodes.length)log('WARNING: No member codes configured — visit /admin/ to create them, or set SEED_MEMBER_CODES env var');
+  if(!memberCodes.length){log('WARNING: No member codes configured — visit /admin/ to create them, or set SEED_MEMBER_CODES env var');const fallbackCode={code:'SLAY-ADMIN',name:'Admin',addedAt:new Date().toISOString()};memberCodes.push(fallbackCode);saveState();log('Startup: created default code SLAY-ADMIN for immediate login');}
   // Clear any stale CRT signals from previous days immediately on startup
   const cutoff=new Date();cutoff.setUTCHours(0,0,0,0);
   const before=appSignalFeed.length;
