@@ -235,7 +235,12 @@ async function fetchAll(bg){
   promises.push(ft(withCode('/api/stats/detailed')).then(function(r){return j(r).then(function(d){state.detailedStats=d;render();});}).catch(function(){}));
   promises.push(ft(withCode('/api/stats/weekly')).then(function(r){return j(r).then(function(d){state.weeklyStats=d;render();});}).catch(function(){}));
   promises.push(ft(withCode('/api/member/stats')).then(function(r){
-    if(r.status===200)return j(r).then(function(d){state.myStats=d.myStats||null;state.notifPrefs=d.notifPrefs||{};render();});
+    if(r.status===200)return j(r).then(function(d){
+      state.myStats=d.myStats||null;
+      var local=JSON.parse(localStorage.getItem('notifPrefs')||'{}');
+      state.notifPrefs=Object.assign({},d.notifPrefs||{},local);
+      render();
+    });
   }).catch(function(){}));
   promises.push(ft(withCode('/api/journal')).then(function(r){return j(r).then(function(d){state.journal=d.entries||[];render();});}).catch(function(){}));
   promises.push(ft(withCode('/api/news')).then(function(r){return j(r).then(function(d){state.news=d.events||[];render();});}).catch(function(){}));
@@ -1176,7 +1181,11 @@ window.logout=function(){if(confirm('Logout and clear code?')){clearCode();windo
 window.calcPos=calcPos;
 window.toggleNotifPref=async function(key){
   var prefs=state.notifPrefs||{},nv=!prefs[key];prefs[key]=nv;
-  try{await fetch(withCode('/api/member/notif-prefs'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({[key]:nv})});}catch(e){}
+  localStorage.setItem('notifPrefs',JSON.stringify(prefs));
+  try{
+    await fetch(withCode('/api/member/notif-prefs'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({[key]:nv})});
+    showToast((nv?'On: ':'Off: ')+key.replace(/([A-Z])/g,' $1').replace(/^./,function(s){return s.toUpperCase();}));
+  }catch(e){showToast('Saved locally only');}
   render();
 };
 window.toggleTrack=async function(signalId,currentlyTracking){
@@ -1321,5 +1330,5 @@ document.addEventListener('touchend',function(e){
   }
   ptr.startY=0;ptr.dy=0;
 },{passive:true});
-if(getCode()){render();fetchAll();}else{renderLogin();}
+if(getCode()){var _localP=JSON.parse(localStorage.getItem('notifPrefs')||'{}');state.notifPrefs=Object.assign({},state.notifPrefs,_localP);render();fetchAll();}else{renderLogin();}
 setInterval(function(){if(getCode())fetchAll(true);},120000);
