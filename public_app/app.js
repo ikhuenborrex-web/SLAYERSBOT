@@ -1183,7 +1183,7 @@ window.toggleNotifPref=async function(key){
   var prefs=state.notifPrefs||{},nv=!prefs[key];prefs[key]=nv;
   localStorage.setItem('notifPrefs',JSON.stringify(prefs));
   try{
-    await fetch(withCode('/api/member/notif-prefs'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({[key]:nv})});
+    await fetch(withCode('/api/member/notif-prefs'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({notifPrefs:prefs})});
     showToast((nv?'On: ':'Off: ')+key.replace(/([A-Z])/g,' $1').replace(/^./,function(s){return s.toUpperCase();}));
   }catch(e){showToast('Saved locally only');}
   render();
