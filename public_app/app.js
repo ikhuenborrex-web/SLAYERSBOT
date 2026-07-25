@@ -15,8 +15,8 @@ function greeting(){var h=new Date().getHours();if(h<5)return'Late night';if(h<1
 function emptyState(msg){return'<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center"><div style="font-size:28px;margin-bottom:12px;opacity:0.1">\u25CB</div><div style="font-size:13px;color:#8E8E8E;line-height:1.5;max-width:260px">'+msg+'</div></div>';}
 function showToast(msg){var d=document.createElement('div');d.textContent=msg;d.style.cssText='position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#151515;border:0.5px solid rgba(255,255,255,0.06);color:#FFF;padding:10px 20px;border-radius:99px;font-size:12px;font-weight:500;z-index:9999;box-shadow:0 4px 24px rgba(0,0,0,0.3);animation:fadeUp 0.2s ease';document.body.appendChild(d);setTimeout(function(){d.style.opacity='0';d.style.transition='opacity 0.3s';setTimeout(function(){d.remove();},300);},2000);}
 
-function icon(path,color,size){return '<svg width="'+(size||18)+'" height="'+(size||18)+'" viewBox="0 0 24 24" fill="none" stroke="'+color+'" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'+path+'</svg>';}
-var I={dash:'<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',journal:'<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M8 7h8M8 11h6"/>',pulse:'<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',intel:'<circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49M7.76 16.24a6 6 0 0 1 0-8.49M19.07 4.93a10 10 0 0 1 0 14.14M4.93 19.07a10 10 0 0 1 0-14.14"/>',gear:'<circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>'};
+function icon(path,color,size){return '<svg width="'+(size||18)+'" height="'+(size||18)+'" viewBox="0 0 24 24" fill="none" stroke="'+color+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+path+'</svg>';}
+var I={dash:'<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',journal:'<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',pulse:'<polygon points="13 2 3 14 12 14 11 22 21 10 12 10"/>',intel:'<path d="M19.07 4.93A10 10 0 0 0 6.99 3.34"/><path d="M4 6h.01"/><path d="M2.29 9.62A10 10 0 1 0 21.31 8.35"/><path d="m12 12-2.83 2.83"/><circle cx="12" cy="12" r="2"/>',gear:'<circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>',crosshair:'<circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/>',chart:'<path d="M9 5v4"/><rect width="4" height="6" x="7" y="9" rx="1"/><path d="M9 15v2"/><path d="M17 3v2"/><rect width="4" height="8" x="15" y="5" rx="1"/><path d="M17 13v3"/><path d="M3 3v16a2 2 0 0 0 2 2h16"/>',copy:'<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>'};
 
 var lastSignalIds=[],lastScalpIds=[];
 var state={
@@ -217,9 +217,9 @@ function overviewScreen(){
       (s.dailyPOI?'<div style="font-size:10px;color:'+C.lime+';font-weight:600;margin-top:4px">\uD83C\uDFDB '+s.dailyPOI+'</div>':'')+
       (s.rsiDivergence?'<div style="font-size:10px;color:'+C.orange+';font-weight:600;margin-top:2px">\uD83D\uDD25 '+s.rsiDivergence+'</div>':'')+
       '<div style="display:flex;gap:6px;padding-top:8px;border-top:0.5px solid rgba(255,255,255,0.04);margin-top:8px">'+
-      '<div onclick="event.stopPropagation();toggleTrack(&#39;'+s.id+'&#39;,'+!!isT+')" style="flex:1;text-align:center;padding:8px 0;border-radius:10px;background:'+C.lime+';color:#050505;font-size:10px;font-weight:700;cursor:pointer">'+(isT?'Tracking':'Track')+'</div>'+
-      '<div onclick="event.stopPropagation();openDetail(&#39;'+s.id+'&#39;)" style="flex:1;text-align:center;padding:8px 0;border-radius:10px;background:rgba(255,255,255,0.04);color:#5F5F5F;font-size:10px;font-weight:600;cursor:pointer">Chart</div>'+
-      '<div onclick="event.stopPropagation();copyTrade(&#39;'+s.id+'&#39;)" style="flex:1;text-align:center;padding:8px 0;border-radius:10px;background:rgba(255,255,255,0.04);color:#5F5F5F;font-size:10px;font-weight:600;cursor:pointer">Copy</div></div></div>';
+      '<div onclick="event.stopPropagation();toggleTrack(&#39;'+s.id+'&#39;,'+!!isT+')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:8px 0;border-radius:10px;background:'+C.lime+';color:#050505;font-size:10px;font-weight:700;cursor:pointer">'+icon(I.crosshair,'#050505',12)+(isT?'Tracking':'Track')+'</div>'+
+      '<div onclick="event.stopPropagation();openDetail(&#39;'+s.id+'&#39;)" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:8px 0;border-radius:10px;background:rgba(255,255,255,0.04);color:#5F5F5F;font-size:10px;font-weight:600;cursor:pointer">'+icon(I.chart,'#5F5F5F',12)+'Chart</div>'+
+      '<div onclick="event.stopPropagation();copyTrade(&#39;'+s.id+'&#39;)" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:8px 0;border-radius:10px;background:rgba(255,255,255,0.04);color:#5F5F5F;font-size:10px;font-weight:600;cursor:pointer">'+icon(I.copy,'#5F5F5F',12)+'Copy</div></div></div>';
   }
   if(!sigCount&&!state.signals.length)sigsHtml=emptyState('Waiting for market data...');
 
@@ -260,7 +260,7 @@ function scalpScreen(){
       (s.fib?'<div style="font-size:9px;color:'+C.lime+';margin-top:4px">Fib: '+s.fib+' \u00b7 Vol: '+(s.volRatio||'')+'x</div>':'')+
       '<div style="display:flex;justify-content:space-between;margin-top:6px;padding-top:6px;border-top:0.5px solid rgba(255,255,255,0.04)">'+
       '<span style="font-size:8px;color:'+C.text3+'">'+timeAgo(s.time)+'</span>'+
-      '<button onclick="event.stopPropagation();toggleTrack(&#39;'+s.id+'&#39;,'+!!(s.isTracked)+')" style="background:'+(s.isTracked?C.limeSoft:C.surface)+';border:0.5px solid '+(s.isTracked?C.lime:C.border)+';border-radius:99px;padding:3px 10px;font-size:8px;color:'+(s.isTracked?C.lime:C.text2)+';cursor:pointer;font-family:inherit;font-weight:600">'+(s.isTracked?'Tracking':'Track')+'</button></div></div>';
+      '<button onclick="event.stopPropagation();toggleTrack(&#39;'+s.id+'&#39;,'+!!(s.isTracked)+')" style="display:inline-flex;align-items:center;gap:3px;background:'+(s.isTracked?C.limeSoft:C.surface)+';border:0.5px solid '+(s.isTracked?C.lime:C.border)+';border-radius:99px;padding:3px 10px;font-size:8px;color:'+(s.isTracked?C.lime:C.text2)+';cursor:pointer;font-family:inherit;font-weight:600">'+icon(I.crosshair,s.isTracked?C.lime:C.text2,10)+(s.isTracked?'Tracking':'Track')+'</button></div></div>';
   }).join('');
   return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+'">'+
     '<div style="flex:1;overflow-y:auto;padding:calc(30px + env(safe-area-inset-top)) 16px 0;-webkit-overflow-scrolling:touch">'+
@@ -527,9 +527,9 @@ function detailPage(s){
     // 6. Quick Actions
     '<div style="margin-bottom:16px"><div class="section-label">Actions</div>'+
     '<div style="display:flex;gap:10px">'+
-    '<button onclick="toggleTrack(&#39;'+s.id+'&#39;,'+!!s.isTracked+')" class="track-btn" style="background:'+trackBtnBg+';color:'+trackBtnCol+';border:'+trackBtnBdr+';box-shadow:'+trackBtnShad+'"><span style="display:inline-flex;align-items:center;gap:6px">'+(s.isTracked?'\u2713':'')+' Track</span></button>'+
-    '<button onclick="event.stopPropagation();openDetail(&#39;'+s.id+'&#39;)" class="action-btn">Chart</button>'+
-    '<button onclick="event.stopPropagation();copyTrade(&#39;'+s.id+'&#39;)" class="action-btn">Copy</button>'+
+    '<button onclick="toggleTrack(&#39;'+s.id+'&#39;,'+!!s.isTracked+')" class="track-btn" style="background:'+trackBtnBg+';color:'+trackBtnCol+';border:'+trackBtnBdr+';box-shadow:'+trackBtnShad+'"><span style="display:inline-flex;align-items:center;gap:6px">'+icon(I.crosshair,trackBtnCol,14)+(s.isTracked?'\u2713':'')+' Track</span></button>'+
+    '<button onclick="event.stopPropagation();openDetail(&#39;'+s.id+'&#39;)" class="action-btn"><span style="display:inline-flex;align-items:center;gap:6px;justify-content:center">'+icon(I.chart,'#8E8E8E',14)+'Chart</span></button>'+
+    '<button onclick="event.stopPropagation();copyTrade(&#39;'+s.id+'&#39;)" class="action-btn"><span style="display:inline-flex;align-items:center;gap:6px;justify-content:center">'+icon(I.copy,'#8E8E8E',14)+'Copy</span></button>'+
     '</div></div>'+
 
     // Position calculator toggle
