@@ -1252,7 +1252,7 @@ async function checkPushStatus(){
   try{var sub=await swRegistration.pushManager.getSubscription();window.pushStatus=sub?'subscribed':'unsupported';render();}catch(e){window.pushStatus='unsupported';}
 }
 if('serviceWorker'in navigator){
-  navigator.serviceWorker.register('/service-worker.js').then(function(reg){swRegistration=reg;if(getCode())checkPushStatus();}).catch(function(e){});
+  navigator.serviceWorker.register('/app/service-worker.js').then(function(reg){swRegistration=reg;if(getCode())checkPushStatus();}).catch(function(e){});
 }
 document.addEventListener('click',function(e){
   var btn=e.target.closest('.nav-btn');
