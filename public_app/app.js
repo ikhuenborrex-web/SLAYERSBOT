@@ -266,6 +266,24 @@ async function fetchAll(bg){
   }
 }
 
+function miniChart(entries){
+  if(!entries||entries.length<2)return '';
+  var sorted=entries.slice().sort(function(a,b){return(a.createdAt||a.time||'').localeCompare(b.createdAt||b.time||'');});
+  var cumR=0,pts=[];
+  for(var i=0;i<sorted.length;i++){cumR+=(sorted[i].rMultiple||sorted[i].r||0);pts.push(cumR);}
+  var mn=Math.min(0,Math.min.apply(null,pts)),mx=Math.max(0,Math.max.apply(null,pts)),rng=mx-mn||1,w=340,h=50;
+  function y(v){return h-6-((v-mn)/rng)*(h-16);}
+  function x(i){return(i/(pts.length-1))*(w-10)+5;}
+  var d='';for(var i=0;i<pts.length;i++)d+=(i===0?'M':'L')+x(i).toFixed(1)+','+y(pts[i]).toFixed(1);
+  var lv=pts[pts.length-1],col=lv>=0?C.lime:C.red;
+  return '<div style="height:50px;margin:8px 0 4px">'+
+    '<svg viewBox="0 0 '+w+' 50" preserveAspectRatio="none" style="width:100%;height:100%;display:block">'+
+    '<defs><linearGradient id="eqg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="'+col+'" stop-opacity="0.2"/><stop offset="100%" stop-color="'+col+'" stop-opacity="0"/></linearGradient></defs>'+
+    '<path d="'+d+'" fill="url(#eqg)" opacity="0.3"/>'+
+    '<path d="'+d+'" fill="none" stroke="'+col+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'+
+    '<circle cx="'+x(pts.length-1).toFixed(1)+'" cy="'+y(lv).toFixed(1)+'" r="3" fill="'+col+'"/></svg></div>';
+}
+
 function calcPos(s){
   var e=parseFloat(document.getElementById('pc-entry')?.value)||0,sl=parseFloat(document.getElementById('pc-sl')?.value)||0;
   var b=parseFloat(document.getElementById('pc-bal')?.value)||0,rp=parseFloat(document.getElementById('pc-rp')?.value)||0,t=parseFloat(document.getElementById('pc-tp')?.value)||0;
@@ -281,73 +299,19 @@ function calcPos(s){
 }
 
 function overviewScreen(){
-  var st=state.stats||{},ws=state.weeklyStats||{};
-  var wr=st.winRate||0;
+  var st=state.stats||{},ws=state.weeklyStats||{},m=state.myStats||state.stats||{};
+  var wr=st.winRate||0,tr=st.totalR||0;
+  var hero= '<div class="hero">'+
+    '<div class="glow-large"></div><div class="glow-small"></div>'+
+    '<div style="font-size:12px;color:#8E8E8E;font-weight:500;margin-bottom:6px;position:relative;z-index:1">'+greeting()+'</div>'+
+    '<div style="font-size:38px;font-weight:800;letter-spacing:-0.04em;line-height:1;margin-bottom:16px;position:relative;z-index:1;color:#FFF">SLAYERS.</div>'+
+    '<div style="display:flex;gap:24px;padding-top:16px;border-top:0.5px solid rgba(255,255,255,0.06);position:relative;z-index:1">'+
+    '<div><div class="count-up" style="font-size:24px;font-weight:700;color:'+C.lime+';letter-spacing:-0.02em">'+(ws.totalR>0?'+':'')+(ws.totalR||'0')+'<span style="font-size:14px;font-weight:600;color:#8E8E8E;margin-left:2px">R</span></div><div style="font-size:10px;color:#5F5F5F;font-weight:500;margin-top:2px">Week</div></div>'+
+    '<div><div class="count-up" style="font-size:24px;font-weight:700;color:#FFF;letter-spacing:-0.02em">'+(ws.winRate||wr)+'<span style="font-size:14px;font-weight:600;color:#8E8E8E;margin-left:2px">%</span></div><div style="font-size:10px;color:#5F5F5F;font-weight:500;margin-top:2px">Win Rate</div></div>'+
+    '<div><div class="count-up" style="font-size:24px;font-weight:700;color:#FFF;letter-spacing:-0.02em">'+state.active.length+'<span style="font-size:14px;font-weight:600;color:#8E8E8E;margin-left:2px"></span></div><div style="font-size:10px;color:#5F5F5F;font-weight:500;margin-top:2px">Active</div></div>'+
+    '</div></div>';
 
-  // --- Equity curve data from journal ---
-  var eqPts=null;
-  if(state.journal&&state.journal.length>=2){
-    var _sd=state.journal.slice().sort(function(a,b){return(a.createdAt||a.time||'').localeCompare(b.createdAt||b.time||'');});
-    var _cum=0;eqPts=[];
-    for(var _i=0;_i<_sd.length;_i++){_cum+=(_sd[_i].rMultiple||_sd[_i].r||0);eqPts.push(_cum);}
-  }
-  var pts=eqPts||[-0.5,-0.3,-0.8,-1.2,-0.5,0.3,0.5,0.8,1.2,1.5,2.0,2.5,2.8,3.0,3.2,3.35];
-  var _mn=Math.min(0,Math.min.apply(null,pts)),_mx=Math.max(0,Math.max.apply(null,pts)),_rng=_mx-_mn||1;
-  function _py(v){return 16+(_mx-v)/_rng*(184-16);}
-
-  // --- Metrics values ---
-  var eqVal=(ws.totalR>0?'+':'')+(ws.totalR||'3.35')+'R';
-  var eqPct=((ws.pnlPercent>0?'+':'')+(ws.pnlPercent||'2.41')+'%');
-  var wrVal=(ws.winRate||wr||'67')+'%';
-  var actCnt=state.active.length||'2';
-  var maxAct=state.signals.length||'6';
-
-  // --- Mini chart computation ---
-  var mPath='',mCol='#C7FF38';
-  if(pts.length>=2){
-    for(var _mi=0;_mi<pts.length;_mi++){var _mpx=(_mi/(pts.length-1))*340,_mpy=16+(_mx-pts[_mi])/_rng*(184-16);mPath+=(_mi===0?'M':'L')+_mpx.toFixed(1)+','+_mpy.toFixed(1);}
-    mCol=pts[pts.length-1]>=0?'#C7FF38':'#FF5252';
-  }
-  var showMiniChart=state.journal&&state.journal.length>=2;
-  var miniChartHtml=showMiniChart?'<div style="height:50px;margin:16px 0 0">'+
-    '<svg viewBox="0 0 340 200" preserveAspectRatio="none" style="width:100%;height:100%;display:block">'+
-      '<defs><linearGradient id="eqg" x1="0" y1="0" x2="0" y2="1">'+
-        '<stop offset="0%" stop-color="'+mCol+'" stop-opacity="0.2"/><stop offset="100%" stop-color="'+mCol+'" stop-opacity="0"/></linearGradient></defs>'+
-      '<path d="'+mPath+' L340,200 L0,200 Z" fill="url(#eqg)" opacity="0.3"/>'+
-      '<path d="'+mPath+'" fill="none" stroke="'+mCol+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'+
-      '<circle cx="'+((pts.length-2)/(pts.length-1)*340).toFixed(1)+'" cy="'+_py(pts[pts.length-1]).toFixed(1)+'" r="3" fill="'+mCol+'"/></svg></div>':'';
-
-  // --- Analytics container ---
-  var analytics='<div style="width:100%">'+
-    // header
-    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">'+
-      '<div><div style="font-size:12px;font-weight:500;color:#7E7E7E;letter-spacing:-0.01em">'+greeting()+'</div>'+
-      '<div style="font-size:26px;font-weight:800;color:#FFF;letter-spacing:-0.03em;line-height:1.1">SLAYERS.</div></div>'+
-      '<div style="display:flex;align-items:center;gap:10px">'+
-        '<div style="display:flex;align-items:center;gap:5px;height:36px;padding:0 16px;border-radius:18px;border:1px solid rgba(199,255,56,0.25);cursor:pointer">'+
-          '<span style="font-size:11px;font-weight:600;color:#C7FF38">This Week</span>'+
-          '<span style="font-size:7px;color:#C7FF38;opacity:0.5">&#9660;</span></div></div></div>'+
-    // metrics
-    '<div style="display:flex;align-items:center;background:#111111;border-radius:20px;padding:16px 20px;border:1px solid rgba(255,255,255,0.06);margin-bottom:24px;position:relative;overflow:hidden">'+
-      '<div style="position:absolute;top:-80px;right:-60px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(199,255,56,0.06) 0%,transparent 70%);pointer-events:none"></div>'+
-      '<div style="flex:1;text-align:center;position:relative;z-index:1">'+
-        '<div style="font-size:7px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px">EQUITY CHANGE</div>'+
-        '<div style="font-size:18px;font-weight:800;letter-spacing:-0.02em;line-height:1.15;color:#C7FF38">'+eqVal+'</div>'+
-        '<div style="font-size:9px;font-weight:500;margin-top:1px;color:#C7FF38">'+eqPct+'</div></div>'+
-      '<div style="width:1px;height:32px;background:rgba(255,255,255,0.06);flex-shrink:0"></div>'+
-      '<div style="flex:1;text-align:center;position:relative;z-index:1">'+
-        '<div style="font-size:7px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px">WIN RATE</div>'+
-        '<div style="font-size:18px;font-weight:800;letter-spacing:-0.02em;line-height:1.15;color:#FFF">'+wrVal+'</div>'+
-        '<div style="font-size:9px;font-weight:500;margin-top:1px;color:#C7FF38">+4.2%</div></div>'+
-      '<div style="width:1px;height:32px;background:rgba(255,255,255,0.06);flex-shrink:0"></div>'+
-      '<div style="flex:1;text-align:center;position:relative;z-index:1">'+
-        '<div style="font-size:7px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px">ACTIVE TRADES</div>'+
-        '<div style="font-size:18px;font-weight:800;letter-spacing:-0.02em;line-height:1.15;color:#FFF">'+actCnt+'</div>'+
-        '<div style="font-size:9px;font-weight:500;margin-top:1px;color:#7E7E7E">of '+maxAct+'</div></div>'+
-      '<button onclick="fetchAll()" style="width:36px;height:36px;border-radius:50%;background:#0A0A0A;border:1px solid rgba(199,255,56,0.15);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:12px;position:relative;box-shadow:0 0 20px rgba(199,255,56,0.03)">'+
-        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C7FF38" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+
-          '<line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></button></div>'+
-    miniChartHtml+'</div>';
+  var mc=miniChart(state.journal);
 
   var mp='',confl=state.confluence||[];
   if(confl.length){
@@ -449,7 +413,7 @@ function overviewScreen(){
 
   return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+';position:relative">'+
     '<div class="sc" style="flex:1;overflow-y:auto;padding:calc(30px + env(safe-area-inset-top)) 16px calc(100px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch">'+
-      analytics+mp+actCards+sigHeader+filterHtml+sigsHtml+
+      hero+mc+mp+actCards+sigHeader+filterHtml+sigsHtml+
     '</div>'+navBar()+'</div>';
 }
 
