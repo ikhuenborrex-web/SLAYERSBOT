@@ -193,7 +193,7 @@ var state={
   loading:true,showCalc:false,showOnboarding:false,onboardingStep:-1,showFilters:false,userBusy:false,
   filter:{pair:'',tf:'',dir:'',minScore:0,dateFrom:'',dateTo:'',sort:'time'},
   journalTab:'all',journalTime:'ALL',journalSearch:'',showJournalSearch:false,
-  intelTab:'all',intelImpact:null,sentiment:null,dailyBias:null,briefing:null
+  intelTab:'all',sentiment:null,dailyBias:null,briefing:null
 };
 var _progExp={};
 var _journalExp={};
@@ -646,7 +646,20 @@ function journalScreen(){
 function intelScreen(){
   var arts=state.articles||state.news||[];
   var activeTab=state.intelTab||'all';
-  var sent=state.sentiment||{};
+  var sent={};
+  if(confl.length){
+    var bullP=confl.filter(function(p){return p.signalDir==='BULLISH'||p.weeklyBias==='BULLISH';}).length;
+    var bearP=confl.filter(function(p){return p.signalDir==='BEARISH'||p.weeklyBias==='BEARISH';}).length;
+    var dirT=bullP+bearP;
+    sent.riskAppetite=dirT?Math.round(bullP/dirT*100):50;
+    var usdP=confl.filter(function(p){return p.name&&p.name.indexOf('USD')>-1;});
+    var usdB=usdP.filter(function(p){return p.signalDir==='BULLISH'||p.weeklyBias==='BULLISH';}).length;
+    var usdBe=usdP.filter(function(p){return p.signalDir==='BEARISH'||p.weeklyBias==='BEARISH';}).length;
+    sent.usdStrength=usdB+usdBe?Math.round(usdB/(usdB+usdBe)*100):50;
+    var actC=(state.active||[]).length,sigC=(state.signals||[]).length,artC=arts.length;
+    sent.fearGreed=Math.min(100,Math.round(actC*12+Math.min(sigC,20)*2+Math.min(artC,30)*1.2));
+    sent.volatility=Math.min(100,Math.round(actC*10+Math.min(sigC,15)*3+Math.min(artC,20)*2));
+  }
   var biasData=state.dailyBias||[];
   var confl=state.confluence||[];
 
@@ -787,9 +800,38 @@ function intelScreen(){
     return ac.indexOf(activeTab)>-1;
   });
 
+  function deriveImpact(acat,c){
+    if(!c||!c.length)return null;
+    var cat=acat.toLowerCase(),out=[];
+    function add(asset,dir){out.push({a:asset,d:dir});}
+    function dirOf(name){for(var xi=0;xi<c.length;xi++){if(c[xi].name===name){var d=c[xi].signalDir;return d==='BULLISH'?'bullish':d==='BEARISH'?'bearish':null;}}return null;}
+    if(cat.indexOf('crypto')>-1||cat.indexOf('btc')>-1||cat.indexOf('eth')>-1){
+      ['BTC','ETH','SOL'].forEach(function(asset){var d=dirOf(asset);if(d)add(asset,d);});
+    }
+    if(cat.indexOf('commodities')>-1||cat.indexOf('gold')>-1||cat.indexOf('xau')>-1){
+      ['XAU/USD','XAG/USD'].forEach(function(asset){var d=dirOf(asset);if(d)add(asset,d);});
+    }
+    if(cat.indexOf('indices')>-1||cat.indexOf('nas')>-1||cat.indexOf('spx')>-1){
+      ['NAS100','US30','SPX500'].forEach(function(asset){var d=dirOf(asset);if(d)add(asset,d);});
+    }
+    if(cat.indexOf('energy')>-1||cat.indexOf('oil')>-1||cat.indexOf('crude')>-1){
+      var e=c.find(function(p){return p.name&&(p.name.indexOf('OIL')>-1||p.name.indexOf('NG')>-1);});
+      if(e)add(e.name,dirOf(e.name)||'neutral');
+    }
+    if(cat.indexOf('currencies')>-1||cat.indexOf('forex')>-1||cat.indexOf('macro')>-1||cat.indexOf('central')>-1){
+      var fx=c.filter(function(p){return p.name&&p.name.indexOf('/')>-1&&p.name.indexOf('USD')>-1;});
+      fx.slice(0,3).forEach(function(p){var d=dirOf(p.name);if(d)add(p.name,d);});
+    }
+    if(!out.length){
+      var any=c.slice(0,3);
+      any.forEach(function(p){var d=dirOf(p.name);if(d)add(p.name||p.id,d);});
+    }
+    return out.length?out:null;
+  }
+
   var items=filtered.slice(0,25).map(function(a,ai){
     var img=a.imageUrl||a.image||'';
-    var impact=a.impact||(state.intelImpact||{})[a.id||ai]||null;
+    var impact=a.impact||deriveImpact(a.category||'',confl);
     var imgHtml=img?'<img src="'+img+'" style="width:100%;height:100%;object-fit:cover;display:block">':
       '<div style="display:flex;align-items:center;justify-content:center;height:100%;background:'+C.surface+'">'+icon(I.newspaper,'#5F5F5F',20)+'</div>';
     var impHtml=impact?impact.map(function(im){
