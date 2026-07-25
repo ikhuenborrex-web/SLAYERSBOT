@@ -2332,6 +2332,15 @@ const SELF_URL=process.env.RENDER_EXTERNAL_URL||'';
 if(SELF_URL)setInterval(()=>{fetch(SELF_URL+'/').catch(()=>{});},10*60*1000);
 log('Slayers Alert System v8.2 starting...');
 loadState().then(()=>{
+  // Seed member codes from env var if state was lost (e.g. after a cold deploy)
+  if(!memberCodes.length&&process.env.SEED_MEMBER_CODES){
+    try{
+      const seed=JSON.parse(process.env.SEED_MEMBER_CODES);
+      if(Array.isArray(seed)){seed.forEach(c=>{if(c.code){c.addedAt=c.addedAt||new Date().toISOString();memberCodes.push(c);}});saveState();}
+      log(`Startup: seeded ${seed.length} member code(s) from SEED_MEMBER_CODES`);
+    }catch(e){log('Startup: failed to parse SEED_MEMBER_CODES: '+e.message);}
+  }
+  if(!memberCodes.length)log('WARNING: No member codes configured — visit /admin/ to create them, or set SEED_MEMBER_CODES env var');
   // Clear any stale CRT signals from previous days immediately on startup
   const cutoff=new Date();cutoff.setUTCHours(0,0,0,0);
   const before=appSignalFeed.length;
