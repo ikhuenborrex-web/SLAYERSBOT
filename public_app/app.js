@@ -1,7 +1,7 @@
 try{document.getElementById('app').innerHTML='<div style="padding:30px;color:rgba(255,255,255,0.4);text-align:center;font-size:13px;font-family:monospace">Loading...</div>';}catch(e){}
 window.onerror=function(m,u,l,c,err){try{document.getElementById('app').innerHTML='<div style="padding:30px;color:#FF5252;text-align:center;font-family:monospace;font-size:12px;line-height:1.5">JS Error: '+m+' line: '+l+'</div>';}catch(e){}};
 
-var C={bg:"#050505",surface:"#151515",card:"#1A1A1A",white:"#FFF",text2:"#8E8E8E",text3:"#5F5F5F",lime:"#B7FF2A",limeSoft:"rgba(183,255,42,0.08)",limeBorder:"rgba(183,255,42,0.25)",red:"#FF5252",redSoft:"rgba(255,82,82,0.12)",orange:"#f97316",orangeSoft:"rgba(249,115,22,0.1)",blue:"#3b82f6",blueSoft:"rgba(59,130,246,0.1)",border:"rgba(255,255,255,0.06)"};
+var C={bg:"#090909",surface:"#121212",card:"#121212",white:"#FFF",text2:"#8E8E8E",text3:"#5F5F5F",lime:"#B7FF2A",limeSoft:"rgba(183,255,42,0.08)",limeBorder:"rgba(183,255,42,0.25)",red:"#FF5252",redSoft:"rgba(255,82,82,0.12)",orange:"#f97316",orangeSoft:"rgba(249,115,22,0.1)",blue:"#3b82f6",blueSoft:"rgba(59,130,246,0.1)",border:"rgba(255,255,255,0.06)"};
 
 function getCode(){try{return localStorage.getItem('qmr_code')||'';}catch(e){return '';}}
 function saveCode(c){try{localStorage.setItem('qmr_code',c);}catch(e){}}
@@ -378,56 +378,175 @@ function render(){
 
 function detailPage(s){
   var isB=s.type==='BULLISH'||s.type==='BUY',isE=s.tier==='ELITE',isD=s.dualEntry;
-  var tc=isE?C.white:'rgba(255,255,255,0.5)';
-  var crit=(s.criteria||[]).map(function(c){return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0"><span style="color:'+C.lime+';font-weight:700">\u2713</span><span style="font-size:13px;color:#FFF">'+c+'</span></div>';}).join('');
-  var ch=isD
-    ?'<div style="font-size:11px;color:'+C.orange+';font-weight:600;margin-bottom:4px">\u26A1 Aggressive Chart</div>'+(s.aggChartUrl?'<img src="'+withCode(s.aggChartUrl)+'" style="width:100%;border-radius:14px">':'<div style="height:140px;background:'+C.surface+';border-radius:14px;display:flex;align-items:center;justify-content:center;color:'+C.text2+';font-size:11px">Chart</div>')+
-     '<div style="display:flex;justify-content:space-between;margin:6px 0 14px;font-size:9px;color:rgba(255,255,255,0.4)">'+
-     '<span style="color:'+C.orange+'">Agg: '+fmt(s.aggEntry)+'</span><span style="color:'+C.red+'">SL: '+fmt(s.aggSl)+'</span><span style="color:'+C.lime+'">TP2: '+fmt(s.aggTp2)+'</span></div>'+
-     (s.consEntry?'<div style="font-size:11px;color:#FFF;font-weight:600;margin-bottom:4px">\uD83C\uDFAF Conservative</div>'+(s.consChartUrl?'<img src="'+withCode(s.consChartUrl)+'" style="width:100%;border-radius:14px;margin-bottom:8px">':'')+
-     '<div style="display:flex;justify-content:space-between;font-size:9px;color:rgba(255,255,255,0.4);margin-bottom:18px">'+
-     '<span style="color:#FFF">Entry: '+fmt(s.consEntry)+'</span><span style="color:'+C.red+'">SL: '+fmt(s.consSl)+'</span><span style="color:'+C.lime+'">TP2: '+fmt(s.consTp2)+'</span></div>':'')
-    :(s.chartUrl?'<img src="'+withCode(s.chartUrl)+'" style="width:100%;border-radius:14px">':'<div style="height:140px;background:'+C.surface+';border-radius:14px;display:flex;align-items:center;justify-content:center;color:'+C.text2+';font-size:11px">Chart unavailable</div>');
-  return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+'">'+
-    '<div style="flex:1;overflow-y:auto;padding:calc(30px + env(safe-area-inset-top)) 16px 24px;-webkit-overflow-scrolling:touch">'+
-    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">'+
-    '<button onclick="closeDetail()" style="background:'+C.surface+';border:0.5px solid '+C.border+';border-radius:99px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#FFF;font-size:16px">\u2190</button>'+
-    '<div><div style="font-weight:800;font-size:18px;color:#FFF">'+s.pair+' \u00b7 '+s.tf+'</div>'+
-    '<div style="font-size:11px;color:'+C.text2+'">'+timeAgo(s.time)+' \u00b7 '+(s.system||'QMR')+' Signal</div></div></div>'+
-    '<div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">'+
-    '<span style="font-size:8px;font-weight:700;padding:2px 8px;border-radius:3px;background:'+(isE?'rgba(255,255,255,0.1)':'rgba(255,255,255,0.05)')+';color:'+tc+'">'+s.tier+'</span>'+
-    '<span style="font-size:8px;font-weight:700;padding:2px 6px;border-radius:3px;background:'+(isB?C.limeSoft:C.redSoft)+';color:'+(isB?C.lime:C.red)+'">'+(isB?'BUY':'SELL')+'</span></div>'+
-    ch+
-    '<div style="font-size:14px;font-weight:700;color:#FFF;margin:14px 0 10px">Trade Levels</div>'+
-    '<div class="card" style="margin-bottom:16px">'+
-    (isD&&s.aggEntry?'<div style="display:flex;justify-content:space-between;padding:8px 0"><span style="color:'+C.orange+'">\u26A1 Aggressive</span>'+fmt(s.aggEntry)+'</div>':'')+
-    (isD&&s.consEntry?'<div style="display:flex;justify-content:space-between;padding:8px 0;border-top:0.5px solid rgba(255,255,255,0.04)"><span style="color:#FFF">Conservative</span>'+fmt(s.consEntry)+'</div>':'')+
-    (!isD?'<div style="display:flex;justify-content:space-between;padding:8px 0"><span style="color:'+C.text2+'">'+(s.refinedEntry?'Zone':'Entry')+'</span><span style="font-weight:700;color:#FFF">'+fmt(s.entry)+'</span></div>':'')+
-    (!isD&&s.refinedEntry?'<div style="display:flex;justify-content:space-between;padding:8px 0"><span style="color:'+C.lime+'">Refined</span><span style="font-weight:700;color:'+C.lime+'">'+fmt(s.refinedEntry)+'</span></div>':'')+
-    '<div style="display:flex;justify-content:space-between;padding:8px 0;border-top:0.5px solid rgba(255,255,255,0.04)"><span style="color:'+C.red+'">Stop Loss</span><span style="font-weight:700;color:'+C.red+'">'+fmt(isD?s.aggSl:s.sl)+'</span></div>'+
-    (isD&&s.consTp1?'<div style="display:flex;justify-content:space-between;padding:8px 0;border-top:0.5px solid rgba(255,255,255,0.04)"><span style="color:'+C.text2+'">Cons TP1</span><span style="font-weight:700;color:#FFF">'+fmt(s.consTp1)+'</span></div>':'')+
-    (isD&&s.consTp2?'<div style="display:flex;justify-content:space-between;padding:8px 0;border-top:0.5px solid rgba(255,255,255,0.04)"><span style="color:'+C.text2+'">Cons TP2</span><span style="font-weight:700;color:'+C.lime+'">'+fmt(s.consTp2)+'</span></div>':'')+
-    (!isD?s.tp1?'<div style="display:flex;justify-content:space-between;padding:8px 0"><span style="color:'+C.text2+'">TP1</span><span style="font-weight:700;color:#FFF">'+fmt(s.tp1)+'</span></div>':'':'')+
-    (!isD?s.tp2?'<div style="display:flex;justify-content:space-between;padding:8px 0"><span style="color:'+C.text2+'">TP2</span><span style="font-weight:700;color:'+C.lime+'">'+fmt(s.tp2)+'</span></div>':'':'')+
+  var dir=isB?'BUY':'SELL',dirCol=isB?'#B7FF2A':'#FF5252',dirBg=isB?'rgba(183,255,42,0.12)':'rgba(255,82,82,0.12)';
+  var entry=fmt(isD?s.aggEntry:s.entry),sl=fmt(isD?s.aggSl:s.sl);
+  var tp1=fmt(s.tp1||(isD?s.aggTp1:null)),tp2=fmt(s.tp2||(isD?s.aggTp2:null));
+  var eNum=parseFloat(entry),slNum=parseFloat(sl),tp1Num=parseFloat(tp1),tp2Num=parseFloat(tp2);
+  var riskPips=Math.abs(eNum-slNum),rr=riskPips&&tp1Num?Math.abs(tp1Num-eNum)/riskPips:0;
+
+  // Criteria explanations
+  var critExplain={
+    'Liq Sweep':'Price removed external liquidity before reversing direction.',
+    'Displacement':'Strong momentum candle with above-average range and conviction.',
+    'MSS':'Market structure shifted — price broke the recent swing point.',
+    'FVG @ QM':'Fair value gap at the QM level, providing a clean entry zone.',
+    'Weekly Discount':'Price is in the weekly discount zone, favoring buys.',
+    'Weekly Premium':'Price is in the weekly premium zone, favoring sells.',
+    'Daily OB':'Order block at the daily timeframe aligning with the trade direction.',
+    'Reclaimed OB':'Price reclaimed the order block, confirming the rejection.',
+    'Eng. Liq':'Liquidity was engineered before the directional move.',
+    'FVG at QM':'Fair value gap at the QM level adds confluence to the setup.'
+  };
+  var critChips=(s.criteria||[]).map(function(c,i){return '<div class="chip" onclick="var e=this.nextElementSibling;e.classList.toggle(\'open\')">'+c+'<span style="font-size:8px;opacity:0.5">\u25BC</span></div><div class="chip-explain">'+(critExplain[c]||'Key criterion for this setup.')+'</div>';}).join('');
+
+  // Progress timeline
+  var progressSteps=[
+    {label:'Signal Generated',done:true,icon:'\u2713'},
+    {label:'Entry Triggered',done:!!s.isTracked,icon:s.isTracked?'\u2713':'\u25CB'},
+    {label:'TP1 Target',done:false,icon:'\u25CB'},
+    {label:'SL to Breakeven',done:false,icon:'\u25CB'},
+    {label:'TP2 Target',done:false,icon:'\u25CB'}
+  ];
+  var progHtml='<div style="position:relative;padding-left:28px">';
+  for(var i=0;i<progressSteps.length;i++){
+    var ps=progressSteps[i];
+    progHtml+='<div style="position:relative;padding-bottom:'+(i<progressSteps.length-1?'20px':'0')+'">'+
+      (i<progressSteps.length-1?'<div style="position:absolute;left:7px;top:18px;width:1.5px;bottom:6px;background:'+(ps.done?'rgba(183,255,42,0.3)':'rgba(255,255,255,0.06)')+'"></div>':'')+
+      '<div style="position:absolute;left:0;top:2px;width:16px;height:16px;border-radius:99px;background:'+(ps.done?'#B7FF2A':'rgba(255,255,255,0.06)')+';display:flex;align-items:center;justify-content:center;font-size:8px;color:'+(ps.done?'#090909':'#5F5F5F')+';font-weight:700">'+(ps.done?'\u2713':'\u25CB')+'</div>'+
+      '<div style="font-size:13px;font-weight:'+(ps.done?'600':'400')+';color:'+(ps.done?'#FFF':'#5F5F5F')+'">'+ps.label+'</div></div>';
+  }
+  progHtml+='</div>';
+
+  // Strategy explanation
+  var strategyParts=[];
+  if(s.criteria&&s.criteria.length){
+    if(s.criteria.indexOf('Liq Sweep')>-1)strategyParts.push('Liquidity was swept at a key level');
+    if(s.criteria.indexOf('MSS')>-1)strategyParts.push('market structure shifted');
+    if(s.criteria.indexOf('Displacement')>-1)strategyParts.push('a strong displacement candle confirmed the move');
+    if(s.criteria.indexOf('FVG @ QM')>-1||s.criteria.indexOf('FVG at QM')>-1)strategyParts.push('a fair value gap at the QM level provided the entry zone');
+    if(s.criteria.indexOf('Daily OB')>-1)strategyParts.push('the daily order block aligned with the direction');
+    if(s.criteria.indexOf('Weekly Discount')>-1)strategyParts.push('price was in the weekly discount zone');
+  }
+  var strategy=strategyParts.length
+    ?'Price action triggered this '+(isD?'dual-entry ':'')+s.tf+' QMR signal. '+strategyParts.join(', ')+'. '+(s.score?'Score: '+s.score+'/4 criteria confirmed.':'')+' This setup follows The Slayers model — combining liquidity, structure, and momentum for high-probability entries.'
+    :'This '+(isD?'dual-entry ':'')+s.tf+' QMR signal was generated by The Slayers trading model. '+(s.score?'Score: '+s.score+'/4 criteria confirmed.':'')+' Follow the trade levels and manage risk accordingly.';
+
+  // Warnings
+  var warnings='';
+  if(s.counterTrend)warnings+='<div style="display:flex;align-items:flex-start;gap:10px;background:rgba(255,82,82,0.06);border:0.5px solid rgba(255,82,82,0.15);border-radius:16px;padding:14px;margin-bottom:12px"><span style="font-size:14px;flex-shrink:0;margin-top:1px">\u26A0</span><div><div style="font-size:12px;font-weight:600;color:#FF5252;margin-bottom:2px">Counter-trend signal</div><div style="font-size:10px;color:#8E8E8E;line-height:1.4">'+(s.htfBias||'HTF bias')+' — consider reducing position size.</div></div></div>';
+  if(s.rsiDivergence)warnings+='<div style="display:flex;align-items:flex-start;gap:10px;background:rgba(249,115,22,0.06);border:0.5px solid rgba(249,115,22,0.15);border-radius:16px;padding:14px;margin-bottom:12px"><span style="font-size:14px;flex-shrink:0;margin-top:1px">\uD83D\uDD25</span><div><div style="font-size:12px;font-weight:600;color:#f97316;margin-bottom:2px">RSI Divergence</div><div style="font-size:10px;color:#8E8E8E;line-height:1.4">'+s.rsiDivergence+'</div></div></div>';
+
+  // Quick actions
+  var trackBtnLabel=s.isTracked?'\u2713 Tracking':'Track';
+  var trackBtnBg=s.isTracked?C.lime:'#0C0C0C';
+  var trackBtnCol=s.isTracked?'#090909':'#8E8E8E';
+  var trackBtnBdr=s.isTracked?'none':'0.5px solid rgba(255,255,255,0.04)';
+  var trackBtnShad=s.isTracked?'none':'0 0 30px rgba(183,255,42,0.12)';
+
+  // Mascot watermark (simplified abstract hooded figure)
+  var mascot='<div style="position:absolute;bottom:0;right:0;width:100px;height:120px;opacity:0.08;pointer-events:none;overflow:hidden">'+
+    '<svg viewBox="0 0 100 120" fill="none" style="width:100%;height:100%">'+
+    '<path d="M50 10C30 10 15 25 15 45v5h8v-5c0-14 12-26 27-26s27 12 27 26v5h8v-5c0-20-15-35-35-35z" fill="#FFF"/>'+
+    '<path d="M35 45h30v8H35z" fill="#FFF" opacity="0.3"/>'+
+    '<path d="M50 55c-8 0-15 7-15 15v10c0 3 2 5 5 5h20c3 0 5-2 5-5V70c0-8-7-15-15-15z" fill="#FFF"/>'+
+    '</svg></div>';
+
+  // Chart image
+  var chartImg='';
+  if(isD){
+    chartImg='<div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">'+
+      (s.aggChartUrl?'<img src="'+withCode(s.aggChartUrl)+'" style="width:100%;display:block">':'<div style="height:160px;background:#0C0C0C;display:flex;align-items:center;justify-content:center;color:#5F5F5F;font-size:11px;font-weight:500">Aggressive chart</div>')+
+      '<div style="display:flex;gap:16px;padding:14px 20px;border-top:0.5px solid rgba(255,255,255,0.04)">'+
+      '<div><div style="font-size:9px;color:#5F5F5F;margin-bottom:2px">Agg Entry</div><div style="font-size:13px;font-weight:600;color:#FFF">'+fmt(s.aggEntry)+'</div></div>'+
+      '<div><div style="font-size:9px;color:#5F5F5F;margin-bottom:2px">SL</div><div style="font-size:13px;font-weight:600;color:#FF5252">'+fmt(s.aggSl)+'</div></div>'+
+      '<div><div style="font-size:9px;color:#5F5F5F;margin-bottom:2px">TP</div><div style="font-size:13px;font-weight:600;color:#B7FF2A">'+fmt(s.aggTp2||s.aggTp1)+'</div></div></div>'+
+      (s.consEntry?'<div style="padding:0 20px 14px;border-top:0.5px solid rgba(255,255,255,0.04)"><div style="font-size:9px;color:#5F5F5F;margin-bottom:6px;margin-top:10px">Conservative</div>'+
+        (s.consChartUrl?'<img src="'+withCode(s.consChartUrl)+'" style="width:100%;border-radius:14px;margin-bottom:6px;display:block">':'')+
+        '<div style="display:flex;gap:16px"><div><div style="font-size:9px;color:#5F5F5F;margin-bottom:2px">Entry</div><div style="font-size:13px;font-weight:600;color:#FFF">'+fmt(s.consEntry)+'</div></div>'+
+        '<div><div style="font-size:9px;color:#5F5F5F;margin-bottom:2px">SL</div><div style="font-size:13px;font-weight:600;color:#FF5252">'+fmt(s.consSl)+'</div></div>'+
+        '<div><div style="font-size:9px;color:#5F5F5F;margin-bottom:2px">TP</div><div style="font-size:13px;font-weight:600;color:#B7FF2A">'+fmt(s.consTp2||s.consTp1)+'</div></div></div></div>':'')+
+      '</div>';
+  }else{
+    chartImg='<div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">'+
+      (s.chartUrl?'<img src="'+withCode(s.chartUrl)+'" style="width:100%;display:block">':'<div style="height:160px;background:#0C0C0C;display:flex;align-items:center;justify-content:center;color:#5F5F5F;font-size:11px;font-weight:500">Chart</div>')+
+      '</div>';
+  }
+
+  return '<div style="display:flex;flex-direction:column;height:100%;background:#090909;position:relative">'+mascot+
+    '<div style="flex:1;overflow-y:auto;padding:calc(30px + env(safe-area-inset-top)) 0 0;-webkit-overflow-scrolling:touch">'+
+
+    // Header
+    '<div style="display:flex;align-items:center;gap:12px;padding:0 20px 16px">'+
+    '<button onclick="closeDetail()" style="background:#121212;border:0.5px solid rgba(255,255,255,0.06);border-radius:99px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#FFF;font-size:16px;flex-shrink:0">\u2190</button>'+
+    '<div style="flex:1"><div style="font-weight:700;font-size:22px;color:#FFF;letter-spacing:-0.03em">'+s.pair+'<span style="font-weight:400;font-size:14px;color:#5F5F5F;margin-left:6px">'+s.tf+'</span></div>'+
+    '<div style="font-size:11px;color:#5F5F5F;margin-top:1px">'+timeAgo(s.time)+' \u00b7 '+(s.system||'QMR')+'</div></div>'+
+    '<div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">'+
+    '<span style="font-size:8px;font-weight:700;padding:4px 10px;border-radius:6px;background:'+dirBg+';color:'+dirCol+'">'+dir+'</span>'+
+    (isE?'<span style="font-size:8px;font-weight:600;padding:3px 8px;border-radius:6px;background:rgba(255,255,255,0.08);color:#FFF">ELITE</span>':'')+
+    '</div></div>'+
+
+    '<div style="padding:0 20px">'+
+
+    // 1. Trade Overview Card
+    '<div class="card" style="margin-bottom:16px;padding:0;overflow:hidden">'+
+    '<div style="padding:20px;position:relative;overflow:hidden">'+
+    '<div style="position:absolute;top:-40px;right:-40px;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle,rgba(183,255,42,0.06),transparent 70%);pointer-events:none"></div>'+
+    '<div class="row-l" style="padding:0 0 12px;border-bottom:0.5px solid rgba(255,255,255,0.04)"><span style="font-size:15px;font-weight:600;color:#FFF">'+s.pair+'</span><span style="font-size:11px;color:#5F5F5F">'+(isD?'Dual Entry':s.tier)+'</span></div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding-top:12px">'+
+    '<div><div style="font-size:9px;color:#5F5F5F;font-weight:500;margin-bottom:2px">Entry</div><div style="font-size:16px;font-weight:700;color:#FFF">'+entry+'</div></div>'+
+    '<div><div style="font-size:9px;color:#5F5F5F;font-weight:500;margin-bottom:2px">Stop Loss</div><div style="font-size:16px;font-weight:600;color:#FF5252">'+sl+'</div></div>'+
+    '<div><div style="font-size:9px;color:#5F5F5F;font-weight:500;margin-bottom:2px">TP1</div><div style="font-size:16px;font-weight:600;color:'+(tp1Num?'#B7FF2A':'#5F5F5F')+'">'+(tp1||'—')+'</div></div>'+
+    '<div><div style="font-size:9px;color:#5F5F5F;font-weight:500;margin-bottom:2px">TP2</div><div style="font-size:16px;font-weight:600;color:'+(tp2Num?'#B7FF2A':'#5F5F5F')+'">'+(tp2||'—')+'</div></div>'+
     '</div>'+
-    (isD?'<div style="font-size:13px;font-weight:700;color:#FFF;margin:12px 0 8px">Track Your Entry</div>'+
-    '<button onclick="toggleTrack(&#39;'+s.id+'-agg&#39;,'+!!s.isTrackedAgg+')" style="width:100%;background:'+(s.isTrackedAgg?C.lime:C.surface)+';border:0.5px solid '+(s.isTrackedAgg?C.lime:C.border)+';border-radius:12px;padding:14px 0;font-size:12px;font-weight:600;cursor:pointer;color:'+(s.isTrackedAgg?'#050505':'#5F5F5F')+';margin-bottom:10px;font-family:inherit">'+(s.isTrackedAgg?'\u2713 Tracking aggressive at '+fmt(s.aggEntry):'\u26A1 Aggressive entry at '+fmt(s.aggEntry))+'</button>'+
-    (s.consEntry?'<button onclick="toggleTrack(&#39;'+s.id+'-cons&#39;,'+!!s.isTrackedCons+')" style="width:100%;background:'+(s.isTrackedCons?C.lime:C.surface)+';border:0.5px solid '+(s.isTrackedCons?C.lime:C.border)+';border-radius:12px;padding:14px 0;font-size:12px;font-weight:600;cursor:pointer;color:'+(s.isTrackedCons?'#050505':'#5F5F5F')+';margin-bottom:12px;font-family:inherit">'+(s.isTrackedCons?'\u2713 Conservative at '+fmt(s.consEntry):'\uD83C\uDFAF Conservative at '+fmt(s.consEntry))+'</button>':'')
-    :'<button onclick="toggleTrack(&#39;'+s.id+'&#39;,'+!!s.isTracked+')" style="width:100%;background:'+(s.isTracked?C.lime:C.surface)+';border:0.5px solid '+(s.isTracked?C.lime:C.border)+';border-radius:12px;padding:14px 0;font-size:12px;font-weight:600;cursor:pointer;color:'+(s.isTracked?'#050505':'#5F5F5F')+';margin-bottom:16px;font-family:inherit">'+(s.isTracked?"\u2713 Tracking – you'll get updates":"I'm in this trade")+'</button>')+
-    '<button onclick="toggleCalc()" style="width:100%;background:#0A0A0A;border:0.5px solid rgba(255,255,255,0.04);border-radius:12px;padding:14px 0;color:#8E8E8E;font-weight:600;font-size:12px;cursor:pointer;margin-bottom:16px;font-family:inherit">'+(state.showCalc?'Close Calculator':'Calculate Position Size')+'</button>'+
-    (state.showCalc?'<div style="background:'+C.surface+';border:0.5px solid '+C.border+';border-radius:14px;padding:14px;margin-bottom:16px">'+
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'+
-      '<div><span style="color:'+C.text2+';font-size:9px">Balance ($)</span><input id="pc-bal" type="number" value="1000" style="width:100%;background:rgba(255,255,255,0.05);border:0.5px solid '+C.border+';border-radius:6px;padding:8px 10px;color:#FFF;font-size:12px;box-sizing:border-box;outline:none;font-family:inherit"></div>'+
-      '<div><span style="color:'+C.text2+';font-size:9px">Risk %</span><input id="pc-rp" type="number" value="2" style="width:100%;background:rgba(255,255,255,0.05);border:0.5px solid '+C.border+';border-radius:6px;padding:8px 10px;color:#FFF;font-size:12px;box-sizing:border-box;outline:none;font-family:inherit"></div>'+
-      '<div><span style="color:'+C.text2+';font-size:9px">Entry</span><input id="pc-entry" type="number" step="any" value="'+fmt(s.entry||s.aggEntry)+'" style="width:100%;background:rgba(255,255,255,0.05);border:0.5px solid '+C.border+';border-radius:6px;padding:8px 10px;color:#FFF;font-size:12px;box-sizing:border-box;outline:none;font-family:inherit"></div>'+
-      '<div><span style="color:'+C.text2+';font-size:9px">Stop Loss</span><input id="pc-sl" type="number" step="any" value="'+fmt(s.sl||s.aggSl)+'" style="width:100%;background:rgba(255,255,255,0.05);border:0.5px solid '+C.border+';border-radius:6px;padding:8px 10px;color:#FFF;font-size:12px;box-sizing:border-box;outline:none;font-family:inherit"></div>'+
-      '<div><span style="color:'+C.text2+';font-size:9px">TP (opt)</span><input id="pc-tp" type="number" step="any" value="'+fmt(s.tp1||s.aggTp1||'')+'" style="width:100%;background:rgba(255,255,255,0.05);border:0.5px solid '+C.border+';border-radius:6px;padding:8px 10px;color:#FFF;font-size:12px;box-sizing:border-box;outline:none;font-family:inherit"></div>'+
-      '</div><button onclick="calcPos()" style="width:100%;background:'+C.lime+';border:none;border-radius:8px;padding:10px 0;color:#000;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit">Calculate</button><div id="pc-r" style="margin-top:10px;display:none"></div></div>':'')+
-    '<div style="font-size:14px;font-weight:700;color:#FFF;margin:14px 0 10px">Criteria '+(s.score?'\u2014 '+s.score+'/4':'')+'</div>'+
-    '<div class="card" style="margin-bottom:16px">'+crit+'</div>'+
-    (s.counterTrend?'<div style="background:'+C.redSoft+';border:0.5px solid '+C.red+'55;border-radius:14px;padding:14px;margin-bottom:16px;font-size:12px;color:'+C.red+';font-weight:600">\u26A0 Counter-trend \u2014 '+(s.htfBias||'')+'. Reduce size.</div>':'')+
-    (s.rsiDivergence?'<div style="background:'+C.orangeSoft+';border:0.5px solid '+C.orange+'55;border-radius:14px;padding:14px;margin-bottom:16px;font-size:12px;color:'+C.orange+';font-weight:600">\uD83D\uDD25 '+s.rsiDivergence+'</div>':'')+
-    '<button onclick="closeDetail()" style="width:100%;background:#0A0A0A;border:0.5px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px 0;color:#5F5F5F;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:24px;font-family:inherit">\u2190 Back to Dashboard</button></div></div>';
+    (rr>0?'<div style="display:flex;gap:20px;margin-top:14px;padding-top:12px;border-top:0.5px solid rgba(255,255,255,0.04)">'+
+      '<div><div style="font-size:9px;color:#5F5F5F;font-weight:500;margin-bottom:2px">Risk:Reward</div><div style="font-size:14px;font-weight:700;color:#B7FF2A">1:'+rr.toFixed(1)+'</div></div>'+
+      '<div><div style="font-size:9px;color:#5F5F5F;font-weight:500;margin-bottom:2px">Risk</div><div style="font-size:14px;font-weight:600;color:#FFF">'+riskPips.toFixed(s.tf==='1H'?0:2)+'</div></div>'+
+      '<div><div style="font-size:9px;color:#5F5F5F;font-weight:500;margin-bottom:2px">Score</div><div style="font-size:14px;font-weight:700;color:'+(s.score&&s.score>=3?'#B7FF2A':'#FFF')+'">'+(s.score||'—')+'<span style="font-size:10px;color:#5F5F5F">/4</span></div></div>'+
+    '</div>':'')+
+    '</div></div>'+
+
+    // 2. Chart (if available)
+    chartImg+
+
+    // 3. Progress Timeline
+    '<div style="margin-bottom:16px"><div class="section-label">Trade Progress</div>'+
+    '<div class="card" style="padding:20px;margin-bottom:0">'+progHtml+'</div></div>'+
+
+    // 4. Criteria Chips
+    (critChips?'<div style="margin-bottom:16px"><div class="section-label">Setup Criteria</div>'+
+    '<div class="card" style="padding:20px;margin-bottom:0"><div style="display:flex;flex-wrap:wrap;gap:6px">'+critChips+'</div></div></div>':'')+
+
+    // 5. Strategy Explanation
+    '<div style="margin-bottom:16px"><div class="section-label">About This Setup</div>'+
+    '<div class="card" style="padding:20px;margin-bottom:0;position:relative">'+
+    '<div style="font-size:12px;color:#8E8E8E;line-height:1.7">'+strategy+'</div></div></div>'+
+
+    // Warnings
+    (warnings?'<div style="margin-bottom:16px">'+warnings+'</div>':'')+
+
+    // 6. Quick Actions
+    '<div style="margin-bottom:16px"><div class="section-label">Actions</div>'+
+    '<div style="display:flex;gap:10px">'+
+    '<button onclick="toggleTrack(&#39;'+s.id+'&#39;,'+!!s.isTracked+')" class="track-btn" style="background:'+trackBtnBg+';color:'+trackBtnCol+';border:'+trackBtnBdr+';box-shadow:'+trackBtnShad+'"><span style="display:inline-flex;align-items:center;gap:6px">'+(s.isTracked?'\u2713':'')+' Track</span></button>'+
+    '<button onclick="event.stopPropagation();openDetail(&#39;'+s.id+'&#39;)" class="action-btn">Chart</button>'+
+    '<button onclick="event.stopPropagation();copyTrade(&#39;'+s.id+'&#39;)" class="action-btn">Copy</button>'+
+    '</div></div>'+
+
+    // Position calculator toggle
+    '<button onclick="toggleCalc()" style="width:100%;background:#0C0C0C;border:0.5px solid rgba(255,255,255,0.04);border-radius:14px;padding:16px 0;color:#8E8E8E;font-weight:500;font-size:12px;cursor:pointer;margin-bottom:12px;font-family:inherit">'+(state.showCalc?'\u2212 Position Calculator':'Position Size Calculator')+'</button>'+
+    (state.showCalc?'<div style="background:#121212;border:0.5px solid rgba(255,255,255,0.04);border-radius:24px;padding:20px;margin-bottom:16px">'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">'+
+      '<div><div style="color:#5F5F5F;font-size:9px;font-weight:500;margin-bottom:4px">Balance ($)</div><input id="pc-bal" type="number" value="1000" style="width:100%;background:#0C0C0C;border:0.5px solid rgba(255,255,255,0.04);border-radius:10px;padding:10px;color:#FFF;font-size:13px;box-sizing:border-box;outline:none;font-family:inherit"></div>'+
+      '<div><div style="color:#5F5F5F;font-size:9px;font-weight:500;margin-bottom:4px">Risk %</div><input id="pc-rp" type="number" value="2" style="width:100%;background:#0C0C0C;border:0.5px solid rgba(255,255,255,0.04);border-radius:10px;padding:10px;color:#FFF;font-size:13px;box-sizing:border-box;outline:none;font-family:inherit"></div>'+
+      '<div><div style="color:#5F5F5F;font-size:9px;font-weight:500;margin-bottom:4px">Entry</div><input id="pc-entry" type="number" step="any" value="'+entry+'" style="width:100%;background:#0C0C0C;border:0.5px solid rgba(255,255,255,0.04);border-radius:10px;padding:10px;color:#FFF;font-size:13px;box-sizing:border-box;outline:none;font-family:inherit"></div>'+
+      '<div><div style="color:#5F5F5F;font-size:9px;font-weight:500;margin-bottom:4px">Stop Loss</div><input id="pc-sl" type="number" step="any" value="'+sl+'" style="width:100%;background:#0C0C0C;border:0.5px solid rgba(255,255,255,0.04);border-radius:10px;padding:10px;color:#FFF;font-size:13px;box-sizing:border-box;outline:none;font-family:inherit"></div>'+
+      '<div style="grid-column:1/-1"><div style="color:#5F5F5F;font-size:9px;font-weight:500;margin-bottom:4px">TP (optional)</div><input id="pc-tp" type="number" step="any" value="'+(tp1||'')+'" style="width:100%;background:#0C0C0C;border:0.5px solid rgba(255,255,255,0.04);border-radius:10px;padding:10px;color:#FFF;font-size:13px;box-sizing:border-box;outline:none;font-family:inherit"></div>'+
+      '</div><button onclick="calcPos()" style="width:100%;background:#B7FF2A;border:none;border-radius:14px;padding:14px 0;color:#090909;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit">Calculate</button><div id="pc-r" style="margin-top:14px;display:none"></div></div>':'')+
+
+    // Back button
+    '<button onclick="closeDetail()" style="width:100%;background:#0C0C0C;border:0.5px solid rgba(255,255,255,0.04);border-radius:14px;padding:16px 0;color:#5F5F5F;font-size:12px;font-weight:500;cursor:pointer;margin-bottom:24px;font-family:inherit">\u2190 All Signals</button>'+
+
+    '</div></div></div>';
 }
 
 function renderLogin(m){
