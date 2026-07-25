@@ -115,7 +115,9 @@ layers:'<path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d=
 calendar:'<rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
 target:'<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
 bookmark:'<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>',
-bitcoin:'<path d="M11.5 8H8v8h3.5a4 4 0 1 0 0-8z"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="M16 12a4 4 0 1 1-8 0"/>'};
+bitcoin:'<path d="M11.5 8H8v8h3.5a4 4 0 1 0 0-8z"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="M16 12a4 4 0 1 1-8 0"/>',
+refreshCw:'<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/>',
+checkCircle:'<path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/>'};
 
 // ====== TRADE REPLAY ======
 function showTradeReplay(idx){
@@ -207,6 +209,7 @@ async function fetchAll(bg){
     return Promise.race([fetch(url),new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'));},TIMEOUT_MS);})]);
   };
   var j=function(r){return r&&r.json?r.json().catch(function(){return{};}):Promise.resolve({});};
+  var promises=[];
   var sigUrl='/api/signals?limit=20';
   if(state.filter.pair)sigUrl+='&pair='+encodeURIComponent(state.filter.pair);
   if(state.filter.dir)sigUrl+='&dir='+encodeURIComponent(state.filter.dir);
@@ -215,9 +218,9 @@ async function fetchAll(bg){
   if(state.filter.dateFrom)sigUrl+='&dateFrom='+encodeURIComponent(state.filter.dateFrom);
   if(state.filter.dateTo)sigUrl+='&dateTo='+encodeURIComponent(state.filter.dateTo);
   if(state.filter.sort!=='time')sigUrl+='&sort='+state.filter.sort;
-  ft(withCode(sigUrl)).then(function(r){
+  promises.push(ft(withCode(sigUrl)).then(function(r){
     if(r.status===401){clearCode();state.loading=false;renderLogin('Your access code has expired or is no longer valid.');return;}
-    j(r).then(function(d){
+    return j(r).then(function(d){
       var sigs=d.signals||[];
       if(lastSignalIds.length&&sigs.length>lastSignalIds.length&&!bg){
         for(var si=0;si<sigs.length;si++){if(lastSignalIds.indexOf(sigs[si].id)===-1){showToast((sigs[si].type==='BULLISH'?'\uD83D\uDCC8 ':'\uD83D\uDCC9 ')+(sigs[si].dualEntry?'Dual ':'')+sigs[si].pair+' \u00b7 '+sigs[si].tier+(sigs[si].score?' ('+sigs[si].score+'/4)':''));break;}}
@@ -225,33 +228,37 @@ async function fetchAll(bg){
       lastSignalIds=sigs.map(function(s){return s.id;});
       state.signals=sigs;render();
     });
-  }).catch(function(){});
-  ft(withCode('/api/active')).then(function(r){j(r).then(function(d){state.active=d.trades||[];render();});}).catch(function(){});
-  ft(withCode('/api/confluence')).then(function(r){j(r).then(function(d){state.confluence=d.pairs||[];render();});}).catch(function(){});
-  ft(withCode('/api/stats')).then(function(r){j(r).then(function(d){state.stats=d;render();});}).catch(function(){});
-  ft(withCode('/api/stats/detailed')).then(function(r){j(r).then(function(d){state.detailedStats=d;render();});}).catch(function(){});
-  ft(withCode('/api/stats/weekly')).then(function(r){j(r).then(function(d){state.weeklyStats=d;render();});}).catch(function(){});
-  ft(withCode('/api/member/stats')).then(function(r){
-    if(r.status===200)j(r).then(function(d){state.myStats=d.myStats||null;state.notifPrefs=d.notifPrefs||{};render();});
-  }).catch(function(){});
-  ft(withCode('/api/journal')).then(function(r){j(r).then(function(d){state.journal=d.entries||[];render();});}).catch(function(){});
-  ft(withCode('/api/news')).then(function(r){j(r).then(function(d){state.news=d.events||[];render();});}).catch(function(){});
-  ft(withCode('/api/news-feed')).then(function(r){j(r).then(function(d){state.articles=d.articles||d.data||d.news||d.items||(Array.isArray(d)?d:[])||[];render();});}).catch(function(){});
-  ft(withCode('/api/settings')).then(function(r){j(r).then(function(d){state.settings=d.settings||null;render();});}).catch(function(){});
-  ft(withCode('/api/trade-history')).then(function(r){j(r).then(function(d){state.botHistory=d.outcomes||[];render();});}).catch(function(){});
-  ft(withCode('/api/weekly-summary')).then(function(r){j(r).then(function(d){state.weeklySummary=d.summary||null;render();});}).catch(function(){});
-  fetch(withCode('/api/scalp')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){
+  }).catch(function(){}));
+  promises.push(ft(withCode('/api/active')).then(function(r){return j(r).then(function(d){state.active=d.trades||[];render();});}).catch(function(){}));
+  promises.push(ft(withCode('/api/confluence')).then(function(r){return j(r).then(function(d){state.confluence=d.pairs||[];render();});}).catch(function(){}));
+  promises.push(ft(withCode('/api/stats')).then(function(r){return j(r).then(function(d){state.stats=d;render();});}).catch(function(){}));
+  promises.push(ft(withCode('/api/stats/detailed')).then(function(r){return j(r).then(function(d){state.detailedStats=d;render();});}).catch(function(){}));
+  promises.push(ft(withCode('/api/stats/weekly')).then(function(r){return j(r).then(function(d){state.weeklyStats=d;render();});}).catch(function(){}));
+  promises.push(ft(withCode('/api/member/stats')).then(function(r){
+    if(r.status===200)return j(r).then(function(d){state.myStats=d.myStats||null;state.notifPrefs=d.notifPrefs||{};render();});
+  }).catch(function(){}));
+  promises.push(ft(withCode('/api/journal')).then(function(r){return j(r).then(function(d){state.journal=d.entries||[];render();});}).catch(function(){}));
+  promises.push(ft(withCode('/api/news')).then(function(r){return j(r).then(function(d){state.news=d.events||[];render();});}).catch(function(){}));
+  promises.push(ft(withCode('/api/news-feed')).then(function(r){return j(r).then(function(d){state.articles=d.articles||d.data||d.news||d.items||(Array.isArray(d)?d:[])||[];render();});}).catch(function(){}));
+  promises.push(ft(withCode('/api/settings')).then(function(r){return j(r).then(function(d){state.settings=d.settings||null;render();});}).catch(function(){}));
+  promises.push(ft(withCode('/api/trade-history')).then(function(r){return j(r).then(function(d){state.botHistory=d.outcomes||[];render();});}).catch(function(){}));
+  promises.push(ft(withCode('/api/weekly-summary')).then(function(r){return j(r).then(function(d){state.weeklySummary=d.summary||null;render();});}).catch(function(){}));
+  promises.push(fetch(withCode('/api/scalp')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){
     var ss=d.signals||[];
     if(lastScalpIds.length&&ss.length>lastScalpIds.length&&!bg){for(var si=0;si<ss.length;si++){if(lastScalpIds.indexOf(ss[si].id)===-1){showToast('\u26A1 Scalp '+(ss[si].type==='BULLISH'?'\uD83D\uDCC8 ':'\uD83D\uDCC9 ')+(ss[si].name||ss[si].pair)+' \u00b7 score '+ss[si].score+'/5');break;}}}
     lastScalpIds=ss.map(function(s){return s.id;});state.scalpSignals=ss;render();
-  }).catch(function(){});
-  fetch(withCode('/api/scalp/active')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){state.scalpActive=d.trades||[];render();}).catch(function(){});
-  fetch(withCode('/api/scalp/stats')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){state.scalpStats=d;render();}).catch(function(){});
-  fetch(withCode('/api/scalp/pulse')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){state.scalpPulse=d.pairs||[];render();}).catch(function(){});
-  ft(withCode('/api/sentiment')).then(function(r){j(r).then(function(d){state.sentiment=d;render();});}).catch(function(){});
-  ft(withCode('/api/daily-bias')).then(function(r){j(r).then(function(d){state.dailyBias=Array.isArray(d)?d:d.pairs||d.bias||[];render();});}).catch(function(){});
-  ft(withCode('/api/intel-summary')).then(function(r){j(r).then(function(d){state.briefing=d.briefing||d.summary||d.text||d.content||null;render();});}).catch(function(){});
+  }).catch(function(){}));
+  promises.push(fetch(withCode('/api/scalp/active')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){state.scalpActive=d.trades||[];render();}).catch(function(){}));
+  promises.push(fetch(withCode('/api/scalp/stats')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){state.scalpStats=d;render();}).catch(function(){}));
+  promises.push(fetch(withCode('/api/scalp/pulse')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){state.scalpPulse=d.pairs||[];render();}).catch(function(){}));
+  promises.push(ft(withCode('/api/sentiment')).then(function(r){return j(r).then(function(d){state.sentiment=d;render();});}).catch(function(){}));
+  promises.push(ft(withCode('/api/daily-bias')).then(function(r){return j(r).then(function(d){state.dailyBias=Array.isArray(d)?d:d.pairs||d.bias||[];render();});}).catch(function(){}));
+  promises.push(ft(withCode('/api/intel-summary')).then(function(r){return j(r).then(function(d){state.briefing=d.briefing||d.summary||d.text||d.content||null;render();});}).catch(function(){}));
   state.loading=false;
+  if(promises.length&&!bg){
+    Promise.allSettled(promises).then(function(){refreshPill.complete();});
+    setTimeout(function(){refreshPill.complete();},12000);
+  }
 }
 
 function miniChart(entries){
@@ -786,7 +793,9 @@ function intelScreen(){
     'all':'All Intel','macro':'Macro','central_banks':'Central Banks','centralbank':'Central Banks',
     'currencies':'Currencies','forex':'Currencies','crypto':'Crypto','cryptocurrency':'Crypto',
     'indices':'Indices','index':'Indices','commodities':'Commodities','commodity':'Commodities',
-    'energy':'Energy','oil':'Energy'
+    'energy':'Energy','oil':'Energy',
+    'economy':'Economy','economic':'Economy','gdp':'Economy','inflation':'Economy',
+    'geopolitical':'Geopolitical','geopolitics':'Geopolitical','politics':'Geopolitical','political':'Geopolitical'
   };
   var availCats={};
   for(var ai=0;ai<arts.length;ai++){
@@ -1222,41 +1231,80 @@ document.addEventListener('click',function(e){
 document.addEventListener('focusin',function(e){var t=e.target.tagName;if(t==='INPUT'||t==='TEXTAREA'||t==='SELECT')state.userBusy=true;});
 document.addEventListener('focusout',function(e){var t=e.target.tagName;if(t==='INPUT'||t==='TEXTAREA'||t==='SELECT')setTimeout(function(){state.userBusy=false;},200);});
 
+// ====== REFRESH PILL ======
+var refreshPill={
+  active:false,el:null,iconEl:null,textEl:null,
+  msgs:['Syncing Live Markets\u2026','Updating Signals\u2026','Checking Active Trades\u2026','Refreshing Dashboard\u2026'],
+  create:function(){
+    this.el=document.createElement('div');
+    this.el.style.cssText='position:fixed;top:calc(12px + env(safe-area-inset-top));left:50%;transform:translateX(-50%) translateY(-20px);z-index:9999;display:none;align-items:center;gap:8px;background:#151515;border:1px solid rgba(183,255,42,0.2);border-radius:999px;padding:8px 16px;box-shadow:0 0 20px rgba(183,255,42,0.08),0 4px 24px rgba(0,0,0,0.3);pointer-events:none;opacity:0';
+    this.iconEl=document.createElement('span');
+    this.iconEl.style.cssText='display:flex;align-items:center;justify-content:center;width:16px;height:16px;flex-shrink:0;color:#B7FF2A';
+    this.el.appendChild(this.iconEl);
+    this.textEl=document.createElement('span');
+    this.textEl.style.cssText='font-size:11px;font-weight:600;color:#FFF;white-space:nowrap';
+    this.el.appendChild(this.textEl);
+    document.body.appendChild(this.el);
+  },
+  show:function(){
+    if(!this.el)this.create();
+    this.active=true;
+    this.el.style.display='flex';
+    void this.el.offsetHeight;
+    this.el.style.transition='opacity 0.35s cubic-bezier(.16,1,.3,1), transform 0.4s cubic-bezier(.16,1,.3,1)';
+    this.el.style.opacity='1';
+    this.el.style.transform='translateX(-50%) translateY(0)';
+    this.iconEl.style.animation='refreshSpin 1.2s linear infinite';
+    this.iconEl.innerHTML=I.refreshCw;
+    this.iconEl.style.color='#B7FF2A';
+    this.textEl.textContent=this.msgs[0];
+    var self=this,i=0;
+    if(this._timer)clearInterval(this._timer);
+    this._timer=setInterval(function(){i=(i+1)%self.msgs.length;self.textEl.textContent=self.msgs[i];},2000);
+  },
+  complete:function(){
+    if(!this.active)return;
+    this.active=false;
+    if(this._timer)clearInterval(this._timer);
+    this.iconEl.style.animation='none';
+    this.iconEl.innerHTML=I.checkCircle;
+    this.iconEl.style.color='#B7FF2A';
+    this.textEl.textContent='Live \u2022 Just Updated';
+    var self=this;
+    if(this._done)clearTimeout(this._done);
+    this._done=setTimeout(function(){self.hide();},600);
+  },
+  hide:function(){
+    if(!this.el)return;
+    if(this._timer)clearInterval(this._timer);
+    if(this._done)clearTimeout(this._done);
+    this.active=false;
+    this.el.style.transition='opacity 0.3s cubic-bezier(.16,1,.3,1), transform 0.35s cubic-bezier(.16,1,.3,1)';
+    this.el.style.opacity='0';
+    this.el.style.transform='translateX(-50%) translateY(-20px)';
+    var self=this;
+    setTimeout(function(){if(self.el)self.el.style.display='none';},350);
+  }
+};
+
 // Pull-to-refresh
-var ptr={startY:0,dy:0,indicator:null,refreshing:false};
+var ptr={startY:0,dy:0,refreshing:false};
 document.addEventListener('touchstart',function(e){
   if(ptr.refreshing)return;
   var s=e.target.closest('[style*="overflow-y:auto"]');
   if(!s||s.scrollTop>0)return;
   ptr.startY=e.touches[0].clientY;ptr.dy=0;
-  if(!ptr.indicator){
-    ptr.indicator=document.createElement('div');
-    ptr.indicator.textContent='\u2193 Refresh';
-    ptr.indicator.style.cssText='position:fixed;top:calc(12px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);color:#B7FF2A;font-size:11px;font-weight:600;z-index:999;opacity:0;transition:opacity 0.15s;pointer-events:none';
-    document.body.appendChild(ptr.indicator);
-  }
 },{passive:true});
 document.addEventListener('touchmove',function(e){
-  if(!ptr.startY||ptr.refreshing||!ptr.indicator)return;
+  if(!ptr.startY||ptr.refreshing)return;
   ptr.dy=e.touches[0].clientY-ptr.startY;
-  if(ptr.dy<20){ptr.indicator.style.opacity=0;return;}
-  ptr.indicator.textContent=ptr.dy>70?'Release to refresh':'\u2193 Pull to refresh';
-  ptr.indicator.style.opacity=Math.min((ptr.dy-20)/50,1);
 },{passive:true});
 document.addEventListener('touchend',function(e){
-  if(!ptr.startY||!ptr.indicator)return;
+  if(!ptr.startY)return;
   if(ptr.dy>70&&!ptr.refreshing){
     ptr.refreshing=true;
-    ptr.indicator.textContent='\u21BB Refreshing...';
-    ptr.indicator.style.opacity=1;
-    showToast('Refreshing');
+    refreshPill.show();
     fetchAll();
-    setTimeout(function(){
-      ptr.refreshing=false;
-      if(ptr.indicator)ptr.indicator.style.opacity=0;
-    },3000);
-  }else{
-    ptr.indicator.style.opacity=0;
   }
   ptr.startY=0;ptr.dy=0;
 },{passive:true});
