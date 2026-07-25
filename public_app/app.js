@@ -193,7 +193,7 @@ var state={
   loading:true,showCalc:false,showOnboarding:false,onboardingStep:-1,showFilters:false,userBusy:false,
   filter:{pair:'',tf:'',dir:'',minScore:0,dateFrom:'',dateTo:'',sort:'time'},
   journalTab:'all',journalTime:'ALL',journalSearch:'',showJournalSearch:false,
-  intelTab:'all',intelImpact:{},sentiment:{riskAppetite:64,fearGreed:38,usdStrength:55,volatility:71},dailyBias:[]
+  intelTab:'all',intelImpact:null,sentiment:null,dailyBias:null,briefing:null
 };
 var _progExp={};
 var _journalExp={};
@@ -248,6 +248,9 @@ async function fetchAll(bg){
   fetch(withCode('/api/scalp/active')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){state.scalpActive=d.trades||[];render();}).catch(function(){});
   fetch(withCode('/api/scalp/stats')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){state.scalpStats=d;render();}).catch(function(){});
   fetch(withCode('/api/scalp/pulse')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){state.scalpPulse=d.pairs||[];render();}).catch(function(){});
+  ft(withCode('/api/sentiment')).then(function(r){j(r).then(function(d){state.sentiment=d;render();});}).catch(function(){});
+  ft(withCode('/api/daily-bias')).then(function(r){j(r).then(function(d){state.dailyBias=Array.isArray(d)?d:d.pairs||d.bias||[];render();});}).catch(function(){});
+  ft(withCode('/api/intel-summary')).then(function(r){j(r).then(function(d){state.briefing=d.briefing||d.summary||d.text||d.content||null;render();});}).catch(function(){});
   state.loading=false;
 }
 
@@ -686,74 +689,73 @@ function intelScreen(){
   sessHtml+='</div>';
 
   // ====== DAILY BIAS ======
-  var defaultBias=[
-    {pair:'EUR/USD',dir:'BEARISH',conf:72},{pair:'GBP/USD',dir:'BULLISH',conf:65},
-    {pair:'USD/JPY',dir:'BULLISH',conf:58},{pair:'XAU/USD',dir:'BEARISH',conf:81},
-    {pair:'NAS100',dir:'BULLISH',conf:64},{pair:'BTC/USD',dir:'NEUTRAL',conf:50}
-  ];
-  var pairsBias=biasData.length?biasData:confl.length?confl.slice(0,6).map(function(p){
-    var dir=p.signalDir!=='NONE'?p.signalDir:p.weeklyBias||'NEUTRAL';
-    return{pair:p.name||p.id,dir:dir,conf:dir==='BULLISH'||dir==='BEARISH'?65:50};
-  }):defaultBias;
-
-  var biasHtml='<div style="margin-bottom:16px">'+
-    '<div class="section-label" style="margin-bottom:10px">'+icon(I.target,C.text2,10)+' Daily Bias</div>'+
-    '<div class="card" style="padding:14px;margin-bottom:0;border-radius:20px;background:#151515">';
-  for(var bi=0;bi<pairsBias.length;bi++){
-    var b=pairsBias[bi],bDir=b.dir||'NEUTRAL';
-    var isBull=bDir==='BULLISH',isBear=bDir==='BEARISH';
-    var bCol=isBull?C.lime:isBear?C.red:C.text2;
-    var bIcon=isBull?I.arrowUp:isBear?I.arrowDown:'<circle cx="12" cy="12" r="2"/>';
-    var conf=b.conf||50,confCol=conf>=70?C.lime:conf>=50?C.text2:C.red;
-    biasHtml+='<div style="display:flex;align-items:center;gap:10px;padding:8px 0;'+(bi<pairsBias.length-1?'border-bottom:0.5px solid rgba(255,255,255,0.04)':'')+'">'+
-      assetIcon(b.pair,22)+
-      '<span style="flex:1;font-size:12px;font-weight:600;color:#FFF">'+esc(b.pair)+'</span>'+
-      icon(bIcon,bCol,14)+
-      '<div style="width:60px;height:4px;border-radius:99px;background:rgba(255,255,255,0.06);overflow:hidden">'+
-        '<div style="height:100%;width:'+conf+'%;border-radius:99px;background:'+confCol+';transition:width .6s ease"></div></div>'+
-      '<span style="font-size:10px;font-weight:600;color:'+confCol+';min-width:28px;text-align:right">'+conf+'%</span></div>';
+  var pairsBias=biasData.length?biasData:null;
+  var biasHtml='';
+  if(pairsBias){
+    biasHtml='<div style="margin-bottom:16px">'+
+      '<div class="section-label" style="margin-bottom:10px">'+icon(I.target,C.text2,10)+' Daily Bias</div>'+
+      '<div class="card" style="padding:14px;margin-bottom:0;border-radius:20px;background:#151515">';
+    for(var bi=0;bi<pairsBias.length;bi++){
+      var b=pairsBias[bi],bDir=b.dir||'NEUTRAL';
+      var isBull=bDir==='BULLISH',isBear=bDir==='BEARISH';
+      var bCol=isBull?C.lime:isBear?C.red:C.text2;
+      var bIcon=isBull?I.arrowUp:isBear?I.arrowDown:'<circle cx="12" cy="12" r="2"/>';
+      var conf=b.conf||50,confCol=conf>=70?C.lime:conf>=50?C.text2:C.red;
+      biasHtml+='<div style="display:flex;align-items:center;gap:10px;padding:8px 0;'+(bi<pairsBias.length-1?'border-bottom:0.5px solid rgba(255,255,255,0.04)':'')+'">'+
+        assetIcon(b.pair,22)+
+        '<span style="flex:1;font-size:12px;font-weight:600;color:#FFF">'+esc(b.pair)+'</span>'+
+        icon(bIcon,bCol,14)+
+        '<div style="width:60px;height:4px;border-radius:99px;background:rgba(255,255,255,0.06);overflow:hidden">'+
+          '<div style="height:100%;width:'+conf+'%;border-radius:99px;background:'+confCol+';transition:width .6s ease"></div></div>'+
+        '<span style="font-size:10px;font-weight:600;color:'+confCol+';min-width:28px;text-align:right">'+conf+'%</span></div>';
+    }
+    biasHtml+='</div></div>';
   }
-  biasHtml+='</div></div>';
 
   // ====== SENTIMENT GAUGES ======
-  var gaugeDefs=[
-    {key:'riskAppetite',label:'Risk Appetite',icon:I.shield},
-    {key:'fearGreed',label:'Fear & Greed',icon:I.zap},
-    {key:'usdStrength',label:'USD Strength',icon:I.dollarSign},
-    {key:'volatility',label:'Volatility',icon:I.activity}
-  ];
-  var gaugeHtml='<div style="margin-bottom:16px">'+
-    '<div class="section-label" style="margin-bottom:10px">'+icon(I.layers,C.text2,10)+' Sentiment</div>'+
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
-  for(var gi=0;gi<gaugeDefs.length;gi++){
-    var g=gaugeDefs[gi],val=sent[g.key]||50,circ=2*Math.PI*36,offset=circ*(1-val/100);
-    var gCol=val>=60?C.lime:val>=40?C.text2:C.red;
-    gaugeHtml+='<div class="card" style="display:flex;flex-direction:column;align-items:center;padding:16px 8px;margin-bottom:0;border-radius:20px;background:#151515">'+
-      '<svg width="76" height="76" viewBox="0 0 100 100">'+
-        '<circle cx="50" cy="50" r="36" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="6"/>'+
-        '<circle cx="50" cy="50" r="36" fill="none" stroke="'+gCol+'" stroke-width="6" stroke-linecap="round" stroke-dasharray="'+circ+'" stroke-dashoffset="'+circ+'" transform="rotate(-90 50 50)"><animate attributeName="stroke-dashoffset" from="'+circ+'" to="'+offset+'" dur="1.2s" fill="freeze" calcMode="spline" keySplines=".16 1 .3 1"/></circle>'+
-        '<text x="50" y="46" text-anchor="middle" fill="#FFF" font-size="20" font-weight="700">'+val+'</text>'+
-        '<text x="50" y="66" text-anchor="middle" fill="#5F5F5F" font-size="7">%</text>'+
-      '</svg>'+
-      '<div style="font-size:9px;color:#5F5F5F;font-weight:500;margin-top:4px">'+g.label+'</div></div>';
+  var gaugeHtml='';
+  if(sent&&sent.riskAppetite!=null){
+    var gaugeDefs=[
+      {key:'riskAppetite',label:'Risk Appetite'},{key:'fearGreed',label:'Fear & Greed'},
+      {key:'usdStrength',label:'USD Strength'},{key:'volatility',label:'Volatility'}
+    ];
+    gaugeHtml='<div style="margin-bottom:16px">'+
+      '<div class="section-label" style="margin-bottom:10px">'+icon(I.layers,C.text2,10)+' Sentiment</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
+    for(var gi=0;gi<gaugeDefs.length;gi++){
+      var g=gaugeDefs[gi],val=sent[g.key]||0,circ=2*Math.PI*36,offset=circ*(1-Math.min(val,100)/100);
+      var gCol=val>=60?C.lime:val>=40?C.text2:C.red;
+      gaugeHtml+='<div class="card" style="display:flex;flex-direction:column;align-items:center;padding:16px 8px;margin-bottom:0;border-radius:20px;background:#151515">'+
+        '<svg width="76" height="76" viewBox="0 0 100 100">'+
+          '<circle cx="50" cy="50" r="36" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="6"/>'+
+          '<circle cx="50" cy="50" r="36" fill="none" stroke="'+gCol+'" stroke-width="6" stroke-linecap="round" stroke-dasharray="'+circ+'" stroke-dashoffset="'+circ+'" transform="rotate(-90 50 50)"><animate attributeName="stroke-dashoffset" from="'+circ+'" to="'+offset+'" dur="1.2s" fill="freeze" calcMode="spline" keySplines=".16 1 .3 1"/></circle>'+
+          '<text x="50" y="46" text-anchor="middle" fill="#FFF" font-size="20" font-weight="700">'+Math.round(val)+'</text>'+
+          '<text x="50" y="66" text-anchor="middle" fill="#5F5F5F" font-size="7">%</text>'+
+        '</svg>'+
+        '<div style="font-size:9px;color:#5F5F5F;font-weight:500;margin-top:4px">'+g.label+'</div></div>';
+    }
+    gaugeHtml+='</div></div>';
   }
-  gaugeHtml+='</div></div>';
 
   // ====== LAYER 2: INTELLIGENCE SUMMARY ======
-  var briefHtml='<div style="margin-bottom:16px">'+
-    '<div class="section-label" style="margin-bottom:10px">'+icon(I.sparkles,C.text2,10)+' Slayers Intelligence</div>'+
-    '<div class="card" style="padding:18px;margin-bottom:0;border-radius:20px;background:#151515;position:relative;overflow:hidden">'+
-      '<div style="position:absolute;top:-30px;right:-30px;width:100px;height:100px;border-radius:50%;background:radial-gradient(circle,rgba(183,255,42,0.04),transparent 70%);pointer-events:none"></div>'+
-      '<div style="display:flex;gap:10px;margin-bottom:10px">'+
-        icon(I.brain,C.lime,18)+
-        '<div><div style="font-size:13px;font-weight:600;color:#FFF">The Slayers</div>'+
-        '<div style="font-size:10px;color:#5F5F5F">AI Market Briefing</div></div></div>'+
-      '<div style="font-size:11px;color:#8E8E8E;line-height:1.7">Markets are currently '+(sent.volatility>=60?'elevated in volatility with':'showing calm price action and')+' '+(sent.riskAppetite>=60?'strong risk appetite.':'cautious risk sentiment.')+' USD '+(sent.usdStrength>=60?'maintaining strength':'showing weakness')+' across majors. Focus on '+(pairsBias.length?pairsBias.slice(0,2).map(function(bp){return esc(bp.pair);}).join(' and '):'key levels')+' for today\'s session.</div>'+
-      '<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">'+
-        '<span style="font-size:8px;padding:3px 8px;border-radius:6px;background:'+C.limeSoft+';color:'+C.lime+';font-weight:600;border:0.5px solid '+C.limeBorder+'">High Impact</span>'+
-        '<span style="font-size:8px;padding:3px 8px;border-radius:6px;background:rgba(255,255,255,0.03);color:#5F5F5F;font-weight:500">Actionable</span>'+
-        '<span style="font-size:8px;padding:3px 8px;border-radius:6px;background:rgba(255,255,255,0.03);color:#5F5F5F;font-weight:500">'+timeAgo(Date.now())+'</span>'+
-      '</div></div></div>';
+  var briefText=state.briefing;
+  var briefHtml='';
+  if(briefText){
+    briefHtml='<div style="margin-bottom:16px">'+
+      '<div class="section-label" style="margin-bottom:10px">'+icon(I.sparkles,C.text2,10)+' Slayers Intelligence</div>'+
+      '<div class="card" style="padding:18px;margin-bottom:0;border-radius:20px;background:#151515;position:relative;overflow:hidden">'+
+        '<div style="position:absolute;top:-30px;right:-30px;width:100px;height:100px;border-radius:50%;background:radial-gradient(circle,rgba(183,255,42,0.04),transparent 70%);pointer-events:none"></div>'+
+        '<div style="display:flex;gap:10px;margin-bottom:10px">'+
+          icon(I.brain,C.lime,18)+
+          '<div><div style="font-size:13px;font-weight:600;color:#FFF">The Slayers</div>'+
+          '<div style="font-size:10px;color:#5F5F5F">AI Market Briefing</div></div></div>'+
+        '<div style="font-size:11px;color:#8E8E8E;line-height:1.7">'+esc(briefText)+'</div>'+
+        '<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">'+
+          '<span style="font-size:8px;padding:3px 8px;border-radius:6px;background:'+C.limeSoft+';color:'+C.lime+';font-weight:600;border:0.5px solid '+C.limeBorder+'">High Impact</span>'+
+          '<span style="font-size:8px;padding:3px 8px;border-radius:6px;background:rgba(255,255,255,0.03);color:#5F5F5F;font-weight:500">Actionable</span>'+
+          '<span style="font-size:8px;padding:3px 8px;border-radius:6px;background:rgba(255,255,255,0.03);color:#5F5F5F;font-weight:500">'+timeAgo(Date.now())+'</span>'+
+        '</div></div></div>';
+  }
 
   // ====== LAYER 3: NEWS FEED ======
   var catDefs=['All Intel','Macro','Central Banks','Currencies','Crypto','Indices','Commodities','Energy'];
@@ -775,30 +777,18 @@ function intelScreen(){
     return ac.indexOf(activeTab)>-1;
   });
 
-  // Generate trading impact per category
-  var impactMap={
-    macro:[{a:'USD',d:'bullish'},{a:'Gold',d:'bearish'},{a:'DXY',d:'bullish'}],
-    central_banks:[{a:'EUR',d:'neutral'},{a:'USD',d:'bullish'},{a:'Bonds',d:'bearish'}],
-    currencies:[{a:'EUR',d:'bearish'},{a:'JPY',d:'bullish'},{a:'GBP',d:'neutral'}],
-    crypto:[{a:'BTC',d:'bullish'},{a:'ETH',d:'bullish'},{a:'SOL',d:'neutral'}],
-    commodities:[{a:'Gold',d:'neutral'},{a:'Silver',d:'bullish'},{a:'Copper',d:'bearish'}],
-    indices:[{a:'SPX500',d:'bullish'},{a:'NAS100',d:'bullish'},{a:'US30',d:'neutral'}],
-    energy:[{a:'Crude',d:'bearish'},{a:'Nat Gas',d:'neutral'},{a:'Brent',d:'bearish'}]
-  };
-
   var items=filtered.slice(0,25).map(function(a,ai){
     var img=a.imageUrl||a.image||'';
-    var acat=(a.category||'General').toLowerCase().replace(/[^a-z0-9]/g,'_');
-    var impact=state.intelImpact[a.id||ai]||impactMap[acat]||impactMap['macro'];
+    var impact=a.impact||(state.intelImpact||{})[a.id||ai]||null;
     var imgHtml=img?'<img src="'+img+'" style="width:100%;height:100%;object-fit:cover;display:block">':
       '<div style="display:flex;align-items:center;justify-content:center;height:100%;background:'+C.surface+'">'+icon(I.newspaper,'#5F5F5F',20)+'</div>';
-    var impHtml=impact.map(function(im){
+    var impHtml=impact?impact.map(function(im){
       var ic=im.d==='bullish'?C.lime:im.d==='bearish'?C.red:C.text2;
       var ii=im.d==='bullish'?I.trendingUp:im.d==='bearish'?I.trendingDown:I.activity;
       return '<div style="display:flex;align-items:center;gap:5px;padding:3px 0;font-size:9px">'+
         icon(ii,ic,10)+'<span style="color:'+ic+';font-weight:'+(im.d!=='neutral'?'600':'400')+'">'+esc(im.a)+'</span>'+
         ' <span style="color:#5F5F5F;text-transform:capitalize">'+im.d+'</span></div>';
-    }).join('');
+    }).join(''):'';
 
     return '<div class="card" style="padding:0;overflow:hidden;margin-bottom:12px;border-radius:20px;background:#151515">'+
       '<div style="display:flex;gap:12px;padding:14px">'+
@@ -812,10 +802,10 @@ function intelScreen(){
             '<span style="font-size:7px;font-weight:600;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.04);color:'+C.text2+'">'+esc((a.category||'General').toUpperCase())+'</span>'+
           '</div></div>'+
       '</div>'+
-      '<div style="margin:0 14px 14px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.04)">'+
+      (impHtml?'<div style="margin:0 14px 14px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.04)">'+
         '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">'+icon(I.zap,'#8E8E8E',10)+
         '<span style="font-size:8px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.04em">Trading Impact</span></div>'+
-        impHtml+'</div>'+
+        impHtml+'</div>':'')+
       (a.link||a.url?'<a href="'+esc(a.link||a.url)+'" target="_blank" style="display:flex;align-items:center;justify-content:space-between;text-decoration:none;padding:10px 14px;border-top:0.5px solid rgba(255,255,255,0.04);font-size:9px;font-weight:600;color:'+C.lime+'">Read full article '+icon(I.chevronRight,C.lime,10)+'</a>':'')+
     '</div>';
   }).join('');
@@ -896,19 +886,7 @@ function detailPage(s){
   var riskPips=Math.abs(eNum-slNum),rr=riskPips&&tp1Num?Math.abs(tp1Num-eNum)/riskPips:0;
 
   // Criteria explanations
-  var critExplain={
-    'Liq Sweep':'Price removed external liquidity before reversing direction.',
-    'Displacement':'Strong momentum candle with above-average range and conviction.',
-    'MSS':'Market structure shifted — price broke the recent swing point.',
-    'FVG @ QM':'Fair value gap at the QM level, providing a clean entry zone.',
-    'Weekly Discount':'Price is in the weekly discount zone, favoring buys.',
-    'Weekly Premium':'Price is in the weekly premium zone, favoring sells.',
-    'Daily OB':'Order block at the daily timeframe aligning with the trade direction.',
-    'Reclaimed OB':'Price reclaimed the order block, confirming the rejection.',
-    'Eng. Liq':'Liquidity was engineered before the directional move.',
-    'FVG at QM':'Fair value gap at the QM level adds confluence to the setup.'
-  };
-  var critChips=(s.criteria||[]).map(function(c,i){return '<div class="chip" onclick="var e=this.nextElementSibling;e.classList.toggle(\'open\')">'+c+'<span style="font-size:8px;opacity:0.5">\u25BC</span></div><div class="chip-explain">'+(critExplain[c]||'Key criterion for this setup.')+'</div>';}).join('');
+  var critChips=(s.criteria||[]).map(function(c){return '<span class="chip" style="cursor:default">'+c+'</span>';}).join('');
 
   // Progress timeline
   var activeTrade=null;
