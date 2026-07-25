@@ -738,9 +738,20 @@ function intelScreen(){
   }
 
   // ====== LAYER 2: INTELLIGENCE SUMMARY ======
-  var briefText=state.briefing;
   var briefHtml='';
-  if(briefText){
+  var briefLines=[];
+  var ws=state.weeklyStats||{},ac=state.active||[],sigs=state.signals||[];
+  if(ac.length)briefLines.push(ac.length+' active trade'+(ac.length>1?'s':'')+' running');
+  if(ws.totalR)briefLines.push((ws.totalR>0?'+':'')+ws.totalR.toFixed(1)+'R this week');
+  if(ws.winRate)briefLines.push(ws.winRate+'% win rate');
+  if(confl.length)briefLines.push(confl.length+' market pulse pairs tracked');
+  if(sigs.length)briefLines.push(sigs.length+' recent signals');
+  if(arts.length)briefLines.push(arts.length+' news articles');
+  if(confl.length){
+    var topPulse=confl.slice(0,2).map(function(p){return p.name||p.id;}).join(' \u00b7 ');
+    briefLines.push('Focus: '+topPulse);
+  }
+  if(briefLines.length){
     briefHtml='<div style="margin-bottom:16px">'+
       '<div class="section-label" style="margin-bottom:10px">'+icon(I.sparkles,C.text2,10)+' Slayers Intelligence</div>'+
       '<div class="card" style="padding:18px;margin-bottom:0;border-radius:20px;background:#151515;position:relative;overflow:hidden">'+
@@ -748,11 +759,10 @@ function intelScreen(){
         '<div style="display:flex;gap:10px;margin-bottom:10px">'+
           icon(I.brain,C.lime,18)+
           '<div><div style="font-size:13px;font-weight:600;color:#FFF">The Slayers</div>'+
-          '<div style="font-size:10px;color:#5F5F5F">AI Market Briefing</div></div></div>'+
-        '<div style="font-size:11px;color:#8E8E8E;line-height:1.7">'+esc(briefText)+'</div>'+
+          '<div style="font-size:10px;color:#5F5F5F">Live Market Briefing</div></div></div>'+
+        '<div style="font-size:11px;color:#8E8E8E;line-height:1.8">'+briefLines.map(function(l){return '\u2022 '+esc(l);}).join('<br>')+'</div>'+
         '<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">'+
-          '<span style="font-size:8px;padding:3px 8px;border-radius:6px;background:'+C.limeSoft+';color:'+C.lime+';font-weight:600;border:0.5px solid '+C.limeBorder+'">High Impact</span>'+
-          '<span style="font-size:8px;padding:3px 8px;border-radius:6px;background:rgba(255,255,255,0.03);color:#5F5F5F;font-weight:500">Actionable</span>'+
+          (ac.length?'<span style="font-size:8px;padding:3px 8px;border-radius:6px;background:'+C.limeSoft+';color:'+C.lime+';font-weight:600;border:0.5px solid '+C.limeBorder+'">Live</span>':'')+
           '<span style="font-size:8px;padding:3px 8px;border-radius:6px;background:rgba(255,255,255,0.03);color:#5F5F5F;font-weight:500">'+timeAgo(Date.now())+'</span>'+
         '</div></div></div>';
   }
