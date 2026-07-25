@@ -782,23 +782,36 @@ function intelScreen(){
   }
 
   // ====== LAYER 3: NEWS FEED ======
-  var catDefs=['All Intel','Macro','Central Banks','Currencies','Crypto','Indices','Commodities','Energy'];
-  var catKeys={0:'all',1:'macro',2:'central_banks',3:'currencies',4:'crypto',5:'indices',6:'commodities',7:'energy'};
+  var catMap={
+    'all':'All Intel','macro':'Macro','central_banks':'Central Banks','centralbank':'Central Banks',
+    'currencies':'Currencies','forex':'Currencies','crypto':'Crypto','cryptocurrency':'Crypto',
+    'indices':'Indices','index':'Indices','commodities':'Commodities','commodity':'Commodities',
+    'energy':'Energy','oil':'Energy'
+  };
+  var availCats={};
+  for(var ai=0;ai<arts.length;ai++){
+    var raw=(arts[ai].category||'General').toLowerCase().replace(/[^a-z0-9]/g,'_');
+    var norm=catMap[raw]||null;
+    if(norm)availCats[norm]=availCats[norm]||++ai;else availCats['All Intel']=availCats['All Intel']||0;
+  }
+  var catList=['All Intel'];
+  for(var k in catMap){var n=catMap[k];if(n!=='All Intel'&&availCats[n]&&catList.indexOf(n)===-1)catList.push(n);}
+  if(arts.length&&catList.length===1)catList=['All Intel'];
   var tabHtml='<div style="margin-bottom:16px">'+
     '<div class="section-label" style="margin-bottom:8px">'+icon(I.newspaper,C.text2,10)+' News Feed</div>'+
     '<div class="h-scroll" style="gap:0;padding:0">';
-  var activeIdx=0;
-  for(var ti=0;ti<catDefs.length;ti++){
-    var ck=catKeys[ti],isA=activeTab===ck;
-    if(isA)activeIdx=ti;
+  for(var ti=0;ti<catList.length;ti++){
+    var ck=catList[ti]==='All Intel'?'all':catList[ti].toLowerCase().replace(/[^a-z]/g,'');
+    var isA=activeTab===ck;
     tabHtml+='<button onclick="state.intelTab=\''+ck+'\';render()" style="position:relative;flex-shrink:0;padding:8px 14px;font-size:11px;font-weight:'+(isA?'700':'500')+';color:'+(isA?'#FFF':'#5F5F5F')+';background:transparent;border:none;cursor:pointer;font-family:inherit;white-space:nowrap;transition:color .2s">'+
-      catDefs[ti]+(isA?'<div style="position:absolute;bottom:0;left:14px;right:14px;height:2px;border-radius:1px;background:'+C.lime+';box-shadow:0 0 8px rgba(183,255,42,0.4)"></div>':'')+'</button>';
+      catList[ti]+(isA?'<div style="position:absolute;bottom:0;left:14px;right:14px;height:2px;border-radius:1px;background:'+C.lime+';box-shadow:0 0 8px rgba(183,255,42,0.4);animation:fadeIn .2s"></div>':'')+'</button>';
   }
   tabHtml+='</div></div>';
 
   var filtered=activeTab==='all'?arts:arts.filter(function(a){
-    var ac=(a.category||'').toLowerCase().replace(/[^a-z0-9]/g,'_');
-    return ac.indexOf(activeTab)>-1;
+    var raw=(a.category||'').toLowerCase().replace(/[^a-z0-9]/g,'_');
+    var norm=catMap[raw]||'';
+    return norm.toLowerCase().replace(/[^a-z]/g,'')===activeTab;
   });
 
   function deriveImpact(acat,c){
