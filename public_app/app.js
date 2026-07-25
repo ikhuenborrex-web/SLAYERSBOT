@@ -1645,25 +1645,55 @@ function formatDate(ts){
   return d.getDate()+' '+months[d.getMonth()]+' '+d.getFullYear();
 }
 
+function prepCardForCapture(){
+  var el=document.getElementById('shareCardPreview');
+  if(!el)return null;
+  // Clone off-screen to avoid scroll-container clipping (9:16 cards exceed modal height)
+  var clone=el.cloneNode(true);
+  var w=el.offsetWidth||360;
+  clone.style.cssText='position:fixed;left:-9999px;top:0;width:'+w+'px;z-index:-1;';
+  document.body.appendChild(clone);
+  // Re-assign image sources so they load in the clone
+  var imgs=clone.querySelectorAll('img');
+  for(var ci=0;ci<imgs.length;ci++)imgs[ci].src=imgs[ci].src;
+  return clone;
+}
+function cleanupCardClone(clone){if(clone&&clone.parentNode)clone.parentNode.removeChild(clone);}
+
+function waitForEl(el){
+  var imgs=el.querySelectorAll('img'),ps=[];
+  for(var wi=0;wi<imgs.length;wi++){
+    if(imgs[wi].complete)continue;
+    ps.push(new Promise(function(res){imgs[wi].onload=res;imgs[wi].onerror=res;}));
+  }
+  return Promise.all(ps);
+}
+
 function captureAndDownload(){
   var el=document.getElementById('shareCardPreview');
   if(!el||!el.children.length)return;
-  waitForImages(el).then(function(){
-    html2canvas(el,{backgroundColor:'#0A0A0A',scale:3,useCORS:true,allowTaint:true,logging:false}).then(function(canvas){
+  var clone=prepCardForCapture();
+  if(!clone){showToast('Could not generate image');return;}
+  waitForEl(clone).then(function(){
+    html2canvas(clone,{backgroundColor:'#0A0A0A',scale:3,useCORS:true,allowTaint:true,logging:false}).then(function(canvas){
+      cleanupCardClone(clone);
       var link=document.createElement('a');
       link.download='slayers-trade-'+_shareStyle+'.png';
       link.href=canvas.toDataURL('image/png');
       link.click();
       showToast('Image saved!');
-    }).catch(function(){showToast('Could not generate image');});
-  });
+    }).catch(function(){cleanupCardClone(clone);showToast('Could not generate image');});
+  }).catch(function(){cleanupCardClone(clone);showToast('Could not generate image');});
 }
 
 function captureAndShare(){
   var el=document.getElementById('shareCardPreview');
   if(!el||!el.children.length)return;
-  waitForImages(el).then(function(){
-    html2canvas(el,{backgroundColor:'#0A0A0A',scale:3,useCORS:true,allowTaint:true,logging:false}).then(function(canvas){
+  var clone=prepCardForCapture();
+  if(!clone){showToast('Could not generate image');return;}
+  waitForEl(clone).then(function(){
+    html2canvas(clone,{backgroundColor:'#0A0A0A',scale:3,useCORS:true,allowTaint:true,logging:false}).then(function(canvas){
+      cleanupCardClone(clone);
       canvas.toBlob(function(blob){
         if(!blob)return;
         if(navigator.share&&navigator.canShare({files:[new File([blob],'slayers-trade.png',{type:'image/png'})]})){
@@ -1676,21 +1706,8 @@ function captureAndShare(){
           showToast('Image saved!');
         }
       },'image/png');
-    }).catch(function(){showToast('Could not generate image');});
-  });
-}
-
-function waitForImages(el){
-  var imgs=el.querySelectorAll('img');
-  var promises=[];
-  for(var wi=0;wi<imgs.length;wi++){
-    if(imgs[wi].complete)continue;
-    promises.push(new Promise(function(res){
-      imgs[wi].onload=res;
-      imgs[wi].onerror=res;
-    }));
-  }
-  return Promise.all(promises);
+    }).catch(function(){cleanupCardClone(clone);showToast('Could not generate image');});
+  }).catch(function(){cleanupCardClone(clone);showToast('Could not generate image');});
 }
 
 function preloadMascot(){
