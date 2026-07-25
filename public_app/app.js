@@ -293,25 +293,7 @@ function overviewScreen(){
   }
   var pts=eqPts||[-0.5,-0.3,-0.8,-1.2,-0.5,0.3,0.5,0.8,1.2,1.5,2.0,2.5,2.8,3.0,3.2,3.35];
   var _mn=Math.min(0,Math.min.apply(null,pts)),_mx=Math.max(0,Math.max.apply(null,pts)),_rng=_mx-_mn||1;
-  var _cw=340,_ch=200;
   function _py(v){return 16+(_mx-v)/_rng*(184-16);}
-  function _px(i){return(i/(pts.length-1))*(_cw-56)+52;}
-  // Smooth Catmull-Rom path
-  var _d='';
-  for(var _i=0;_i<pts.length;_i++){
-    var _xi=_px(_i),_yi=_py(pts[_i]);
-    if(_i===0){_d+='M'+_xi.toFixed(1)+','+_yi.toFixed(1);continue;}
-    var _xim1=_px(_i-1),_yim1=_py(pts[_i-1]);
-    var _tx1,_ty1;
-    if(_i<2){_tx1=_xim1+(_xi-_xim1)*0.25;_ty1=_yim1;}
-    else{var _xim2=_px(_i-2),_yim2=_py(pts[_i-2]);_tx1=_xim1+(_xi-_xim2)/6;_ty1=_yim1+(_yi-_yim2)/6;}
-    var _tx2,_ty2;
-    if(_i>=pts.length-1){_tx2=_xi-(_xi-_xim1)*0.25;_ty2=_yi;}
-    else{var _xip1=_px(_i+1),_yip1=_py(pts[_i+1]);_tx2=_xi-(_xip1-_xim1)/6;_ty2=_yi-(_yip1-_yim1)/6;}
-    _d+='C'+_tx1.toFixed(1)+','+_ty1.toFixed(1)+' '+_tx2.toFixed(1)+','+_ty2.toFixed(1)+' '+_xi.toFixed(1)+','+_yi.toFixed(1);
-  }
-  var _lx=_px(pts.length-1),_ly=_py(pts[pts.length-1]);
-  var _ec=pts[pts.length-1]>=0?'#C7FF38':'#FF5252';
 
   // --- Metrics values ---
   var eqVal=(ws.totalR>0?'+':'')+(ws.totalR||'3.35')+'R';
@@ -319,6 +301,21 @@ function overviewScreen(){
   var wrVal=(ws.winRate||wr||'67')+'%';
   var actCnt=state.active.length||'2';
   var maxAct=state.signals.length||'6';
+
+  // --- Mini chart computation ---
+  var mPath='',mCol='#C7FF38';
+  if(pts.length>=2){
+    for(var _mi=0;_mi<pts.length;_mi++){var _mpx=(_mi/(pts.length-1))*340,_mpy=16+(_mx-pts[_mi])/_rng*(184-16);mPath+=(_mi===0?'M':'L')+_mpx.toFixed(1)+','+_mpy.toFixed(1);}
+    mCol=pts[pts.length-1]>=0?'#C7FF38':'#FF5252';
+  }
+  var showMiniChart=state.journal&&state.journal.length>=2;
+  var miniChartHtml=showMiniChart?'<div style="height:50px;margin:16px 0 0">'+
+    '<svg viewBox="0 0 340 200" preserveAspectRatio="none" style="width:100%;height:100%;display:block">'+
+      '<defs><linearGradient id="eqg" x1="0" y1="0" x2="0" y2="1">'+
+        '<stop offset="0%" stop-color="'+mCol+'" stop-opacity="0.2"/><stop offset="100%" stop-color="'+mCol+'" stop-opacity="0"/></linearGradient></defs>'+
+      '<path d="'+mPath+' L340,200 L0,200 Z" fill="url(#eqg)" opacity="0.3"/>'+
+      '<path d="'+mPath+'" fill="none" stroke="'+mCol+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'+
+      '<circle cx="'+((pts.length-2)/(pts.length-1)*340).toFixed(1)+'" cy="'+_py(pts[pts.length-1]).toFixed(1)+'" r="3" fill="'+mCol+'"/></svg></div>':'';
 
   // --- Analytics container ---
   var analytics='<div style="width:100%">'+
@@ -350,60 +347,7 @@ function overviewScreen(){
       '<button onclick="fetchAll()" style="width:36px;height:36px;border-radius:50%;background:#0A0A0A;border:1px solid rgba(199,255,56,0.15);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:12px;position:relative;box-shadow:0 0 20px rgba(199,255,56,0.03)">'+
         '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C7FF38" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+
           '<line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></button></div>'+
-    // chart card
-    '<div style="background:#111111;border-radius:20px;padding:20px;border:1px solid rgba(255,255,255,0.06);position:relative;overflow:hidden">'+
-      '<div style="position:absolute;top:-80px;right:-60px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(199,255,56,0.05) 0%,transparent 70%);pointer-events:none"></div>'+
-      // chart header
-      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;position:relative;z-index:1">'+
-        '<div style="display:flex;align-items:center;gap:8px">'+
-          '<div style="display:flex;align-items:center;gap:4px;padding:4px 10px 4px 12px;border-radius:99px;border:1px solid rgba(199,255,56,0.15);cursor:pointer">'+
-            '<span style="font-size:10px;font-weight:600;color:#C7FF38">Equity (R)</span>'+
-            '<span style="font-size:6px;color:#C7FF38;opacity:0.4">&#9660;</span></div></div>'+
-        '<div style="display:flex;align-items:center;gap:5px">'+
-          '<span style="width:4px;height:4px;border-radius:50%;background:#C7FF38;box-shadow:0 0 5px rgba(199,255,56,0.4)"></span>'+
-          '<span style="font-size:14px;font-weight:700;color:#C7FF38;letter-spacing:-0.02em">'+eqVal+'</span></div></div>'+
-      // SVG
-      '<div style="height:200px;position:relative;z-index:1">'+
-        '<svg viewBox="0 0 '+_cw+' '+_ch+'" style="width:100%;height:100%;display:block" preserveAspectRatio="xMidYMid meet">'+
-          '<defs>'+
-            '<linearGradient id="eqFill" x1="0" y1="0" x2="0" y2="1">'+
-              '<stop offset="0%" stop-color="'+_ec+'" stop-opacity="0.15"/>'+
-              '<stop offset="100%" stop-color="'+_ec+'" stop-opacity="0"/></linearGradient>'+
-            '<filter id="eqBlur"><feGaussianBlur stdDeviation="3"/></filter>'+
-            '<radialGradient id="endGlow" cx="50%" cy="50%" r="50%">'+
-              '<stop offset="0%" stop-color="'+_ec+'" stop-opacity="0.25"/>'+
-              '<stop offset="100%" stop-color="'+_ec+'" stop-opacity="0"/></radialGradient></defs>'+
-          '<line x1="52" y1="16" x2="330" y2="16" stroke="rgba(255,255,255,0.08)" stroke-width="0.5" stroke-dasharray="3 3"/>'+
-          '<line x1="52" y1="54" x2="330" y2="54" stroke="rgba(255,255,255,0.08)" stroke-width="0.5" stroke-dasharray="3 3"/>'+
-          '<line x1="52" y1="92" x2="330" y2="92" stroke="rgba(255,255,255,0.08)" stroke-width="0.5" stroke-dasharray="3 3"/>'+
-          '<line x1="52" y1="130" x2="330" y2="130" stroke="rgba(255,255,255,0.08)" stroke-width="0.5" stroke-dasharray="3 3"/>'+
-          '<line x1="52" y1="168" x2="330" y2="168" stroke="rgba(255,255,255,0.08)" stroke-width="0.5" stroke-dasharray="3 3"/>'+
-          '<text x="46" y="21" fill="rgba(255,255,255,0.22)" font-size="7" font-weight="500" text-anchor="end">+4R</text>'+
-          '<text x="46" y="59" fill="rgba(255,255,255,0.22)" font-size="7" font-weight="500" text-anchor="end">+2R</text>'+
-          '<text x="46" y="97" fill="rgba(255,255,255,0.28)" font-size="7" font-weight="500" text-anchor="end">0R</text>'+
-          '<text x="46" y="135" fill="rgba(255,255,255,0.22)" font-size="7" font-weight="500" text-anchor="end">-2R</text>'+
-          '<text x="46" y="173" fill="rgba(255,255,255,0.22)" font-size="7" font-weight="500" text-anchor="end">-4R</text>'+
-          '<text x="58" y="196" fill="rgba(255,255,255,0.18)" font-size="7" font-weight="500" text-anchor="middle">Mon</text>'+
-          '<text x="103" y="196" fill="rgba(255,255,255,0.18)" font-size="7" font-weight="500" text-anchor="middle">Tue</text>'+
-          '<text x="148" y="196" fill="rgba(255,255,255,0.18)" font-size="7" font-weight="500" text-anchor="middle">Wed</text>'+
-          '<text x="193" y="196" fill="rgba(255,255,255,0.18)" font-size="7" font-weight="500" text-anchor="middle">Thu</text>'+
-          '<text x="238" y="196" fill="rgba(255,255,255,0.18)" font-size="7" font-weight="500" text-anchor="middle">Fri</text>'+
-          '<text x="283" y="196" fill="rgba(255,255,255,0.14)" font-size="7" font-weight="500" text-anchor="middle">Sat</text>'+
-          '<text x="325" y="196" fill="rgba(255,255,255,0.14)" font-size="7" font-weight="500" text-anchor="middle">Sun</text>'+
-          '<path d="'+_d+'" fill="none" stroke="'+_ec+'" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity="0.25" filter="url(#eqBlur)"/>'+
-          '<path d="'+_d+' L330,200 L52,200 Z" fill="url(#eqFill)"/>'+
-          '<path d="'+_d+'" fill="none" stroke="'+_ec+'" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>'+
-          '<circle cx="'+_lx.toFixed(1)+'" cy="'+_ly.toFixed(1)+'" r="14" fill="url(#endGlow)"/>'+
-          '<circle cx="'+_lx.toFixed(1)+'" cy="'+_ly.toFixed(1)+'" r="6" fill="#FFF" style="filter:drop-shadow(0 0 10px rgba(199,255,56,0.35))"/>'+
-          '<circle cx="'+_lx.toFixed(1)+'" cy="'+_ly.toFixed(1)+'" r="6" fill="none" stroke="'+_ec+'" stroke-width="2"/></svg></div>'+
-      // timeframe
-      '<div style="display:flex;gap:2px;justify-content:center;padding-top:14px;margin-top:14px;border-top:1px solid rgba(255,255,255,0.04);position:relative;z-index:1">'+
-        '<span style="background:rgba(199,255,56,0.08);color:#C7FF38;font-weight:600;font-size:9px;padding:4px 10px;border-radius:99px;cursor:pointer;font-family:inherit">1W</span>'+
-        '<span style="color:rgba(255,255,255,0.2);font-size:9px;font-weight:500;padding:4px 10px;border-radius:99px;cursor:pointer;font-family:inherit">2W</span>'+
-        '<span style="color:rgba(255,255,255,0.2);font-size:9px;font-weight:500;padding:4px 10px;border-radius:99px;cursor:pointer;font-family:inherit">1M</span>'+
-        '<span style="color:rgba(255,255,255,0.2);font-size:9px;font-weight:500;padding:4px 10px;border-radius:99px;cursor:pointer;font-family:inherit">3M</span>'+
-        '<span style="color:rgba(255,255,255,0.2);font-size:9px;font-weight:500;padding:4px 10px;border-radius:99px;cursor:pointer;font-family:inherit">6M</span>'+
-        '<span style="color:rgba(255,255,255,0.2);font-size:9px;font-weight:500;padding:4px 10px;border-radius:99px;cursor:pointer;font-family:inherit">ALL</span></div></div></div>';
+    miniChartHtml+'</div>';
 
   var mp='',confl=state.confluence||[];
   if(confl.length){
