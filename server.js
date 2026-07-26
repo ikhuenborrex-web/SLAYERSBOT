@@ -1567,9 +1567,9 @@ async function runScan(manual=false){
   for(const k in recentQMRFires)if(Date.now()-recentQMRFires[k]>24*60*60*1000)delete recentQMRFires[k];
   // Scalp scan — session momentum + FVG 5M, London/NY only
   if(!isWeekend()){
-      const sh=new Date().getUTCHours();
-      const inLondon=sh>=7&&sh<11;
-      const inNY=sh>=13&&sh<17;
+    const sh=new Date().getUTCHours();
+    const inLondon=sh>=7&&sh<11;
+    const inNY=sh>=13&&sh<17;
     if(inLondon||inNY){
       for(const inst of SCALP_INSTS){
         try{
@@ -1623,10 +1623,10 @@ async function runScan(manual=false){
     const arr=[...scalpSeen];
     scalpSeen=new Set(arr.slice(-100));
   }
-      scanCount++;lastScanTime=new Date().toISOString();saveState();
-      if(scalpTradeHistory.length>500)scalpTradeHistory=scalpTradeHistory.slice(-250);
-      checkIntelChangeAndPush().catch(function(){});
-      log(`Scan complete #${scanCount}`);
+  scanCount++;lastScanTime=new Date().toISOString();saveState();
+  if(scalpTradeHistory.length>500)scalpTradeHistory=scalpTradeHistory.slice(-250);
+  checkIntelChangeAndPush().catch(function(){});
+  log(`Scan complete #${scanCount}`);
 }
 
 // ====== SLAYERS INTELLIGENCE ======
