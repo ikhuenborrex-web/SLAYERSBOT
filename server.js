@@ -2392,6 +2392,11 @@ app.get('/api/weekly-report',(req,res)=>{
   const ms=memberStats[code]||{};
   res.json({report:weeklySummaryData,myStats:{totalR:ms.totalR||0,total:ms.total||0,wins:ms.wins||0,losses:ms.losses||0,bes:ms.bes||0,winRate:ms.total?(ms.wins+ms.losses)?Math.round((ms.wins/(ms.wins+ms.losses))*100):0:0}});
 });
+app.get('/api/force-scan',async(req,res)=>{
+  const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:'Invalid or expired access code',reason:codeCheck});
+  try{await runScan(true);res.json({ok:true,message:'Scan completed',time:new Date().toISOString()});}
+  catch(e){res.status(500).json({error:e.message});}
+});
 app.get('/api/notifications',(req,res)=>{
   const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:'Invalid or expired access code',reason:codeCheck});
   // Return all pending notifications w/o clearing (app handles dedup)
