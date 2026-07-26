@@ -2170,19 +2170,7 @@ app.post('/api/test-push',async (req,res)=>{
   if(dead.length){pushSubscriptions=pushSubscriptions.filter(s=>!dead.includes(s));saveState();}
   res.json({ok:true,sent:pushSubscriptions.length-dead.length});
 });
-app.post('/api/simulate-weekly-report',async (req,res)=>{
-  weeklySummaryData={total:8,tp:6,sl:1,be:1,wr:86,totalR:12.4,winners:6,losers:1,best:3.8,avgDur:145,pairs:{GBPUSD:{wins:2,losses:0,total:2},EURUSD:{wins:1,losses:1,total:2},USDJPY:{wins:1,losses:0,total:1},GBPJPY:{wins:2,losses:0,total:2}},time:new Date().toISOString()};
-  serverNotifQueue.push({id:'week_sim_'+(Date.now()),type:'trophy',icon:'\uD83C\uDFC6',title:'Weekly Report Ready',body:'You finished at +12.4R \u00B7 86% WR. Tap to view.',time:Date.now(),unread:true,url:'/app/#weekly-report'});
-  const payload=JSON.stringify({title:'\uD83C\uDFC6 Weekly Report Ready',body:'You finished at +12.4R \u00B7 86% WR. Tap to view.',url:'/app/#weekly-report'});
-  const dead=[];
-  for(const entry of pushSubscriptions){
-    const {code,...sub}=entry;
-    try{await webpush.sendNotification(sub,payload);}
-    catch(e){if(e.statusCode===410||e.statusCode===404)dead.push(entry);else log('Push error: '+e.message);}
-  }
-  if(dead.length){pushSubscriptions=pushSubscriptions.filter(s=>!dead.includes(s));saveState();}
-  res.json({ok:true,sent:pushSubscriptions.length-dead.length});
-});
+app.post('/api/member/notif-prefs',(req,res)=>{
 app.post('/api/member/notif-prefs',(req,res)=>{
   const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
   const code=req.query.code||req.headers['x-access-code'];
