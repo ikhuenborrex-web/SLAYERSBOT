@@ -1008,7 +1008,7 @@ function intelScreen(){
   for(var ai=0;ai<arts.length;ai++){
     var raw=(arts[ai].category||'General').toLowerCase().replace(/[^a-z0-9]/g,'_');
     var norm=catMap[raw]||null;
-    if(norm)availCats[norm]=availCats[norm]||ai;else availCats['All Intel']=availCats['All Intel']||0;
+    if(norm)availCats[norm]=1;else availCats['All Intel']=availCats['All Intel']||0;
   }
   var catList=['All Intel'];
   for(var k in catMap){var n=catMap[k];if(n!=='All Intel'&&availCats[n]&&catList.indexOf(n)===-1)catList.push(n);}
