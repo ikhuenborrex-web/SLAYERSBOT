@@ -50,12 +50,13 @@ self.addEventListener('push', e => {
 
 self.addEventListener('notificationclick', e => {
   e.notification.close();
+  const url = self.location.origin + '/app/';
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
       for (const client of clientList) {
         if (client.url.includes('/app/') && 'focus' in client) return client.focus();
       }
-      return clients.openWindow('/app/');
+      return clients.openWindow(url);
     })
   );
 });
