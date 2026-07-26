@@ -100,7 +100,7 @@ html,body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:-
 <div id="title-overlay">The Slayers</div>
 <div class="scene-label" id="sceneLabel"></div>
 
-<div id="save-btn" onclick="saveAd()" style="position:fixed;bottom:24px;right:24px;z-index:999;width:36px;height:36px;border-radius:50%;background:rgba(183,255,42,0.06);border:0.5px solid rgba(183,255,42,0.1);display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;transition:opacity 1s ease 8s;color:rgba(183,255,42,0.3);font-size:14px;font-weight:300;font-family:monospace">&#xFE19;</div>
+<div id="save-btn" onclick="saveAd()" style="position:fixed;bottom:90px;left:50%;transform:translateX(-50%);z-index:9999;padding:12px 28px;border-radius:99px;background:rgba(183,255,42,0.08);border:0.5px solid rgba(183,255,42,0.15);display:flex;align-items:center;gap:8px;cursor:pointer;color:rgba(183,255,42,0.5);font-size:11px;font-weight:500;letter-spacing:0.04em;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)">&#xFE19; Save this ad</div>
 
 <script>
 window.onerror=function(m,u,l,c,err){console.error('JS Error:',m,'line:',l,err);};
@@ -737,12 +737,16 @@ function scene8_reveal(){
 // ============================================================
 function saveAd(){
   var html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
-  var blob=new Blob([html],{type:'text/html;charset=utf-8'});
-  var url=URL.createObjectURL(blob);
-  var a=document.createElement('a');
-  a.href=url;a.download='the-slayers-decision.html';
-  document.body.appendChild(a);a.click();
-  setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url);},100);
+  try{
+    var file=new File([html],'the-slayers-decision.html',{type:'text/html'});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      navigator.share({files:[file],title:'The Slayers — The Decision'});
+      return;
+    }
+  }catch(e){}
+  // Fallback: navigate to data URI — then tap Share → Save to Files
+  var url='data:text/html,'+encodeURIComponent(html);
+  window.open(url,'_blank')||(document.location.href=url);
 }
 
 // ============================================================
