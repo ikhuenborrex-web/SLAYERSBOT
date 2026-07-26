@@ -2156,6 +2156,9 @@ app.post('/api/test-push',async (req,res)=>{
   if(!webpush||!VAPID_PUBLIC||!VAPID_PRIVATE||!pushSubscriptions.length)return res.json({error:'No push subscribers'});
   const payload=JSON.stringify({title:'Daily Briefing',body:'Good evening Slayers \u2014 market pulse is live.','url':'/app/'});
   const dead=[];
+  // Queue for bell panel
+  serverNotifQueue.push({id:'srv_'+(Date.now()),type:'trophy',icon:'\uD83C\uDFC6',title:'Daily Briefing',body:'Good evening Slayers \u2014 market pulse is live.',time:Date.now(),unread:true,url:'/app/'});
+  if(serverNotifQueue.length>50)serverNotifQueue=serverNotifQueue.slice(-50);
   for(const entry of pushSubscriptions){
     const {code,...sub}=entry;
     try{await webpush.sendNotification(sub,payload);}
