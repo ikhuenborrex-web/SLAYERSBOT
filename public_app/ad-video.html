@@ -6,9 +6,21 @@
 <title>The Slayers — Less Noise. More Clarity.</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#000;overflow:hidden;width:100vw;height:100vh}
-  .stage{width:100%;max-width:400px;height:100vh;margin:0 auto;position:relative;overflow:hidden;background:#050505;perspective:1200px}
-  .slide{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:36px 24px;opacity:0;pointer-events:none;transition:opacity 1.6s cubic-bezier(0.25,0.46,0.45,0.94);z-index:1}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#000;overflow:hidden;width:100vw;height:100vh;display:flex;align-items:center;justify-content:center}
+  .phone-wrapper{width:100%;max-width:400px;aspect-ratio:390/844;position:relative;padding:18px;background:linear-gradient(145deg,#1a1a1a,#0d0d0d);border-radius:52px;box-shadow:0 0 0 1px rgba(255,255,255,0.05),0 20px 80px rgba(0,0,0,0.8),0 0 60px rgba(183,255,42,0.02)}
+  .phone-screen{width:100%;height:100%;border-radius:36px;overflow:hidden;position:relative;background:#050505}
+  /* Notch */
+  .notch{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:120px;height:28px;background:#050505;border-radius:0 0 16px 16px;z-index:20;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.03)}
+  .notch-dot{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:8px;height:8px;border-radius:50%;background:rgba(30,30,40,0.6);border:0.5px solid rgba(255,255,255,0.03)}
+  /* Status bar */
+  .status-bar{position:absolute;top:0;left:0;right:0;height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 28px;z-index:15;pointer-events:none}
+  .status-time{font-size:12px;font-weight:600;color:rgba(255,255,255,0.25);letter-spacing:0.02em}
+  .status-icons{display:flex;gap:4px;align-items:center}
+  .status-icons svg{opacity:0.25}
+  /* Home indicator */
+  .home-indicator{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:120px;height:4px;border-radius:2px;background:rgba(255,255,255,0.12);z-index:15;pointer-events:none}
+  .stage{width:100%;height:100%;position:relative;overflow:hidden;perspective:1200px}
+  .slide{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:52px 24px 28px;opacity:0;pointer-events:none;transition:opacity 1.6s cubic-bezier(0.25,0.46,0.45,0.94);z-index:1}
   .slide.active{opacity:1;pointer-events:auto;z-index:2}
   .slide.exit{opacity:0;transition:opacity 1.2s cubic-bezier(0.55,0.085,0.68,0.53);z-index:3}
   .elem{opacity:0}
@@ -25,15 +37,12 @@
   @keyframes fadeSlide{from{opacity:0;transform:translateY(10px) scale(0.97)}to{opacity:1;transform:translateY(0) scale(1)}}
   @keyframes particle{0%{opacity:0;transform:translateY(0) translateX(0)}20%{opacity:0.5}80%{opacity:0.5}100%{opacity:0;transform:translateY(-60px) translateX(15px)}}
   @keyframes gridPulse{0%,100%{opacity:0.02}50%{opacity:0.05}}
-  @keyframes countUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
   @keyframes scaleIn{from{opacity:0;transform:scale(0.93)}to{opacity:1;transform:scale(1)}}
-  @keyframes typewriter{from{width:0}to{width:var(--w)}}
   @keyframes pulseNotif{0%,100%{transform:scale(1)}50%{transform:scale(1.015)}}
+  @keyframes scanMove{0%{transform:translateY(-100%)}100%{transform:translateY(100vh)}}
   @keyframes eyeGlow{0%,100%{box-shadow:0 0 8px rgba(183,255,42,0.15)}50%{box-shadow:0 0 28px rgba(183,255,42,0.4)}}
-  @keyframes tagGlow{0%{background:rgba(183,255,42,0);border-color:rgba(183,255,42,0)}to{background:rgba(183,255,42,0.08);border-color:rgba(183,255,42,0.15)}}
-  @keyframes beamTrace{from{stroke-dashoffset:300}to{stroke-dashoffset:0}}
-  @keyframes collapseToLine{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(0.1)}}
-  @keyframes lineToLogo{from{width:0;opacity:0}to{width:40px;opacity:1}}
+  @keyframes notifyDrop{from{opacity:0;transform:translateY(-40px) scale(0.95)}to{opacity:1;transform:translateY(0) scale(1)}}
+  @keyframes floatUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
   .particle{position:absolute;width:2px;height:2px;border-radius:50%;background:rgba(183,255,42,0.4);pointer-events:none;z-index:0}
   .particle:nth-child(1){left:20%;top:60%;animation:particle 6s ease-in-out infinite;animation-delay:0s}
   .particle:nth-child(2){left:60%;top:40%;animation:particle 8s ease-in-out infinite;animation-delay:2s}
@@ -41,289 +50,356 @@
   .particle:nth-child(4){left:40%;top:30%;animation:particle 9s ease-in-out infinite;animation-delay:1s}
   .particle:nth-child(5){left:10%;top:80%;animation:particle 5s ease-in-out infinite;animation-delay:3s}
   .particle:nth-child(6){left:70%;top:20%;animation:particle 7s ease-in-out infinite;animation-delay:5s}
-  .grid-overlay{position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 29px,rgba(183,255,42,0.015) 29px,rgba(183,255,42,0.015) 30px),repeating-linear-gradient(90deg,transparent,transparent 29px,rgba(183,255,42,0.015) 29px,rgba(183,255,42,0.015) 30px);pointer-events:none;z-index:0;animation:gridPulse 4s ease-in-out infinite}
-  .glow{position:absolute;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(183,255,42,0.04),transparent 70%);pointer-events:none;z-index:0}
-  .progress-bar{position:fixed;bottom:0;left:0;right:0;height:2px;background:rgba(255,255,255,0.02);z-index:99}
+  .particle:nth-child(9){left:45%;top:85%;animation:particle 6s ease-in-out infinite;animation-delay:1s}
+  .particle:nth-child(10){left:85%;top:45%;animation:particle 8s ease-in-out infinite;animation-delay:3.5s}
+  .particle:nth-child(11){left:15%;top:35%;animation:particle 5s ease-in-out infinite;animation-delay:2s}
+  .particle:nth-child(12){left:55%;top:10%;animation:particle 7s ease-in-out infinite;animation-delay:4.5s}
+  .particle:nth-child(13){left:90%;top:75%;animation:particle 6s ease-in-out infinite;animation-delay:1.5s}
+  .particle:nth-child(14){left:5%;top:15%;animation:particle 8s ease-in-out infinite;animation-delay:3s}
+  .particle:nth-child(15){left:65%;top:65%;animation:particle 5s ease-in-out infinite;animation-delay:0.5s}
+  .particle:nth-child(16){left:35%;top:90%;animation:particle 7s ease-in-out infinite;animation-delay:2.5s}
+  .grid-overlay{position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 28px,rgba(183,255,42,0.015) 28px,rgba(183,255,42,0.015) 29px),repeating-linear-gradient(90deg,transparent,transparent 28px,rgba(183,255,42,0.015) 28px,rgba(183,255,42,0.015) 29px);pointer-events:none;z-index:0;animation:gridPulse 4s ease-in-out infinite}
+  .glow{position:absolute;border-radius:50%;background:radial-gradient(circle,rgba(183,255,42,0.04),transparent 70%);pointer-events:none;z-index:0}
+  .glow-lg{position:absolute;border-radius:50%;background:radial-gradient(circle,rgba(183,255,42,0.03),transparent 70%);pointer-events:none;z-index:0}
+  .scan-line{position:absolute;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(183,255,42,0.04),transparent);pointer-events:none;z-index:0}
+  .progress-bar{position:absolute;bottom:0;left:0;right:0;height:2px;background:rgba(255,255,255,0.02);z-index:99}
   .progress-fill{height:100%;background:#B7FF2A;width:0%;transition:width 0.1s linear;opacity:0.5}
-  .card{background:linear-gradient(135deg,#0C0C0C,#080808);border-radius:16px;border:0.5px solid rgba(255,255,255,0.04);padding:20px;width:100%;position:relative;overflow:hidden}
-  .tag{padding:3px 8px;border-radius:4px;font-size:8px;font-weight:500;background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.04);color:#6E6E6E}
-  .tag-active{background:rgba(183,255,42,0);border-color:rgba(183,255,42,0);color:#B7FF2A}
+  .card{background:linear-gradient(135deg,#0C0C0C,#080808);border-radius:14px;border:0.5px solid rgba(255,255,255,0.04);padding:18px;width:100%;position:relative;overflow:hidden}
   .card3d{transition:transform 0.8s cubic-bezier(0.25,0.46,0.45,0.94);transform-style:preserve-3d}
   .slide.active .card3d{transform:rotateY(-3deg) rotateX(1deg)}
-  .type-cursor{display:inline-block;width:1px;height:1em;background:#B7FF2A;margin-left:2px;vertical-align:text-bottom;animation:blink 1s step-end infinite}
-  @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
-  @keyframes floatUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  .tag{padding:3px 8px;border-radius:4px;font-size:8px;font-weight:500;background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.04);color:#6E6E6E}
+  .tag-active{background:rgba(183,255,42,0);border-color:rgba(183,255,42,0);color:#B7FF2A}
+  .notif-el{background:linear-gradient(135deg,#0E0E0E,#0A0A0A);border-radius:18px;padding:16px;border:0.5px solid rgba(183,255,42,0.1);width:calc(100% - 20px);position:absolute;top:56px;left:10px;animation:notifyDrop 0.5s cubic-bezier(0.25,0.46,0.45,0.94) forwards}
+  /* Notification icon bar */
+  .notif-bar{position:absolute;top:44px;left:0;right:0;height:10px;z-index:10;pointer-events:none}
 </style>
 </head>
 <body>
-<div class="stage" id="stage">
-  <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
-  <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
-  <div class="grid-overlay"></div>
+<div class="phone-wrapper">
+  <div class="phone-screen">
+    <!-- Hardware details -->
+    <div class="notch"><div class="notch-dot"></div></div>
+    <div class="status-bar">
+      <span class="status-time" id="statusTime">9:41</span>
+      <div class="status-icons">
+        <svg width="16" height="12" viewBox="0 0 16 12" fill="none"><rect x="0.5" y="1.5" width="11" height="9" rx="1.5" stroke="rgba(255,255,255,0.25)" stroke-width="1"/><rect x="12" y="4" width="3" height="4" rx="0.8" fill="rgba(255,255,255,0.15)"/><rect x="1.5" y="3" width="2.5" height="6" rx="0.5" fill="rgba(183,255,42,0.3)"/><rect x="5" y="3" width="2.5" height="6" rx="0.5" fill="rgba(183,255,42,0.3)"/><rect x="8.5" y="3" width="2.5" height="6" rx="0.5" fill="rgba(183,255,42,0.3)"/></svg>
+      </div>
+    </div>
+    <div class="notif-bar"></div>
+    <div class="home-indicator"></div>
 
-  <!-- SCENE 1 — Black / Every trader sees thousands of signals -->
-  <div class="slide" data-dur="2">
-    <div class="glow" style="top:50%;left:50%;transform:translate(-50%,-50%)"></div>
-    <div class="elem e1" style="font-size:9px;color:rgba(183,255,42,0.2);font-weight:300;letter-spacing:0.2em;text-transform:uppercase;position:absolute;top:46px">Less Noise. More Clarity.</div>
-    <div class="elem e2" style="font-size:24px;font-weight:200;color:rgba(255,255,255,0.8);text-align:center;line-height:1.4;letter-spacing:0.02em;max-width:300px">Every trader sees<br>thousands of signals.</div>
-    <div style="position:absolute;bottom:60px;width:24%;height:1px;background:linear-gradient(90deg,transparent,rgba(183,255,42,0.08),transparent)"></div>
-  </div>
+    <div class="stage" id="stage">
+      <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+      <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+      <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+      <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+      <div style="position:absolute;inset:0;pointer-events:none;z-index:0;opacity:0.3;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(183,255,42,0.008) 2px,rgba(183,255,42,0.008) 3px)"></div>
+      <div class="grid-overlay"></div>
 
-  <!-- SCENE 2 — Chaos / windows from every direction, then freeze -->
-  <div class="slide" data-dur="4">
-    <div class="glow" style="top:10%;right:-60px;width:280px;height:280px"></div>
-    <div class="elem e0" style="position:absolute;top:6px;left:-8px;width:110px;height:72px;border:0.5px solid rgba(255,82,82,0.1);border-radius:6px;background:rgba(255,82,82,0.02);padding:6px;transform:rotate(-3deg)">
-      <div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:6px;color:#FF5252">BTC</span><span style="font-size:6px;color:#FF5252">-2.1%</span></div>
-      <svg viewBox="0 0 100 30" style="width:100%;height:20px"><path d="M0 20 L10 22 L20 18 L30 24 L40 16 L50 18 L60 12 L70 14 L80 8 L90 12 L100 10" fill="none" stroke="#FF5252" stroke-width="1" opacity="0.4"/></svg>
-    </div>
-    <div class="elem e1" style="position:absolute;top:10px;right:-6px;width:100px;height:66px;border:0.5px solid rgba(249,115,22,0.1);border-radius:6px;background:rgba(249,115,22,0.02);padding:6px;transform:rotate(2deg)">
-      <div style="font-size:6px;color:#f97316;margin-bottom:3px">🔥 PUMP ALERT</div>
-      <div style="font-size:6px;color:rgba(255,255,255,0.2)">Join now · 10k members</div>
-    </div>
-    <div class="elem e2" style="position:absolute;top:55px;left:18px;width:95px;height:58px;border:0.5px solid rgba(59,130,246,0.1);border-radius:6px;background:rgba(59,130,246,0.02);padding:6px;transform:rotate(4deg)">
-      <div style="font-size:6px;color:#3B82F6">NFP · FOMC · CPI</div>
-      <div style="font-size:5px;color:rgba(255,255,255,0.15);margin-top:2px">High impact expected</div>
-    </div>
-    <div class="elem e3" style="position:absolute;top:90px;right:10px;width:90px;height:80px;border:0.5px solid rgba(183,255,42,0.06);border-radius:6px;background:rgba(0,0,0,0.3);padding:6px;transform:rotate(-2deg)">
-      <div style="font-size:5px;color:rgba(255,255,255,0.12);margin-bottom:2px">Candlesticks</div>
-      <div style="display:flex;gap:1px;align-items:flex-end;height:40px">
-        <div style="width:6px;background:rgba(255,82,82,0.2);border-radius:1px;height:60%"></div>
-        <div style="width:6px;background:rgba(183,255,42,0.2);border-radius:1px;height:40%"></div>
-        <div style="width:6px;background:rgba(255,82,82,0.2);border-radius:1px;height:70%"></div>
-        <div style="width:6px;background:rgba(183,255,42,0.2);border-radius:1px;height:30%"></div>
-        <div style="width:6px;background:rgba(255,82,82,0.2);border-radius:1px;height:55%"></div>
-        <div style="width:6px;background:rgba(183,255,42,0.2);border-radius:1px;height:35%"></div>
+      <!-- SCENE 1 — Black / Every trader sees thousands of signals -->
+      <div class="slide" data-dur="2">
+        <div class="glow-lg" style="top:20%;left:50%;transform:translateX(-50%);width:320px;height:320px"></div>
+        <div class="glow-lg" style="bottom:-60px;left:30%;width:260px;height:260px"></div>
+        <div class="scan-line" style="top:30%"></div>
+        <div class="scan-line" style="top:55%"></div>
+        <div class="scan-line" style="top:80%"></div>
+        <div class="elem e1" style="font-size:9px;color:rgba(183,255,42,0.2);font-weight:300;letter-spacing:0.2em;text-transform:uppercase;position:absolute;top:60px">Less Noise. More Clarity.</div>
+        <div class="elem e2" style="font-size:24px;font-weight:200;color:rgba(255,255,255,0.85);text-align:center;line-height:1.4;letter-spacing:0.02em;max-width:300px">Every trader sees<br>thousands of signals.</div>
+        <div style="position:absolute;bottom:56px;width:30%;height:1px;background:linear-gradient(90deg,transparent,rgba(183,255,42,0.08),transparent)"></div>
       </div>
-    </div>
-    <div style="position:absolute;top:130px;display:flex;flex-wrap:wrap;gap:3px;justify-content:center;max-width:260px;opacity:0.7" class="elem e4">
-      <span style="font-size:6px;padding:3px 6px;background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.03);border-radius:2px;color:#4F4F4F">RSI</span>
-      <span style="font-size:6px;padding:3px 6px;background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.03);border-radius:2px;color:#4F4F4F">MACD</span>
-      <span style="font-size:6px;padding:3px 6px;background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.03);border-radius:2px;color:#4F4F4F">FVG</span>
-      <span style="font-size:6px;padding:3px 6px;background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.03);border-radius:2px;color:#4F4F4F">OB</span>
-      <span style="font-size:6px;padding:3px 6px;background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.03);border-radius:2px;color:#4F4F4F">Liq</span>
-      <span style="font-size:6px;padding:3px 6px;background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.03);border-radius:2px;color:#4F4F4F">MSS</span>
-      <span style="font-size:6px;padding:3px 6px;background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.03);border-radius:2px;color:#4F4F4F">OrderFlow</span>
-      <span style="font-size:6px;padding:3px 6px;background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.03);border-radius:2px;color:#4F4F4F">News</span>
-    </div>
-    <div class="elem e5" style="position:absolute;bottom:100px;font-size:16px;font-weight:200;color:rgba(255,255,255,0.1);letter-spacing:0.05em">Too much information.</div>
-    <div style="position:absolute;bottom:70px;width:24%;height:1px;background:linear-gradient(90deg,transparent,rgba(183,255,42,0.04),transparent)" class="elem e6"></div>
-  </div>
 
-  <!-- SCENE 3 — Silence / collapse to line, transform to logo -->
-  <div class="slide" data-dur="3">
-    <div class="glow" style="top:50%;left:50%;transform:translate(-50%,-50%)"></div>
-    <div id="collapseOverlay" style="position:absolute;inset:0;background:#050505;opacity:0;z-index:5;pointer-events:none"></div>
-    <div class="elem e1" style="font-size:11px;color:rgba(183,255,42,0.4);font-weight:300;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:8px">Silence</div>
-    <div id="logoLine" style="width:0;height:1.5px;background:#B7FF2A;border-radius:1px;margin-bottom:12px"></div>
-    <div id="logoCircle" style="width:40px;height:40px;border-radius:50%;border:1.5px solid rgba(183,255,42,0.3);display:flex;align-items:center;justify-content:center;opacity:0;margin-bottom:10px">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B7FF2A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-    </div>
-    <div class="elem e4" style="font-size:24px;font-weight:200;color:#FFF;text-align:center;line-height:1.2;letter-spacing:-0.01em">Clarity changes<br>everything.</div>
-  </div>
+      <!-- SCENE 2 — Chaos / windows from every direction, then freeze -->
+      <div class="slide" data-dur="4">
+        <div class="glow-lg" style="top:5%;right:-60px;width:300px;height:300px"></div>
+        <div class="glow-lg" style="bottom:-40px;left:-40px;width:280px;height:280px"></div>
+        <!-- Overlapping windows spread across full screen -->
+        <div class="elem e0" style="position:absolute;top:48px;left:-10px;width:110px;height:72px;border:0.5px solid rgba(255,82,82,0.12);border-radius:6px;background:rgba(255,82,82,0.02);padding:5px;transform:rotate(-3deg)">
+          <div style="display:flex;justify-content:space-between;margin-bottom:2px"><span style="font-size:6px;color:#FF5252">BTC</span><span style="font-size:6px;color:#FF5252">-2.1%</span></div>
+          <svg viewBox="0 0 100 28" style="width:100%;height:18px"><path d="M0 18 L10 20 L20 16 L30 22 L40 14 L50 16 L60 10 L70 12 L80 6 L90 10 L100 8" fill="none" stroke="#FF5252" stroke-width="1" opacity="0.4"/></svg>
+        </div>
+        <div class="elem e1" style="position:absolute;top:52px;right:-8px;width:100px;height:66px;border:0.5px solid rgba(249,115,22,0.12);border-radius:6px;background:rgba(249,115,22,0.02);padding:5px;transform:rotate(2deg)">
+          <div style="font-size:6px;color:#f97316;margin-bottom:2px">🔥 PUMP ALERT</div>
+          <div style="font-size:5px;color:rgba(255,255,255,0.2)">Join now · 10k members</div>
+        </div>
+        <div class="elem e2" style="position:absolute;top:96px;left:16px;width:94px;height:58px;border:0.5px solid rgba(59,130,246,0.12);border-radius:6px;background:rgba(59,130,246,0.02);padding:5px;transform:rotate(4deg)">
+          <div style="font-size:5px;color:#3B82F6">NFP · FOMC · CPI</div>
+          <div style="font-size:5px;color:rgba(255,255,255,0.12);margin-top:2px">High impact expected</div>
+        </div>
+        <div class="elem e3" style="position:absolute;top:140px;right:6px;width:90px;height:80px;border:0.5px solid rgba(183,255,42,0.06);border-radius:6px;background:rgba(0,0,0,0.3);padding:5px;transform:rotate(-2deg)">
+          <div style="font-size:5px;color:rgba(255,255,255,0.1);margin-bottom:2px">Candlesticks</div>
+          <div style="display:flex;gap:1px;align-items:flex-end;height:40px">
+            <div style="width:5px;background:rgba(255,82,82,0.2);border-radius:1px;height:60%"></div>
+            <div style="width:5px;background:rgba(183,255,42,0.2);border-radius:1px;height:40%"></div>
+            <div style="width:5px;background:rgba(255,82,82,0.2);border-radius:1px;height:70%"></div>
+            <div style="width:5px;background:rgba(183,255,42,0.2);border-radius:1px;height:30%"></div>
+            <div style="width:5px;background:rgba(255,82,82,0.2);border-radius:1px;height:55%"></div>
+            <div style="width:5px;background:rgba(183,255,42,0.2);border-radius:1px;height:35%"></div>
+          </div>
+        </div>
+        <!-- More elements spread lower -->
+        <div class="elem e4" style="position:absolute;bottom:140px;left:4px;width:86px;height:50px;border:0.5px solid rgba(139,92,246,0.1);border-radius:6px;background:rgba(139,92,246,0.02);padding:4px;transform:rotate(-5deg)">
+          <div style="font-size:5px;color:rgba(139,92,246,0.4)">📊 DXY 105.2</div>
+          <div style="font-size:5px;color:rgba(255,255,255,0.1);margin-top:2px">+0.3% today</div>
+        </div>
+        <div class="elem e5" style="position:absolute;bottom:100px;right:4px;width:80px;height:46px;border:0.5px solid rgba(34,197,94,0.1);border-radius:6px;background:rgba(34,197,94,0.02);padding:4px;transform:rotate(3deg)">
+          <div style="font-size:5px;color:rgba(34,197,94,0.4)">💬 Signal</div>
+          <div style="font-size:5px;color:rgba(255,255,255,0.1)">DM for entry</div>
+        </div>
+        <div style="position:absolute;bottom:180px;display:flex;flex-wrap:wrap;gap:3px;justify-content:center;max-width:260px;opacity:0.6" class="elem e6">
+          <span style="font-size:6px;padding:2px 5px;background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.03);border-radius:2px;color:#4F4F4F">RSI</span>
+          <span style="font-size:6px;padding:2px 5px;background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.03);border-radius:2px;color:#4F4F4F">MACD</span>
+          <span style="font-size:6px;padding:2px 5px;background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.03);border-radius:2px;color:#4F4F4F">FVG</span>
+          <span style="font-size:6px;padding:2px 5px;background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.03);border-radius:2px;color:#4F4F4F">OB</span>
+          <span style="font-size:6px;padding:2px 5px;background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.03);border-radius:2px;color:#4F4F4F">Liq</span>
+          <span style="font-size:6px;padding:2px 5px;background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.03);border-radius:2px;color:#4F4F4F">MSS</span>
+          <span style="font-size:6px;padding:2px 5px;background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.03);border-radius:2px;color:#4F4F4F">OrderFlow</span>
+          <span style="font-size:6px;padding:2px 5px;background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.03);border-radius:2px;color:#4F4F4F">News</span>
+        </div>
+        <div class="elem e7" style="position:absolute;bottom:60px;font-size:15px;font-weight:200;color:rgba(255,255,255,0.12);letter-spacing:0.05em">Too much information.</div>
+        <div style="position:absolute;bottom:44px;width:24%;height:1px;background:linear-gradient(90deg,transparent,rgba(183,255,42,0.04),transparent)"></div>
+      </div>
 
-  <!-- SCENE 4 — Dashboard Reveal / cards assemble, graph draws, numbers count -->
-  <div class="slide" data-dur="4">
-    <div class="glow" style="bottom:-30px;left:50%;transform:translateX(-50%);width:300px;height:200px"></div>
-    <div class="elem e0" style="font-size:8px;color:rgba(183,255,42,0.25);font-weight:400;letter-spacing:0.1em;text-transform:uppercase;align-self:flex-start;margin-bottom:4px">Dashboard</div>
-    <div class="elem e1 card card3d" style="animation:floatUp 0.5s cubic-bezier(0.25,0.46,0.45,0.94) forwards;margin-bottom:6px">
-      <div style="display:flex;justify-content:space-between;margin-bottom:10px">
-        <div><div style="font-size:8px;color:#5F5F5F;margin-bottom:1px">Portfolio</div><div id="portVal" style="font-size:20px;font-weight:700;color:#B7FF2A">+0<span style="font-size:11px;color:#5F5F5F;font-weight:400">R</span></div></div>
-        <div style="text-align:right"><div style="font-size:8px;color:#5F5F5F;margin-bottom:1px">Win Rate</div><div id="winRateVal" style="font-size:20px;font-weight:700;color:#FFF">0%</div></div>
+      <!-- SCENE 3 — Silence / collapse to line, transform to logo -->
+      <div class="slide" data-dur="3">
+        <div class="glow-lg" style="top:25%;left:50%;transform:translateX(-50%);width:340px;height:340px"></div>
+        <div class="glow-lg" style="bottom:-50px;right:-40px;width:260px;height:260px"></div>
+        <div class="scan-line" style="top:40%"></div>
+        <div class="scan-line" style="top:65%"></div>
+        <div id="collapseOverlay" style="position:absolute;inset:0;background:#050505;opacity:0;z-index:5;pointer-events:none"></div>
+        <div class="elem e1" style="font-size:11px;color:rgba(183,255,42,0.4);font-weight:300;letter-spacing:0.15em;text-transform:uppercase;position:absolute;top:65px">Silence</div>
+        <div id="logoLine" style="width:0;height:1.5px;background:#B7FF2A;border-radius:1px;margin-bottom:10px"></div>
+        <div id="logoCircle" style="width:36px;height:36px;border-radius:50%;border:1.5px solid rgba(183,255,42,0.3);display:flex;align-items:center;justify-content:center;opacity:0;margin-bottom:10px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B7FF2A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div class="elem e4" style="font-size:24px;font-weight:200;color:#FFF;text-align:center;line-height:1.2;letter-spacing:-0.01em">Clarity changes<br>everything.</div>
       </div>
-      <svg viewBox="0 0 260 30" style="width:100%;height:24px;display:block;margin-bottom:6px">
-        <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#B7FF2A" stop-opacity="0.1"/><stop offset="100%" stop-color="#B7FF2A" stop-opacity="0"/></linearGradient></defs>
-        <path d="M0 24 L15 22 L35 18 L55 20 L75 14 L95 10 L115 12 L135 8 L155 6 L175 7 L195 4 L215 3 L235 2 L255 3 L260 3" fill="none" stroke="#B7FF2A" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="400" stroke-dashoffset="400">
-          <animate attributeName="stroke-dashoffset" from="400" to="0" dur="1.2s" fill="freeze"/>
-        </path>
-        <path d="M0 24 L15 22 L35 18 L55 20 L75 14 L95 10 L115 12 L135 8 L155 6 L175 7 L195 4 L215 3 L235 2 L255 3 L260 3 L260 30 L0 30Z" fill="url(#g)" opacity="0.4">
-          <animate attributeName="opacity" from="0" to="0.4" dur="1.2s" fill="freeze"/>
-        </path>
-      </svg>
-      <div style="display:flex;gap:6px">
-        <div style="flex:1;background:rgba(255,255,255,0.02);border-radius:6px;padding:8px;text-align:center;border:0.5px solid rgba(255,255,255,0.02)">
-          <div style="font-size:7px;color:#5F5F5F">Active</div><div id="activeVal" style="font-size:16px;font-weight:600;color:#FFF;margin-top:1px">0</div>
-        </div>
-        <div style="flex:1;background:rgba(255,255,255,0.02);border-radius:6px;padding:8px;text-align:center;border:0.5px solid rgba(255,255,255,0.02)">
-          <div style="font-size:7px;color:#5F5F5F">Week</div><div id="weekVal" style="font-size:16px;font-weight:600;color:#B7FF2A;margin-top:1px">+0<span style="font-size:9px;color:#5F5F5F">R</span></div>
-        </div>
-        <div style="flex:1;background:rgba(255,255,255,0.02);border-radius:6px;padding:8px;text-align:center;border:0.5px solid rgba(255,255,255,0.02)">
-          <div style="font-size:7px;color:#5F5F5F">Streak</div><div id="streakVal" style="font-size:16px;font-weight:600;color:#FFF;margin-top:1px">0</div>
-        </div>
-      </div>
-    </div>
-    <div class="elem e3" style="display:flex;gap:3px;align-self:flex-start;flex-wrap:wrap">
-      <span style="font-size:6px;padding:3px 7px;border-radius:99px;background:rgba(183,255,42,0.05);color:#B7FF2A;border:0.5px solid rgba(183,255,42,0.08)">London +2.1%</span>
-      <span style="font-size:6px;padding:3px 7px;border-radius:99px;background:rgba(255,255,255,0.02);color:#6E6E6E;border:0.5px solid rgba(255,255,255,0.03)">NY +1.4%</span>
-      <span style="font-size:6px;padding:3px 7px;border-radius:99px;background:rgba(255,255,255,0.02);color:#6E6E6E;border:0.5px solid rgba(255,255,255,0.03)">Asia -0.3%</span>
-    </div>
-  </div>
 
-  <!-- SCENE 5 — Signal Generation / card expands, tags glow, BUY pulses -->
-  <div class="slide" data-dur="3">
-    <div class="glow" style="top:30%;left:-40px;width:260px;height:260px"></div>
-    <div class="elem e0" style="font-size:8px;color:rgba(183,255,42,0.25);font-weight:400;letter-spacing:0.1em;text-transform:uppercase;align-self:flex-start;margin-bottom:4px">Signal Detected</div>
-    <div class="elem e1 card card3d" style="animation:scaleIn 0.4s cubic-bezier(0.25,0.46,0.45,0.94) forwards">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div><span style="font-size:16px;font-weight:700;color:#FFF">GBPUSD</span><span style="font-size:9px;color:#5F5F5F;margin-left:4px">15M</span></div>
-        <span id="buyLabel" style="font-size:9px;padding:3px 10px;border-radius:4px;background:rgba(183,255,42,0);color:#B7FF2A;font-weight:600;border:0.5px solid rgba(183,255,42,0)">BUY</span>
-      </div>
-      <div id="tagContainer" style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:10px">
-        <span class="tag">Liquidity Sweep</span>
-        <span class="tag">Displacement</span>
-        <span class="tag">MSS</span>
-        <span class="tag">FVG @ QM</span>
-        <span class="tag">Daily OB</span>
-      </div>
-      <div style="display:flex;gap:6px;font-size:8px">
-        <div style="flex:1;background:rgba(255,255,255,0.02);border-radius:5px;padding:6px;text-align:center">
-          <div style="color:#5F5F5F">Entry</div><div style="color:#FFF;font-weight:600;margin-top:1px">1.2876</div>
+      <!-- SCENE 4 — Dashboard Reveal / cards assemble, graph draws, numbers count -->
+      <div class="slide" data-dur="4">
+        <div class="glow" style="bottom:-40px;left:50%;transform:translateX(-50%);width:280px;height:180px"></div>
+        <div class="elem e0" style="font-size:8px;color:rgba(183,255,42,0.25);font-weight:400;letter-spacing:0.1em;text-transform:uppercase;align-self:flex-start;margin-bottom:4px">Dashboard</div>
+        <div class="elem e1 card card3d" style="animation:floatUp 0.5s cubic-bezier(0.25,0.46,0.45,0.94) forwards;margin-bottom:6px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+            <div><div style="font-size:7px;color:#5F5F5F;margin-bottom:1px">Portfolio</div><div id="portVal" style="font-size:18px;font-weight:700;color:#B7FF2A">+0<span style="font-size:10px;color:#5F5F5F;font-weight:400">R</span></div></div>
+            <div style="text-align:right"><div style="font-size:7px;color:#5F5F5F;margin-bottom:1px">Win Rate</div><div id="winRateVal" style="font-size:18px;font-weight:700;color:#FFF">0%</div></div>
+          </div>
+          <svg viewBox="0 0 240 28" style="width:100%;height:22px;display:block;margin-bottom:5px">
+            <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#B7FF2A" stop-opacity="0.1"/><stop offset="100%" stop-color="#B7FF2A" stop-opacity="0"/></linearGradient></defs>
+            <path d="M0 22 L14 20 L32 17 L50 19 L68 14 L86 10 L104 12 L124 8 L142 6 L160 7 L178 4 L196 3 L214 2 L232 3 L240 3" fill="none" stroke="#B7FF2A" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="400" stroke-dashoffset="400">
+              <animate attributeName="stroke-dashoffset" from="400" to="0" dur="1.2s" fill="freeze"/>
+            </path>
+            <path d="M0 22 L14 20 L32 17 L50 19 L68 14 L86 10 L104 12 L124 8 L142 6 L160 7 L178 4 L196 3 L214 2 L232 3 L240 3 L240 28 L0 28Z" fill="url(#g)" opacity="0.4">
+              <animate attributeName="opacity" from="0" to="0.4" dur="1.2s" fill="freeze"/>
+            </path>
+          </svg>
+          <div style="display:flex;gap:5px">
+            <div style="flex:1;background:rgba(255,255,255,0.02);border-radius:5px;padding:6px;text-align:center;border:0.5px solid rgba(255,255,255,0.02)">
+              <div style="font-size:6px;color:#5F5F5F">Active</div><div id="activeVal" style="font-size:14px;font-weight:600;color:#FFF;margin-top:1px">0</div>
+            </div>
+            <div style="flex:1;background:rgba(255,255,255,0.02);border-radius:5px;padding:6px;text-align:center;border:0.5px solid rgba(255,255,255,0.02)">
+              <div style="font-size:6px;color:#5F5F5F">Week</div><div id="weekVal" style="font-size:14px;font-weight:600;color:#B7FF2A;margin-top:1px">+0<span style="font-size:8px;color:#5F5F5F">R</span></div>
+            </div>
+            <div style="flex:1;background:rgba(255,255,255,0.02);border-radius:5px;padding:6px;text-align:center;border:0.5px solid rgba(255,255,255,0.02)">
+              <div style="font-size:6px;color:#5F5F5F">Streak</div><div id="streakVal" style="font-size:14px;font-weight:600;color:#FFF;margin-top:1px">0</div>
+            </div>
+          </div>
         </div>
-        <div style="flex:1;background:rgba(255,255,255,0.02);border-radius:5px;padding:6px;text-align:center">
-          <div style="color:#5F5F5F">TP</div><div style="color:#B7FF2A;font-weight:600;margin-top:1px">1.2945</div>
-        </div>
-        <div style="flex:1;background:rgba(255,255,255,0.02);border-radius:5px;padding:6px;text-align:center">
-          <div style="color:#5F5F5F">Score</div><div style="color:#FFF;font-weight:600;margin-top:1px">4/4</div>
+        <div class="elem e3" style="display:flex;gap:3px;align-self:flex-start;flex-wrap:wrap">
+          <span style="font-size:6px;padding:2px 6px;border-radius:99px;background:rgba(183,255,42,0.05);color:#B7FF2A;border:0.5px solid rgba(183,255,42,0.08)">London +2.1%</span>
+          <span style="font-size:6px;padding:2px 6px;border-radius:99px;background:rgba(255,255,255,0.02);color:#6E6E6E;border:0.5px solid rgba(255,255,255,0.03)">NY +1.4%</span>
+          <span style="font-size:6px;padding:2px 6px;border-radius:99px;background:rgba(255,255,255,0.02);color:#6E6E6E;border:0.5px solid rgba(255,255,255,0.03)">Asia -0.3%</span>
         </div>
       </div>
-    </div>
-  </div>
 
-  <!-- SCENE 6 — Trade Progress / vertical timeline fills -->
-  <div class="slide" data-dur="3">
-    <div class="glow" style="bottom:-40px;left:50%;transform:translateX(-50%);width:220px;height:180px"></div>
-    <div class="elem e0" style="font-size:8px;color:rgba(183,255,42,0.25);font-weight:400;letter-spacing:0.1em;text-transform:uppercase;align-self:flex-start;margin-bottom:6px">Trade Progress</div>
-    <div class="elem e1 card" style="padding:14px 18px;animation:scaleIn 0.4s cubic-bezier(0.25,0.46,0.45,0.94) forwards">
-      <div style="display:flex;flex-direction:column;gap:0;position:relative">
-        <div style="position:absolute;left:10px;top:8px;bottom:8px;width:1.5px;background:rgba(255,255,255,0.03);border-radius:1px"></div>
-        <div id="progressLineFill" style="position:absolute;left:10px;top:8px;width:1.5px;border-radius:1px;background:#B7FF2A;height:0%;transition:height 1.5s cubic-bezier(0.25,0.46,0.45,0.94)"></div>
-        <div style="display:flex;gap:10px;align-items:flex-start;padding:5px 0;position:relative;z-index:1">
-          <div style="width:22px;height:22px;border-radius:50%;background:#B7FF2A;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#090909" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-          <div><div style="font-size:11px;font-weight:600;color:#B7FF2A">Signal Generated</div><div style="font-size:8px;color:#5F5F5F;margin-top:1px">GBPUSD · 15M · QMR</div></div>
-        </div>
-        <div style="display:flex;gap:10px;align-items:flex-start;padding:5px 0;position:relative;z-index:1">
-          <div style="width:22px;height:22px;border-radius:50%;background:#B7FF2A;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#090909" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-          <div><div style="font-size:11px;font-weight:600;color:#B7FF2A">Entry Triggered</div><div style="font-size:8px;color:#5F5F5F;margin-top:1px">1.2876 · 12:34 UTC</div></div>
-        </div>
-        <div style="display:flex;gap:10px;align-items:flex-start;padding:5px 0;position:relative;z-index:1">
-          <div style="width:22px;height:22px;border-radius:50%;background:rgba(183,255,42,0.12);border:1.5px solid rgba(183,255,42,0.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:8px;color:#B7FF2A">TP</div>
-          <div><div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.5)">TP1 Target</div><div style="font-size:8px;color:#5F5F5F;margin-top:1px">1.2910 · Running</div></div>
-        </div>
-        <div style="display:flex;gap:10px;align-items:flex-start;padding:5px 0;position:relative;z-index:1">
-          <div style="width:22px;height:22px;border-radius:50%;background:transparent;border:1.5px solid rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;flex-shrink:0"></div>
-          <div><div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.12)">Move SL to Entry</div><div style="font-size:8px;color:#5F5F5F;margin-top:1px">Pending</div></div>
-        </div>
-        <div style="display:flex;gap:10px;align-items:flex-start;padding:5px 0;position:relative;z-index:1">
-          <div style="width:22px;height:22px;border-radius:50%;background:transparent;border:1.5px solid rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;flex-shrink:0"></div>
-          <div><div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.12)">TP2 Target</div><div style="font-size:8px;color:#5F5F5F;margin-top:1px">1.2945 · Pending</div></div>
+      <!-- SCENE 5 — Signal Generation / card expands, tags glow, BUY pulses -->
+      <div class="slide" data-dur="3">
+        <div class="glow" style="top:30%;left:-40px;width:240px;height:240px"></div>
+        <div class="elem e0" style="font-size:8px;color:rgba(183,255,42,0.25);font-weight:400;letter-spacing:0.1em;text-transform:uppercase;align-self:flex-start;margin-bottom:4px">Signal Detected</div>
+        <div class="elem e1 card card3d" style="animation:scaleIn 0.4s cubic-bezier(0.25,0.46,0.45,0.94) forwards">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <div><span style="font-size:15px;font-weight:700;color:#FFF">GBPUSD</span><span style="font-size:8px;color:#5F5F5F;margin-left:4px">15M</span></div>
+            <span id="buyLabel" style="font-size:9px;padding:3px 10px;border-radius:4px;background:rgba(183,255,42,0);color:#B7FF2A;font-weight:600;border:0.5px solid rgba(183,255,42,0)">BUY</span>
+          </div>
+          <div id="tagContainer" style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:8px">
+            <span class="tag">Liquidity Sweep</span>
+            <span class="tag">Displacement</span>
+            <span class="tag">MSS</span>
+            <span class="tag">FVG @ QM</span>
+            <span class="tag">Daily OB</span>
+          </div>
+          <div style="display:flex;gap:5px;font-size:8px">
+            <div style="flex:1;background:rgba(255,255,255,0.02);border-radius:5px;padding:5px;text-align:center">
+              <div style="color:#5F5F5F">Entry</div><div style="color:#FFF;font-weight:600;margin-top:1px">1.2876</div>
+            </div>
+            <div style="flex:1;background:rgba(255,255,255,0.02);border-radius:5px;padding:5px;text-align:center">
+              <div style="color:#5F5F5F">TP</div><div style="color:#B7FF2A;font-weight:600;margin-top:1px">1.2945</div>
+            </div>
+            <div style="flex:1;background:rgba(255,255,255,0.02);border-radius:5px;padding:5px;text-align:center">
+              <div style="color:#5F5F5F">Score</div><div style="color:#FFF;font-weight:600;margin-top:1px">4/4</div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  </div>
 
-  <!-- SCENE 7 — Weekly Report / stats count up, score ring fills -->
-  <div class="slide" data-dur="3">
-    <div class="glow" style="top:25%;left:50%;transform:translate(-50%,-50%);width:200px;height:200px"></div>
-    <div class="elem e0" style="font-size:8px;color:rgba(183,255,42,0.25);font-weight:400;letter-spacing:0.1em;text-transform:uppercase;align-self:flex-start;margin-bottom:4px">Weekly Report</div>
-    <div class="elem e1 card" style="padding:20px;text-align:center;animation:scaleIn 0.5s cubic-bezier(0.25,0.46,0.45,0.94) forwards">
-      <div style="font-size:7px;color:#5F5F5F;margin-bottom:1px;letter-spacing:0.08em">Week 30</div>
-      <div style="font-size:9px;color:rgba(255,255,255,0.2);margin-bottom:10px">Total Return</div>
-      <div id="totalR" style="font-size:38px;font-weight:700;color:#B7FF2A;line-height:1;letter-spacing:-0.03em">+0<span style="font-size:14px;color:#5F5F5F;font-weight:400">R</span></div>
-      <div style="display:flex;gap:14px;justify-content:center;margin:12px 0 8px">
-        <div><div id="wrPct" style="font-size:18px;font-weight:700;color:#FFF">0%</div><div style="font-size:7px;color:#5F5F5F">Win Rate</div></div>
-        <div><div id="winsVal" style="font-size:18px;font-weight:700;color:#FFF">0</div><div style="font-size:7px;color:#5F5F5F">Wins</div></div>
-        <div><div id="lossesVal" style="font-size:18px;font-weight:700;color:#FFF">0</div><div style="font-size:7px;color:#5F5F5F">Losses</div></div>
+      <!-- SCENE 6 — Trade Progress / vertical timeline fills -->
+      <div class="slide" data-dur="3">
+        <div class="glow" style="bottom:-40px;left:50%;transform:translateX(-50%);width:200px;height:160px"></div>
+        <div class="elem e0" style="font-size:8px;color:rgba(183,255,42,0.25);font-weight:400;letter-spacing:0.1em;text-transform:uppercase;align-self:flex-start;margin-bottom:6px">Trade Progress</div>
+        <div class="elem e1 card" style="padding:12px 16px;animation:scaleIn 0.4s cubic-bezier(0.25,0.46,0.45,0.94) forwards">
+          <div style="display:flex;flex-direction:column;gap:0;position:relative">
+            <div style="position:absolute;left:9px;top:6px;bottom:6px;width:1.5px;background:rgba(255,255,255,0.03);border-radius:1px"></div>
+            <div id="progressLineFill" style="position:absolute;left:9px;top:6px;width:1.5px;border-radius:1px;background:#B7FF2A;height:0%;transition:height 1.5s cubic-bezier(0.25,0.46,0.45,0.94)"></div>
+            <div style="display:flex;gap:10px;align-items:flex-start;padding:4px 0;position:relative;z-index:1">
+              <div style="width:20px;height:20px;border-radius:50%;background:#B7FF2A;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#090909" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+              <div><div style="font-size:10px;font-weight:600;color:#B7FF2A">Signal Generated</div><div style="font-size:7px;color:#5F5F5F;margin-top:1px">GBPUSD · 15M · QMR</div></div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start;padding:4px 0;position:relative;z-index:1">
+              <div style="width:20px;height:20px;border-radius:50%;background:#B7FF2A;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#090909" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+              <div><div style="font-size:10px;font-weight:600;color:#B7FF2A">Entry Triggered</div><div style="font-size:7px;color:#5F5F5F;margin-top:1px">1.2876 · 12:34 UTC</div></div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start;padding:4px 0;position:relative;z-index:1">
+              <div style="width:20px;height:20px;border-radius:50%;background:rgba(183,255,42,0.12);border:1.5px solid rgba(183,255,42,0.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:7px;color:#B7FF2A">TP</div>
+              <div><div style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.5)">TP1 Target</div><div style="font-size:7px;color:#5F5F5F;margin-top:1px">1.2910 · Running</div></div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start;padding:4px 0;position:relative;z-index:1">
+              <div style="width:20px;height:20px;border-radius:50%;background:transparent;border:1.5px solid rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;flex-shrink:0"></div>
+              <div><div style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.12)">Move SL to Entry</div><div style="font-size:7px;color:#5F5F5F;margin-top:1px">Pending</div></div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start;padding:4px 0;position:relative;z-index:1">
+              <div style="width:20px;height:20px;border-radius:50%;background:transparent;border:1.5px solid rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;flex-shrink:0"></div>
+              <div><div style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.12)">TP2 Target</div><div style="font-size:7px;color:#5F5F5F;margin-top:1px">1.2945 · Pending</div></div>
+            </div>
+          </div>
+        </div>
       </div>
-      <div style="display:flex;align-items:center;gap:5px;justify-content:center;margin-top:2px">
-        <svg width="30" height="30" viewBox="0 0 36 36">
-          <circle cx="18" cy="18" r="16" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="2"/>
-          <circle id="scoreRing" cx="18" cy="18" r="16" fill="none" stroke="#B7FF2A" stroke-width="2" stroke-dasharray="100" stroke-dashoffset="100" stroke-linecap="round" transform="rotate(-90 18 18)"/>
+
+      <!-- SCENE 7 — Weekly Report / stats count up, score ring fills -->
+      <div class="slide" data-dur="3">
+        <div class="glow" style="top:25%;left:50%;transform:translate(-50%,-50%);width:180px;height:180px"></div>
+        <div class="elem e0" style="font-size:8px;color:rgba(183,255,42,0.25);font-weight:400;letter-spacing:0.1em;text-transform:uppercase;align-self:flex-start;margin-bottom:4px">Weekly Report</div>
+        <div class="elem e1 card" style="padding:18px;text-align:center;animation:scaleIn 0.5s cubic-bezier(0.25,0.46,0.45,0.94) forwards">
+          <div style="font-size:7px;color:#5F5F5F;margin-bottom:1px;letter-spacing:0.08em">Week 30</div>
+          <div style="font-size:9px;color:rgba(255,255,255,0.2);margin-bottom:8px">Total Return</div>
+          <div id="totalR" style="font-size:34px;font-weight:700;color:#B7FF2A;line-height:1;letter-spacing:-0.03em">+0<span style="font-size:13px;color:#5F5F5F;font-weight:400">R</span></div>
+          <div style="display:flex;gap:12px;justify-content:center;margin:10px 0 6px">
+            <div><div id="wrPct" style="font-size:16px;font-weight:700;color:#FFF">0%</div><div style="font-size:7px;color:#5F5F5F">Win Rate</div></div>
+            <div><div id="winsVal" style="font-size:16px;font-weight:700;color:#FFF">0</div><div style="font-size:7px;color:#5F5F5F">Wins</div></div>
+            <div><div id="lossesVal" style="font-size:16px;font-weight:700;color:#FFF">0</div><div style="font-size:7px;color:#5F5F5F">Losses</div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:5px;justify-content:center;margin-top:2px">
+            <svg width="28" height="28" viewBox="0 0 36 36">
+              <circle cx="18" cy="18" r="16" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="2"/>
+              <circle id="scoreRing" cx="18" cy="18" r="16" fill="none" stroke="#B7FF2A" stroke-width="2" stroke-dasharray="100" stroke-dashoffset="100" stroke-linecap="round" transform="rotate(-90 18 18)"/>
+            </svg>
+            <span id="gradeVal" style="font-size:13px;font-weight:700;color:#B7FF2A">A+</span>
+            <span id="consistencyVal" style="font-size:7px;color:#5F5F5F">Consistency · 0%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCENE 8 — AI Summary / content types itself -->
+      <div class="slide" data-dur="3">
+        <div class="glow" style="bottom:-20px;right:-40px;width:220px;height:220px"></div>
+        <div class="elem e0" style="font-size:8px;color:rgba(183,255,42,0.25);font-weight:400;letter-spacing:0.1em;text-transform:uppercase;align-self:flex-start;margin-bottom:4px">AI Summary</div>
+        <div class="elem e1 card" style="animation:scaleIn 0.4s cubic-bezier(0.25,0.46,0.45,0.94) forwards">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#B7FF2A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            <span style="font-size:10px;font-weight:600;color:#FFF">Markets remain cautiously bullish.</span>
+          </div>
+          <div id="aiBody" style="font-size:9px;color:rgba(255,255,255,0.4);line-height:1.5;margin-bottom:8px;padding-left:22px;min-height:28px"></div>
+          <div style="display:flex;flex-wrap:wrap;gap:3px;padding-left:22px">
+            <span style="font-size:6px;padding:2px 6px;border-radius:99px;background:rgba(183,255,42,0.06);color:#B7FF2A;border:0.5px solid rgba(183,255,42,0.08)">USD Bullish</span>
+            <span style="font-size:6px;padding:2px 6px;border-radius:99px;background:rgba(255,82,82,0.06);color:#FF5252;border:0.5px solid rgba(255,82,82,0.08)">Gold Bearish</span>
+            <span style="font-size:6px;padding:2px 6px;border-radius:99px;background:rgba(249,115,22,0.06);color:#f97316;border:0.5px solid rgba(249,115,22,0.08)">Risk Medium</span>
+            <span style="font-size:6px;padding:2px 6px;border-radius:99px;background:rgba(183,255,42,0.06);color:#B7FF2A;border:0.5px solid rgba(183,255,42,0.08)">Indices Bullish</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCENE 9 — Notification / drops from top like real push -->
+      <div class="slide" data-dur="2">
+        <div class="glow-lg" style="top:30%;left:50%;transform:translateX(-50%);width:280px;height:280px"></div>
+        <!-- Ghost dashboard behind notification -->
+        <div style="position:absolute;inset:52px 12px 12px;opacity:0.06;pointer-events:none" class="elem e0">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px"><div style="font-size:7px;color:#FFF">Portfolio</div><div style="font-size:7px;color:#B7FF2A">+12.4R</div></div>
+          <div style="height:40px;background:rgba(255,255,255,0.03);border-radius:6px;margin-bottom:6px"></div>
+          <div style="display:flex;gap:4px"><div style="flex:1;height:30px;background:rgba(255,255,255,0.02);border-radius:4px"></div><div style="flex:1;height:30px;background:rgba(255,255,255,0.02);border-radius:4px"></div><div style="flex:1;height:30px;background:rgba(255,255,255,0.02);border-radius:4px"></div></div>
+          <div style="margin-top:10px;height:40px;background:rgba(255,255,255,0.02);border-radius:6px"></div>
+          <div style="margin-top:4px;display:flex;gap:4px"><div style="flex:1;height:20px;background:rgba(255,255,255,0.02);border-radius:4px"></div><div style="flex:1;height:20px;background:rgba(255,255,255,0.02);border-radius:4px"></div></div>
+        </div>
+        <div class="scan-line" style="top:50%"></div>
+        <div class="elem e1" style="font-size:8px;color:rgba(183,255,42,0.25);font-weight:400;letter-spacing:0.1em;text-transform:uppercase;position:absolute;top:56px;opacity:0.3">Notification</div>
+        <!-- Push notification sliding down from top -->
+        <div id="pushNotif" class="notif-el" style="display:flex;gap:12px;align-items:center;opacity:0">
+          <div style="width:38px;height:38px;border-radius:50%;background:rgba(183,255,42,0.06);display:flex;align-items:center;justify-content:center;font-size:17px">🏆</div>
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:600;color:#FFF">Weekly Report Ready</div>
+            <div style="font-size:11px;color:#B7FF2A;margin-top:1px">You finished at +12.4R.</div>
+            <div style="font-size:8px;color:#5F5F5F;margin-top:1px">Tap to view</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCENE 10 — Share / beam trace -->
+      <div class="slide" data-dur="2">
+        <div class="glow-lg" style="bottom:-30px;left:50%;transform:translateX(-50%);width:300px;height:180px"></div>
+        <div class="glow-lg" style="top:10%;right:-60px;width:220px;height:220px"></div>
+        <div class="scan-line" style="top:35%"></div>
+        <div class="scan-line" style="top:70%"></div>
+        <!-- Ghost report card behind share -->
+        <div style="position:absolute;left:24px;right:24px;top:80px;bottom:120px;border:0.5px solid rgba(255,255,255,0.02);border-radius:14px;background:rgba(255,255,255,0.01);opacity:0.08;pointer-events:none">
+          <div style="padding:14px;text-align:center"><div style="height:8px;width:40%;margin:0 auto;background:rgba(255,255,255,0.04);border-radius:2px"></div><div style="height:20px;width:30%;margin:8px auto;background:rgba(183,255,42,0.04);border-radius:2px"></div></div>
+        </div>
+        <div class="elem e0" style="font-size:8px;color:rgba(183,255,42,0.25);font-weight:400;letter-spacing:0.1em;text-transform:uppercase;align-self:flex-start;margin-bottom:8px">Share</div>
+        <div class="elem e1" style="text-align:center">
+          <div style="font-size:9px;color:#B7FF2A;margin-bottom:1px">+12.4R</div>
+          <div style="font-size:7px;color:#5F5F5F;margin-bottom:8px">Weekly Report · Week 30</div>
+          <div style="display:flex;gap:10px;justify-content:center">
+            <div style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.03);border:0.5px solid rgba(183,255,42,0.1);display:flex;align-items:center;justify-content:center;font-size:12px;color:rgba(183,255,42,0.5)">📸</div>
+            <div style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.03);border:0.5px solid rgba(183,255,42,0.1);display:flex;align-items:center;justify-content:center;font-size:12px;color:rgba(183,255,42,0.5)">𝕏</div>
+            <div style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.03);border:0.5px solid rgba(183,255,42,0.1);display:flex;align-items:center;justify-content:center;font-size:12px;color:rgba(183,255,42,0.5)">✈</div>
+            <div style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.03);border:0.5px solid rgba(183,255,42,0.1);display:flex;align-items:center;justify-content:center;font-size:12px;color:rgba(183,255,42,0.5)">💬</div>
+            <div style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.03);border:0.5px solid rgba(183,255,42,0.1);display:flex;align-items:center;justify-content:center;font-size:12px;color:rgba(183,255,42,0.5)">⬇</div>
+          </div>
+        </div>
+        <svg style="position:absolute;top:42%;left:50%;transform:translate(-42%,-50%);width:180px;height:180px;pointer-events:none;opacity:0.15" viewBox="0 0 180 180">
+          <path d="M45 90 Q 85 72 130 90" fill="none" stroke="rgba(183,255,42,0.15)" stroke-width="0.5" stroke-dasharray="200" stroke-dashoffset="200">
+            <animate attributeName="stroke-dashoffset" from="200" to="0" dur="1.2s" fill="freeze"/>
+          </path>
         </svg>
-        <span id="gradeVal" style="font-size:14px;font-weight:700;color:#B7FF2A">A+</span>
-        <span id="consistencyVal" style="font-size:8px;color:#5F5F5F">Consistency · 0%</span>
       </div>
-    </div>
-  </div>
 
-  <!-- SCENE 8 — AI Summary / content types itself -->
-  <div class="slide" data-dur="3">
-    <div class="glow" style="bottom:-20px;right:-40px;width:240px;height:240px"></div>
-    <div class="elem e0" style="font-size:8px;color:rgba(183,255,42,0.25);font-weight:400;letter-spacing:0.1em;text-transform:uppercase;align-self:flex-start;margin-bottom:4px">AI Summary</div>
-    <div class="elem e1 card" style="animation:scaleIn 0.4s cubic-bezier(0.25,0.46,0.45,0.94) forwards">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B7FF2A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-        <span style="font-size:10px;font-weight:600;color:#FFF">Markets remain cautiously bullish.</span>
-      </div>
-      <div id="aiBody" style="font-size:9px;color:rgba(255,255,255,0.4);line-height:1.5;margin-bottom:10px;padding-left:22px;min-height:30px"></div>
-      <div style="display:flex;flex-wrap:wrap;gap:3px;padding-left:22px">
-        <span style="font-size:6px;padding:2px 7px;border-radius:99px;background:rgba(183,255,42,0.06);color:#B7FF2A;border:0.5px solid rgba(183,255,42,0.08)">USD Bullish</span>
-        <span style="font-size:6px;padding:2px 7px;border-radius:99px;background:rgba(255,82,82,0.06);color:#FF5252;border:0.5px solid rgba(255,82,82,0.08)">Gold Bearish</span>
-        <span style="font-size:6px;padding:2px 7px;border-radius:99px;background:rgba(249,115,22,0.06);color:#f97316;border:0.5px solid rgba(249,115,22,0.08)">Risk Medium</span>
-        <span style="font-size:6px;padding:2px 7px;border-radius:99px;background:rgba(183,255,42,0.06);color:#B7FF2A;border:0.5px solid rgba(183,255,42,0.08)">Indices Bullish</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- SCENE 9 — Notification / floating push -->
-  <div class="slide" data-dur="2">
-    <div class="glow" style="top:40%;left:50%;transform:translate(-50%,-50%);width:160px;height:160px"></div>
-    <div class="elem e0" style="font-size:8px;color:rgba(183,255,42,0.25);font-weight:400;letter-spacing:0.1em;text-transform:uppercase;align-self:flex-start;margin-bottom:10px">Notification</div>
-    <div class="elem e1" style="background:linear-gradient(135deg,#0E0E0E,#0A0A0A);border-radius:18px;padding:18px;border:0.5px solid rgba(183,255,42,0.1);width:260px;animation:pulseNotif 2s ease-in-out infinite">
-      <div style="display:flex;gap:12px;align-items:center">
-        <div style="width:40px;height:40px;border-radius:50%;background:rgba(183,255,42,0.06);display:flex;align-items:center;justify-content:center;font-size:18px">🏆</div>
-        <div style="flex:1">
-          <div style="font-size:13px;font-weight:600;color:#FFF">Weekly Report Ready</div>
-          <div style="font-size:12px;color:#B7FF2A;margin-top:2px">You finished at +12.4R.</div>
-          <div style="font-size:9px;color:#5F5F5F;margin-top:1px">Tap to view</div>
+      <!-- SCENE 11 — Closing / mascot emerges from darkness -->
+      <div class="slide" data-dur="3">
+        <div class="glow-lg" style="top:20%;left:50%;transform:translateX(-50%);width:340px;height:340px"></div>
+        <div class="glow-lg" style="bottom:-60px;right:-40px;width:260px;height:260px"></div>
+        <div class="scan-line" style="top:30%"></div>
+        <div class="scan-line" style="top:70%"></div>
+        <div class="elem e1" style="margin-bottom:6px">
+          <div id="mascotWrap" style="width:64px;height:64px;border-radius:50%;background:rgba(183,255,42,0.03);display:flex;align-items:center;justify-content:center;border:1px solid rgba(183,255,42,0.1);animation:eyeGlow 3s ease-in-out infinite">
+            <img src="mascot.png" style="width:54px;height:54px;border-radius:50%;object-fit:cover;opacity:0.75" onerror="this.style.display='none'">
+          </div>
         </div>
+        <div class="elem e2" style="font-size:20px;font-weight:700;color:#FFF;letter-spacing:-0.02em;margin-bottom:3px">The Slayers</div>
+        <div class="elem e3" style="height:1px;width:30px;background:rgba(183,255,42,0.18);margin:8px 0"></div>
+        <div class="elem e4" style="font-size:14px;font-weight:200;color:rgba(255,255,255,0.5);text-align:center;letter-spacing:0.06em;line-height:1.5">Less Noise.<br>More Clarity.</div>
+        <div class="elem e5" style="margin-top:10px;font-size:9px;font-weight:400;color:rgba(183,255,42,0.4);text-align:center;letter-spacing:0.08em;text-transform:uppercase">Trade with Structure. Win with Discipline.</div>
+        <div style="position:absolute;bottom:44px;width:30%;height:1px;background:linear-gradient(90deg,transparent,rgba(183,255,42,0.06),transparent)"></div>
       </div>
-    </div>
-  </div>
 
-  <!-- SCENE 10 — Share / beam trace -->
-  <div class="slide" data-dur="2">
-    <div class="glow" style="bottom:-30px;left:50%;transform:translateX(-50%);width:260px;height:160px"></div>
-    <div class="elem e0" style="font-size:8px;color:rgba(183,255,42,0.25);font-weight:400;letter-spacing:0.1em;text-transform:uppercase;align-self:flex-start;margin-bottom:8px">Share</div>
-    <div class="elem e1" style="text-align:center">
-      <div style="font-size:9px;color:#B7FF2A;margin-bottom:1px">+12.4R</div>
-      <div style="font-size:7px;color:#5F5F5F;margin-bottom:10px">Weekly Report · Week 30</div>
-      <div style="display:flex;gap:8px;justify-content:center">
-        <div style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.02);border:0.5px solid rgba(183,255,42,0.08);display:flex;align-items:center;justify-content:center;font-size:12px;color:rgba(183,255,42,0.4)">📸</div>
-        <div style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.02);border:0.5px solid rgba(183,255,42,0.08);display:flex;align-items:center;justify-content:center;font-size:12px;color:rgba(183,255,42,0.4)">𝕏</div>
-        <div style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.02);border:0.5px solid rgba(183,255,42,0.08);display:flex;align-items:center;justify-content:center;font-size:12px;color:rgba(183,255,42,0.4)">✈</div>
-        <div style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.02);border:0.5px solid rgba(183,255,42,0.08);display:flex;align-items:center;justify-content:center;font-size:12px;color:rgba(183,255,42,0.4)">💬</div>
-        <div style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.02);border:0.5px solid rgba(183,255,42,0.08);display:flex;align-items:center;justify-content:center;font-size:12px;color:rgba(183,255,42,0.4)">⬇</div>
-      </div>
     </div>
-    <svg style="position:absolute;top:50%;left:50%;transform:translate(-40%,-50%);width:180px;height:180px;pointer-events:none;opacity:0.25" viewBox="0 0 180 180">
-      <path d="M50 90 Q 90 70 130 90" fill="none" stroke="rgba(183,255,42,0.15)" stroke-width="0.5" stroke-dasharray="200" stroke-dashoffset="200">
-        <animate attributeName="stroke-dashoffset" from="200" to="0" dur="1.2s" fill="freeze"/>
-      </path>
-    </svg>
-  </div>
 
-  <!-- SCENE 11 — Closing / mascot emerges from darkness -->
-  <div class="slide" data-dur="3">
-    <div class="glow" style="top:35%;left:50%;transform:translate(-50%,-50%);width:180px;height:180px"></div>
-    <div class="elem e1" style="margin-bottom:6px">
-      <div id="mascotWrap" style="width:64px;height:64px;border-radius:50%;background:rgba(183,255,42,0.02);display:flex;align-items:center;justify-content:center;border:1px solid rgba(183,255,42,0.08);animation:eyeGlow 3s ease-in-out infinite">
-        <img src="mascot.png" style="width:56px;height:56px;border-radius:50%;object-fit:cover;opacity:0.7" onerror="this.style.display='none'">
-      </div>
-    </div>
-    <div class="elem e2" style="font-size:20px;font-weight:700;color:#FFF;letter-spacing:-0.02em;margin-bottom:3px">The Slayers</div>
-    <div class="elem e3" style="height:1px;width:28px;background:rgba(183,255,42,0.15);margin:8px 0"></div>
-    <div class="elem e4" style="font-size:14px;font-weight:200;color:rgba(255,255,255,0.45);text-align:center;letter-spacing:0.06em;line-height:1.5">Less Noise.<br>More Clarity.</div>
-    <div class="elem e5" style="margin-top:10px;font-size:9px;font-weight:400;color:rgba(183,255,42,0.35);text-align:center;letter-spacing:0.08em;text-transform:uppercase">Trade with Structure. Win with Discipline.</div>
-    <div style="position:absolute;bottom:48px;width:24%;height:1px;background:linear-gradient(90deg,transparent,rgba(183,255,42,0.05),transparent)"></div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
   </div>
-
 </div>
-
-<div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
 
 <script>
 var slides = document.querySelectorAll('.slide');
 var timer = null;
 var progressEl = document.getElementById('progressFill');
+var statusTime = document.getElementById('statusTime');
+var d = new Date();
+statusTime.textContent = d.getHours() + ':' + String(d.getMinutes()).padStart(2,'0');
 
 function animateCount(el, target, suffix, duration){
   var start = 0;
@@ -340,7 +416,7 @@ function animateCount(el, target, suffix, duration){
 function showSlide(idx){
   slides.forEach(function(s){ s.classList.remove('active'); s.classList.remove('exit'); });
   slides[idx].classList.add('active');
-  var dur = parseFloat(slides[idx].getAttribute('data-dur')) || 4;
+  var dur = parseFloat(slides[idx].getAttribute('data-dur')) || 3;
   startProgress(dur);
   clearTimeout(timer);
 
@@ -355,7 +431,7 @@ function showSlide(idx){
       setTimeout(function(){
         co.style.opacity = '0';
         line.style.transition = 'width 0.5s cubic-bezier(0.25,0.46,0.45,0.94)';
-        line.style.width = '40px';
+        line.style.width = '36px';
         setTimeout(function(){
           line.style.width = '0';
           circle.style.transition = 'opacity 0.4s ease';
@@ -365,7 +441,7 @@ function showSlide(idx){
     }, 200);
   }
 
-  // SCENE 4 — count up stats (faster)
+  // SCENE 4 — count up stats
   if(idx === 3){
     setTimeout(function(){
       animateCount(document.getElementById('portVal'), 12.4, 'R', 800);
@@ -376,7 +452,7 @@ function showSlide(idx){
     }, 400);
   }
 
-  // SCENE 5 — tag glow and BUY pulse (faster)
+  // SCENE 5 — tag glow and BUY pulse
   if(idx === 4){
     setTimeout(function(){
       var tags = document.querySelectorAll('#tagContainer .tag');
@@ -405,7 +481,7 @@ function showSlide(idx){
     }, 400);
   }
 
-  // SCENE 7 — weekly report count up (faster)
+  // SCENE 7 — weekly report count up
   if(idx === 6){
     setTimeout(function(){
       animateCount(document.getElementById('totalR'), 12.4, 'R', 800);
@@ -418,7 +494,7 @@ function showSlide(idx){
     }, 400);
   }
 
-  // SCENE 8 — typewriter for AI summary (faster)
+  // SCENE 8 — typewriter for AI summary
   if(idx === 7){
     var aiText = "USD continues to show strength. Watch CPI later today — high impact expected on GBPUSD and EURUSD.";
     var aiEl = document.getElementById('aiBody');
@@ -432,6 +508,18 @@ function showSlide(idx){
       }
     }
     setTimeout(typeChar, 400);
+  }
+
+  // SCENE 9 — push notification drops from top
+  if(idx === 8){
+    var pn = document.getElementById('pushNotif');
+    pn.style.transition = 'opacity 0.4s ease, transform 0.4s cubic-bezier(0.25,0.46,0.45,0.94)';
+    pn.style.opacity = '0';
+    pn.style.transform = 'translateY(-30px) scale(0.95)';
+    setTimeout(function(){
+      pn.style.opacity = '1';
+      pn.style.transform = 'translateY(0) scale(1)';
+    }, 200);
   }
 
   // SCENE 11 — mascot emerges from darkness
