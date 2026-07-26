@@ -1136,59 +1136,92 @@ function weeklyReportScreen(){
   var weekEnd=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
   var r=wd.report||{},ms=wd.myStats||{};
   var totalR=r.totalR||ms.totalR||0,wr=r.wr||ms.winRate||0,total=r.total||ms.total||0;
-  var rLabel=totalR>=0?'+'+totalR.toFixed(1)+'':'';
-  var wrBar='<div style="height:6px;border-radius:3px;background:rgba(255,255,255,0.06);overflow:hidden;margin:12px 0 6px"><div style="height:100%;width:'+wr+'%;border-radius:3px;background:linear-gradient(90deg,#B7FF2A,#7FFF00);transition:width 1s"></div></div>';
+  var wins=r.winners||r.tp||ms.wins||0,losses=r.losers||r.sl||ms.losses||0,bes=r.be||ms.bes||0;
+  var avgR=total?+(totalR/total).toFixed(2):0;
+  var streak=0,cur=0;
   var grade=wr>=80?'A':wr>=60?'B':wr>=40?'C':wr>=20?'D':'F';
   var gradeCol=grade==='A'?'#B7FF2A':grade==='B'?'#7FFF00':grade==='C'?'#FFD700':grade==='D'?'#FF8C00':'#FF5252';
-  var aiMsg=wr>=80?'Excellent discipline. You followed the model perfectly — keep this up and 100K/month is inevitable.':
+  var aiMsg=wr>=80?'Excellent discipline. You followed the model perfectly.':
     wr>=60?'Solid execution. A few small mistakes but overall you stayed in control.':
-    wr>=40?'Average performance. Review your losses — were you chasing or forcing trades?':
-    wr>=20?'Below par. Take a step back, reduce size, and focus only on A+ setups.':
-    'Tough week. Trust the process — every great trader has these. Rest, review, reset.';
+    wr>=40?'Average performance. Review your losses.':
+    wr>=20?'Below par. Reduce size, focus on A+ setups.':
+    'Tough week. Rest, review, reset.';
+  var wrBarPct=Math.min(wr,100);
 
   return '<div class="sc" style="padding:16px;background:#090909;min-height:100vh;display:flex;flex-direction:column;align-items:center">'+
-    '<div style="width:100%;max-width:400px;position:relative">'+
-      // Back button
-      '<button onclick="setTab(\'dash\');location.hash=\'\'" style="background:none;border:none;color:#8E8E8E;font-size:14px;padding:8px 0;margin-bottom:8px;cursor:pointer">\u2190 Dashboard</button>'+
-      
-      // Header with mascot
-      '<div style="text-align:center;margin:8px 0 20px">'+
-        '<img src="mascot.png" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid rgba(183,255,42,0.3);margin-bottom:8px" onerror="this.style.display=\'none\'">'+
-        '<div style="font-size:20px;font-weight:700;color:#FFF">Weekly Report</div>'+
-        '<div style="font-size:13px;color:#8E8E8E;margin-top:2px">Week ending '+esc(weekEnd)+'</div>'+
+    '<div style="width:100%;max-width:400px">'+
+      '<button onclick="setTab(\'dash\');location.hash=\'\'" style="background:none;border:none;color:#8E8E8E;font-size:14px;padding:8px 0;margin-bottom:4px;cursor:pointer">\u2190 Dashboard</button>'+
+
+      '<div style="text-align:center;margin:4px 0 18px">'+
+        '<img src="mascot.png" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid rgba(183,255,42,0.25);margin-bottom:8px" onerror="this.style.display=\'none\'">'+
+        '<div style="font-size:20px;font-weight:700;color:#FFF;letter-spacing:-0.03em">Weekly Report</div>'+
+        '<div style="font-size:12px;color:#5F5F5F;margin-top:2px">Week ending '+esc(weekEnd)+'</div>'+
       '</div>'+
 
-      // R-Multiple card
-      '<div style="background:linear-gradient(135deg,#1A1A1A,#121212);border-radius:16px;padding:24px;margin-bottom:12px;border:1px solid rgba(255,255,255,0.06);text-align:center">'+
-        '<div style="font-size:15px;color:#8E8E8E;margin-bottom:4px">Total R</div>'+
-        '<div style="font-size:48px;font-weight:800;color:#B7FF2A;line-height:1.1">'+rLabel+'R</div>'+
-        '<div style="font-size:13px;color:#5F5F5F;margin-top:2px">Across '+total+' trade'+(total!==1?'s':'')+'</div>'+
+      '<div style="background:#111;border-radius:20px;border:0.5px solid rgba(255,255,255,0.06);padding:24px;margin-bottom:14px">'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">'+
+          '<div style="text-align:center"><div class="wr-count" data-final="'+(totalR>=0?'+':'')+totalR.toFixed(1)+'" style="font-size:32px;font-weight:900;letter-spacing:-0.04em;line-height:1;color:#B7FF2A">0.0</div><div style="font-size:9px;color:#5F5F5F;font-weight:500;letter-spacing:0.02em;margin-top:4px;text-transform:uppercase">Total R</div></div>'+
+          '<div style="text-align:center"><div class="wr-count" data-final="'+wr+'" style="font-size:32px;font-weight:900;letter-spacing:-0.04em;line-height:1;color:#FFF">0</div><div style="font-size:9px;color:#5F5F5F;font-weight:500;letter-spacing:0.02em;margin-top:4px;text-transform:uppercase">Win Rate %</div></div>'+
+          '<div style="text-align:center"><div class="wr-count" data-final="'+(avgR>=0?'+':'')+avgR.toFixed(2)+'" style="font-size:32px;font-weight:900;letter-spacing:-0.04em;line-height:1;color:#B7FF2A">0.0</div><div style="font-size:9px;color:#5F5F5F;font-weight:500;letter-spacing:0.02em;margin-top:4px;text-transform:uppercase">Avg R</div></div>'+
+          '<div style="text-align:center"><div class="wr-count" data-final="'+(r.best||0)+'" style="font-size:32px;font-weight:900;letter-spacing:-0.04em;line-height:1;color:'+(r.best>=0?'#B7FF2A':'#FF5252')+'">0.0</div><div style="font-size:9px;color:#5F5F5F;font-weight:500;letter-spacing:0.02em;margin-top:4px;text-transform:uppercase">Best Trade</div></div>'+
+        '</div>'+
       '</div>'+
 
-      // Win Rate card
-      '<div style="background:#121212;border-radius:16px;padding:20px;margin-bottom:12px;border:1px solid rgba(255,255,255,0.06)">'+
+      '<div style="background:#111;border-radius:20px;border:0.5px solid rgba(255,255,255,0.06);padding:20px;margin-bottom:14px">'+
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+
-          '<span style="font-size:15px;color:#8E8E8E">Win Rate</span>'+
-          '<span style="font-size:24px;font-weight:700;color:#FFF">'+wr+'%</span>'+
-        '</div>'+wrBar+
-        '<div style="display:flex;justify-content:space-between;font-size:12px;color:#5F5F5F">'+
-          '<span>'+(r.winners||r.tp||ms.wins||0)+'W</span><span>'+(r.losers||r.sl||ms.losses||0)+'L</span><span>'+(r.be||ms.bes||0)+'BE</span>'+
+          '<span style="font-size:13px;color:#8E8E8E;font-weight:500">Performance</span>'+
+          '<span style="font-size:15px;font-weight:700;color:#FFF">'+wr+'%</span>'+
+        '</div>'+
+        '<div style="height:5px;border-radius:3px;background:rgba(255,255,255,0.05);overflow:hidden;margin:8px 0 6px">'+
+          '<div style="height:100%;width:0%;border-radius:3px;background:linear-gradient(90deg,#B7FF2A,#7FFF00);transition:width 1.2s cubic-bezier(.22,1,.36,1)" id="wr-bar-fill"></div>'+
+        '</div>'+
+        '<div style="display:flex;justify-content:space-between;font-size:11px;color:#5F5F5F;font-weight:500">'+
+          '<span>'+wins+'W</span><span>'+losses+'L</span><span>'+bes+'BE</span><span>'+total+' total</span>'+
         '</div>'+
       '</div>'+
 
-      // AI Coach section
-      '<div style="background:#121212;border-radius:16px;padding:20px;margin-bottom:12px;border:1px solid rgba(255,255,255,0.06)">'+
-        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">'+
-          '<span style="font-size:28px;font-weight:700;color:'+gradeCol+'">'+grade+'</span>'+
-          '<span style="font-size:13px;color:#8E8E8E">AI Coach Grade</span>'+
+      '<div style="background:#111;border-radius:20px;border:0.5px solid rgba(255,255,255,0.06);padding:20px;margin-bottom:12px">'+
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">'+
+          '<span style="font-size:36px;font-weight:800;color:'+gradeCol+'">'+grade+'</span>'+
+          '<div><div style="font-size:13px;font-weight:600;color:#FFF">AI Coach Grade</div><div style="font-size:11px;color:#8E8E8E;margin-top:1px">'+esc(aiMsg)+'</div></div>'+
         '</div>'+
-        '<div style="font-size:14px;color:#CCC;line-height:1.5">'+esc(aiMsg)+'</div>'+
       '</div>'+
 
-      // Share button
-      '<button onclick="shareWeeklyReport()" style="width:100%;padding:14px;border-radius:12px;border:1px solid rgba(183,255,42,0.3);background:transparent;color:#B7FF2A;font-size:15px;font-weight:600;margin-top:4px;cursor:pointer">Share Report</button>'+
+      '<button onclick="shareWeeklyReport()" style="width:100%;padding:14px;border-radius:12px;border:1px solid rgba(183,255,42,0.2);background:transparent;color:#B7FF2A;font-size:14px;font-weight:600;cursor:pointer;letter-spacing:0.02em">Share Report</button>'+
     '</div>'+
   '</div>';
+}
+
+function startWeeklyCounters(){
+  var els=document.querySelectorAll('.wr-count');
+  var bar=document.getElementById('wr-bar-fill');
+  if(bar){
+    setTimeout(function(){
+      var pct=parseFloat(bar.parentElement.parentElement.querySelectorAll('span')[1].textContent)||0;
+      bar.style.width=pct+'%';
+    },200);
+  }
+  els.forEach(function(el){
+    var final=el.getAttribute('data-final')||'0';
+    var isNum=!isNaN(parseFloat(final));
+    if(!isNum)el.textContent=final;
+    else{
+      var target=parseFloat(final);
+      var decimals=(final.indexOf('.')>-1)?final.split('.')[1].length:0;
+      var duration=1200+Math.random()*400;
+      el.textContent=decimals>0?'0.'+'0'.repeat(decimals):'0';
+      var start=performance.now();
+      function step(now){
+        var p=Math.min(1,(now-start)/duration);
+        var e=1-Math.pow(1-p,3);
+        var val=e*target;
+        var prefix=target>=0&&el.textContent.indexOf('-')!==0?'':'';
+        el.textContent=decimals>0?val.toFixed(decimals):Math.round(val).toString();
+        if(p<1)requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+  });
 }
 
 function shareWeeklyReport(){
@@ -1320,7 +1353,7 @@ function render(){
   else if(t==='scalp'){app.innerHTML=scalpScreen();}
   else if(t==='intel'){app.innerHTML=intelScreen();}
   else if(t==='settings'){app.innerHTML=settingsScreen();}
-  else if(t==='weekly-report'){app.innerHTML=weeklyReportScreen();}
+  else if(t==='weekly-report'){app.innerHTML=weeklyReportScreen();setTimeout(startWeeklyCounters,50);}
   else{app.innerHTML=overviewScreen();}
   void app.offsetWidth;
   var newSc=app.querySelector('.sc');
