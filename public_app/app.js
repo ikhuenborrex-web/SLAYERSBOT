@@ -1032,96 +1032,10 @@ function intelScreen(){
     return norm.toLowerCase().replace(/[^a-z]/g,'')===activeTab;
   });
 
-  function deriveImpact(acat,c){
-    if(!c||!c.length)return null;
-    var cat=acat.toLowerCase(),out=[];
-    function add(asset,dir){out.push({a:asset,d:dir});}
-    function dirOf(name){
-      for(var xi=0;xi<c.length;xi++){
-        if(c[xi].name===name){
-          var d=c[xi].signalDir||'';
-          if(d==='BULLISH')return'bullish';
-          if(d==='BEARISH')return'bearish';
-          var wb=c[xi].weeklyBias||'';
-          if(wb==='BULLISH')return'bullish';
-          if(wb==='BEARISH')return'bearish';
-          return null;
-        }
-      }
-      return null;
-    }
-    function matchedAssets(names){
-      var found=[];
-      for(var xi=0;xi<c.length;xi++){
-        var pn=c[xi].name||c[xi].id||'';
-        for(var ni=0;ni<names.length;ni++){
-          if(pn.indexOf(names[ni])>-1||names[ni].indexOf(pn)>-1){
-            found.push(c[xi]);
-            break;
-          }
-        }
-      }
-      return found;
-    }
-    function getBias(name){
-      for(var xi=0;xi<c.length;xi++){
-        if(c[xi].name===name||c[xi].id===name){
-          var d=c[xi].signalDir||c[xi].weeklyBias||'';
-          if(d==='BULLISH')return'bullish';
-          if(d==='BEARISH')return'bearish';
-          return'neutral';
-        }
-      }
-      return'neutral';
-    }
-    if(cat.indexOf('crypto')>-1||cat.indexOf('btc')>-1||cat.indexOf('eth')>-1){
-      matchedAssets(['BTC','ETH','SOL','XRP']).forEach(function(p){
-        add(p.name||p.id,getBias(p.name||p.id));
-      });
-    }
-    if(cat.indexOf('commodities')>-1||cat.indexOf('gold')>-1||cat.indexOf('xau')>-1||cat.indexOf('silver')>-1||cat.indexOf('xag')>-1){
-      matchedAssets(['XAU','GOLD','XAG','SILVER','COPPER','PLATINUM']).forEach(function(p){
-        add(p.name||p.id,getBias(p.name||p.id));
-      });
-    }
-    if(cat.indexOf('indices')>-1||cat.indexOf('nas')>-1||cat.indexOf('spx')>-1||cat.indexOf('dow')>-1||cat.indexOf('us30')>-1){
-      matchedAssets(['NAS100','US30','SPX500','DAX','FTSE','NIKKEI','HSI']).forEach(function(p){
-        add(p.name||p.id,getBias(p.name||p.id));
-      });
-    }
-    if(cat.indexOf('energy')>-1||cat.indexOf('oil')>-1||cat.indexOf('crude')>-1||cat.indexOf('gas')>-1){
-      matchedAssets(['OIL','WTI','BRENT','NG','NATURAL','GAS']).forEach(function(p){
-        add(p.name||p.id,getBias(p.name||p.id));
-      });
-    }
-    if(cat.indexOf('currencies')>-1||cat.indexOf('forex')>-1||cat.indexOf('fx')>-1||cat.indexOf('macro')>-1||cat.indexOf('central')>-1||cat.indexOf('economy')>-1||cat.indexOf('gdp')>-1||cat.indexOf('inflation')>-1||cat.indexOf('rate')>-1){
-      matchedAssets(['USD','EUR','GBP','JPY','AUD','NZD','CAD','CHF']).forEach(function(p){
-        add(p.name||p.id,getBias(p.name||p.id));
-      });
-    }
-    if(!out.length){
-      var any=c.slice(0,4);
-      any.forEach(function(p){
-        var d=p.signalDir||p.weeklyBias||'';
-        var dir=d==='BULLISH'?'bullish':d==='BEARISH'?'bearish':'neutral';
-        add(p.name||p.id,dir);
-      });
-    }
-    return out.length?out:null;
-  }
-
   var items=filtered.slice(0,25).map(function(a,ai){
     var img=a.imageUrl||a.image||'';
-    var impact=a.impact||deriveImpact(a.category||'',confl);
     var imgHtml=img?'<img src="'+img+'" style="width:100%;height:100%;object-fit:cover;display:block">':
       '<div style="display:flex;align-items:center;justify-content:center;height:100%;background:'+C.surface+'">'+icon(I.newspaper,'#5F5F5F',20)+'</div>';
-    var impHtml=impact?impact.map(function(im){
-      var ic=im.d==='bullish'?C.lime:im.d==='bearish'?C.red:C.text2;
-      var ii=im.d==='bullish'?I.trendingUp:im.d==='bearish'?I.trendingDown:I.activity;
-      return '<div style="display:flex;align-items:center;gap:5px;padding:3px 0;font-size:9px">'+
-        icon(ii,ic,10)+'<span style="color:'+ic+';font-weight:'+(im.d!=='neutral'?'600':'400')+'">'+esc(im.a)+'</span>'+
-        ' <span style="color:#5F5F5F;text-transform:capitalize">'+im.d+'</span></div>';
-    }).join(''):'';
 
     return '<div class="card" style="padding:0;overflow:hidden;margin-bottom:12px;border-radius:20px;background:#151515">'+
       '<div style="display:flex;gap:12px;padding:14px">'+
@@ -1135,10 +1049,6 @@ function intelScreen(){
             '<span style="font-size:7px;font-weight:600;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.04);color:'+C.text2+'">'+esc((a.category||'General').toUpperCase())+'</span>'+
           '</div></div>'+
       '</div>'+
-      (impHtml?'<div style="margin:0 14px 14px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.04)">'+
-        '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">'+icon(I.zap,'#8E8E8E',10)+
-        '<span style="font-size:8px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.04em">Trading Impact</span></div>'+
-        impHtml+'</div>':'')+
       (a.link||a.url?'<a href="'+esc(a.link||a.url)+'" target="_blank" style="display:flex;align-items:center;justify-content:space-between;text-decoration:none;padding:10px 14px;border-top:0.5px solid rgba(255,255,255,0.04);font-size:9px;font-weight:600;color:'+C.lime+'">Read full article '+icon(I.chevronRight,C.lime,10)+'</a>':'')+
     '</div>';
   }).join('');
