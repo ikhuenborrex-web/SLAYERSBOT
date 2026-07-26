@@ -3,647 +3,687 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-<title>Slayers Weekly Report — Prototype</title>
+<title>The Slayers — Weekly Report</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#0A0A0A;color:#E8E8E8;font-family:'Inter',-apple-system,sans-serif;min-height:100vh;overflow-x:hidden}
-::selection{background:rgba(199,255,56,0.2);color:#C7FF38}
+body{background:#0B0B0B;color:#FFF;font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+::selection{background:rgba(184,255,44,0.15);color:#B8FF2C}
 
-/* scrollbar */
-::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar{width:3px}
 ::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:rgba(199,255,56,0.15);border-radius:2px}
+::-webkit-scrollbar-thumb{background:rgba(184,255,44,0.1);border-radius:2px}
 
-/* header */
-.header{position:sticky;top:0;z-index:10;padding:16px 20px 12px;background:linear-gradient(180deg,#0A0A0A 60%,transparent);display:flex;align-items:center;justify-content:space-between}
-.header-left{display:flex;align-items:center;gap:10px}
-.header-icon{width:28px;height:28px;border-radius:8px;background:rgba(199,255,56,0.1);display:flex;align-items:center;justify-content:center}
-.header-icon svg{width:16px;height:16px;stroke:#C7FF38;fill:none;stroke-width:2}
-.header h1{font-size:16px;font-weight:700;color:#FFF;letter-spacing:-0.3px}
-.header-badge{font-size:10px;font-weight:600;color:#0A0A0A;background:#C7FF38;padding:2px 8px;border-radius:99px}
-.header-right{display:flex;gap:8px}
-.header-btn{width:32px;height:32px;border-radius:50%;border:0.5px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;color:#5F5F5F}
-.header-btn:hover{border-color:rgba(199,255,56,0.2);color:#C7FF38}
-.header-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+/* 8px grid */
+.gap-8{height:8px}
+.gap-16{height:16px}
+.gap-24{height:24px}
+.gap-32{height:32px}
+.gap-40{height:40px}
+.gap-48{height:48px}
 
-/* container */
-.container{max-width:420px;margin:0 auto;padding:0 16px 100px}
+.container{max-width:420px;margin:0 auto;padding:0 20px 120px}
 
-/* report card */
-.report-card{position:relative;border-radius:24px;overflow:hidden;margin-bottom:20px;animation:fadeUp .6s ease-out}
-.report-card-inner{position:relative;padding:32px 24px 28px;background:linear-gradient(135deg,#111112 0%,#1A1A1E 100%);border:0.5px solid rgba(199,255,56,0.08)}
-.report-card::before{content:'';position:absolute;inset:0;border-radius:24px;padding:1px;background:linear-gradient(135deg,rgba(199,255,56,0.12),transparent 60%,rgba(199,255,56,0.04));-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:exclude;mask-composite:exclude;pointer-events:none}
+/* ====== HERO ====== */
+.hero{position:relative;padding:48px 0 40px;overflow:hidden}
+.hero-bg{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.hero-chart{position:absolute;bottom:-40px;right:-20px;width:260px;height:200px;opacity:0.12}
+.hero-chart svg{width:100%;height:100%}
+.hero-particles{position:absolute;top:0;right:0;width:200px;height:200px;pointer-events:none}
+.particle{position:absolute;width:3px;height:3px;border-radius:50%;background:#B8FF2C;opacity:0}
+.particle:nth-child(1){top:20%;right:30%;animation:particleFloat 4s ease-in-out infinite}
+.particle:nth-child(2){top:50%;right:15%;animation:particleFloat 5s ease-in-out infinite 1s}
+.particle:nth-child(3){top:30%;right:50%;animation:particleFloat 3.5s ease-in-out infinite 0.5s}
+.particle:nth-child(4){top:60%;right:40%;animation:particleFloat 4.5s ease-in-out infinite 2s}
+.particle:nth-child(5){top:15%;right:60%;animation:particleFloat 3s ease-in-out infinite 1.5s}
+@keyframes particleFloat{0%,100%{opacity:0;transform:translateY(0)}50%{opacity:0.6;transform:translateY(-12px)}}
+.hero-mascot{position:absolute;top:20px;right:0;font-size:72px;opacity:0.7;filter:grayscale(0.2);pointer-events:none;user-select:none}
+.hero-glow{position:absolute;top:-60px;right:-40px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(184,255,44,0.06),transparent 70%);pointer-events:none}
 
-/* glow effect */
-.report-glow{position:absolute;top:-80px;right:-80px;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,rgba(199,255,56,0.04),transparent 70%);pointer-events:none}
-.report-glow2{position:absolute;bottom:-60px;left:-60px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(199,255,56,0.03),transparent 70%);pointer-events:none}
+.hero-title{font-size:56px;font-weight:800;letter-spacing:-2px;line-height:1;color:#FFF;position:relative}
+.hero-title span{display:block;font-size:18px;font-weight:400;color:#5F5F5F;letter-spacing:0;margin-top:16px}
+.hero-week{font-size:64px;font-weight:900;letter-spacing:-3px;color:#B8FF2C;margin-top:8px;line-height:1}
 
-/* card header */
-.card-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px}
-.card-brand{display:flex;align-items:center;gap:10px}
-.card-logo{width:32px;height:32px;border-radius:10px;background:#C7FF38;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#0A0A0A}
-.card-brand-text{font-size:11px;font-weight:600;color:#5F5F5F;letter-spacing:0.03em;text-transform:uppercase}
-.card-brand-text span{display:block;font-size:13px;font-weight:700;color:#FFF;letter-spacing:-0.2px;margin-top:1px;text-transform:none}
-.card-week{text-align:right}
-.card-week-num{font-size:22px;font-weight:800;color:#C7FF38;line-height:1}
-.card-week-label{font-size:9px;font-weight:500;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.05em;margin-top:2px}
+/* ====== SECTION TITLE ====== */
+.section-title{font-size:32px;font-weight:800;letter-spacing:-1px;color:#FFF;margin-bottom:24px;line-height:1.2}
 
-/* perf number */
-.perf-number{margin:16px 0 20px;text-align:center}
-.perf-r{font-size:52px;font-weight:900;color:#C7FF38;letter-spacing:-2px;line-height:1;animation:countUp .8s ease-out}
-.perf-r .r-suffix{font-size:24px;font-weight:600;opacity:0.7}
-.perf-label{font-size:11px;font-weight:500;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.06em;margin-top:4px}
+/* ====== WORKFLOW TIMELINE ====== */
+.timeline{display:flex;gap:0;overflow-x:auto;padding:8px 0 16px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
+.timeline::-webkit-scrollbar{height:2px}
+.timeline::-webkit-scrollbar-thumb{background:rgba(184,255,44,0.15);border-radius:2px}
+.timeline-item{flex-shrink:0;width:140px;scroll-snap-align:start;position:relative;padding:20px 16px;border-radius:26px;background:#161616;border:1px solid rgba(255,255,255,0.04);margin-right:12px;transition:all .3s}
+.timeline-item:last-child{margin-right:0}
+.timeline-item::after{content:'';position:absolute;top:50%;right:-10px;width:8px;height:8px;border-top:1.5px solid rgba(184,255,44,0.2);border-right:1.5px solid rgba(184,255,44,0.2);transform:translateY(-50%) rotate(45deg);pointer-events:none}
+.timeline-item:last-child::after{display:none}
+.timeline-icon{width:36px;height:36px;border-radius:12px;background:rgba(184,255,44,0.06);display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+.timeline-icon svg{width:18px;height:18px;stroke:#B8FF2C;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.timeline-step{font-size:13px;font-weight:600;color:#FFF;margin-bottom:4px}
+.timeline-desc{font-size:11px;font-weight:400;color:#5F5F5F;line-height:1.4}
 
-/* stat grid */
-.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:24px 0 20px}
-.stat-item{text-align:center;padding:12px 8px;border-radius:14px;background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.04)}
-.stat-value{font-size:18px;font-weight:800;color:#FFF;line-height:1}
-.stat-value.green{color:#C7FF38}
-.stat-value.red{color:#FF5D5D}
-.stat-value.yellow{color:#FFC857}
-.stat-label{font-size:9px;font-weight:500;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.04em;margin-top:4px}
+/* ====== REPORT CARD ====== */
+.report-card{position:relative;border-radius:32px;overflow:hidden;background:#161616;border:1px solid rgba(255,255,255,0.04);padding:32px 24px;animation:cardIn .35s ease-out;box-shadow:0 8px 40px rgba(0,0,0,0.3)}
+.report-card::before{content:'';position:absolute;top:-80px;right:-80px;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,rgba(184,255,44,0.03),transparent 70%);pointer-events:none}
+@keyframes cardIn{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}
 
-/* best/worst row */
-.best-worst{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
-.bw-item{padding:12px 14px;border-radius:12px;border:0.5px solid rgba(255,255,255,0.04);background:rgba(255,255,255,0.01)}
-.bw-label{font-size:8px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px}
-.bw-value{font-size:14px;font-weight:700}
-.bw-value.green{color:#C7FF38}
-.bw-value.sub{color:#5F5F5F;font-size:10px;font-weight:400;margin-top:1px}
+.card-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px}
+.card-brand{display:flex;align-items:center;gap:12px}
+.card-logo{width:40px;height:40px;border-radius:12px;background:#B8FF2C;display:flex;align-items:center;justify-content:center}
+.card-logo svg{width:20px;height:20px;stroke:#0B0B0B;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.card-brand-text{font-size:11px;font-weight:500;color:#5F5F5F;letter-spacing:0.03em;text-transform:uppercase}
+.card-brand-text strong{display:block;font-size:15px;font-weight:700;color:#FFF;letter-spacing:-0.2px;margin-top:2px;text-transform:none}
+.card-week-num{font-size:28px;font-weight:800;color:#B8FF2C;letter-spacing:-1px;line-height:1;text-align:right}
+.card-week-label{font-size:11px;font-weight:500;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.05em;margin-top:2px;text-align:right}
 
-/* consistency bar */
-.consistency{margin-bottom:20px}
-.cons-label{display:flex;justify-content:space-between;font-size:10px;font-weight:500;color:#5F5F5F;margin-bottom:4px}
-.cons-bar{height:4px;border-radius:2px;background:rgba(255,255,255,0.06);overflow:hidden}
-.cons-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,#C7FF38,#8FFF00);transition:width 1s ease-out}
+/* Total R */
+.total-r{text-align:center;padding:8px 0 24px}
+.total-r-value{font-size:64px;font-weight:900;letter-spacing:-3px;color:#B8FF2C;line-height:1;animation:countUp .6s ease-out}
+.total-r-label{font-size:13px;font-weight:500;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.06em;margin-top:6px}
 
-/* ai section */
-.ai-section{margin:28px 0 24px;padding:20px;border-radius:16px;background:linear-gradient(135deg,rgba(199,255,56,0.03),rgba(199,255,56,0.01));border:0.5px solid rgba(199,255,56,0.06)}
-.ai-header{display:flex;align-items:center;gap:8px;margin-bottom:14px}
-.ai-icon{width:20px;height:20px;border-radius:6px;background:rgba(199,255,56,0.12);display:flex;align-items:center;justify-content:center;font-size:10px}
-.ai-title{font-size:11px;font-weight:700;color:#C7FF38;letter-spacing:0.02em;text-transform:uppercase}
-.ai-review{font-size:13px;line-height:1.6;color:rgba(255,255,255,0.7);margin-bottom:14px}
-.ai-review strong{color:#FFF;font-weight:600}
-.ai-grade{display:flex;align-items:center;justify-content:space-between;padding-top:14px;border-top:0.5px solid rgba(199,255,56,0.06)}
-.ai-grade-label{font-size:10px;font-weight:500;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.04em}
-.ai-grade-value{font-size:20px;font-weight:800;color:#C7FF38}
-.ai-detail{font-size:11px;color:#5F5F5F;margin-top:12px;line-height:1.5}
-.ai-detail span{color:rgba(255,255,255,0.5)}
+/* Stat mini-cards */
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px}
+.stat-mini{padding:16px 12px;border-radius:20px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.04);text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.15)}
+.stat-mini-value{font-size:22px;font-weight:800;color:#FFF;line-height:1;letter-spacing:-0.5px}
+.stat-mini-value.green{color:#B8FF2C}
+.stat-mini-value.red{color:#FF5D5D}
+.stat-mini-value.yellow{color:#FFC857}
+.stat-mini-label{font-size:11px;font-weight:500;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.04em;margin-top:6px}
 
-/* share button */
-.share-section{margin:24px 0}
-.share-main{width:100%;padding:16px;border-radius:14px;border:none;background:#C7FF38;color:#0A0A0A;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s}
-.share-main:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(199,255,56,0.15)}
-.share-main:active{transform:translateY(0)}
-.share-options{display:flex;gap:8px;margin-top:10px;justify-content:center}
-.share-opt{width:44px;height:44px;border-radius:50%;border:0.5px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;font-size:16px}
-.share-opt:hover{border-color:rgba(199,255,56,0.2);background:rgba(199,255,56,0.05);transform:translateY(-2px)}
+/* Circular progress */
+.rings-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:20px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.04)}
+.ring-item{text-align:center}
+.ring-canvas{width:56px;height:56px;margin:0 auto 8px}
+.ring-label{font-size:10px;font-weight:500;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.04em}
+.ring-value{font-size:14px;font-weight:700;color:#FFF;margin-top:2px}
 
-/* divider */
-.divider{height:0.5px;background:rgba(255,255,255,0.06);margin:28px 0}
+/* ====== PUSH NOTIFICATION ====== */
+.push-card{position:relative;border-radius:26px;background:#161616;border:1px solid rgba(255,255,255,0.04);padding:24px;overflow:hidden;animation:fadeUp .4s ease-out}
+.push-card::before{content:'';position:absolute;inset:0;border-radius:26px;padding:1px;background:linear-gradient(135deg,rgba(184,255,44,0.06),transparent 50%,rgba(184,255,44,0.02));-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:exclude;mask-composite:exclude;pointer-events:none}
+.push-phone{max-width:280px;margin:0 auto;background:rgba(255,255,255,0.03);border-radius:24px;padding:20px;border:1px solid rgba(255,255,255,0.04)}
+.push-time{font-size:11px;color:#5F5F5F;text-align:right;margin-bottom:12px;font-weight:500}
+.push-content{display:flex;gap:14px;align-items:flex-start}
+.push-icon-small{width:36px;height:36px;border-radius:10px;background:#B8FF2C;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.push-icon-small svg{width:18px;height:18px;stroke:#0B0B0B;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.push-text{flex:1}
+.push-app{font-size:12px;font-weight:600;color:#FFF;margin-bottom:2px}
+.push-title{font-size:14px;font-weight:700;color:#FFF;margin-bottom:4px}
+.push-body{font-size:12px;color:rgba(255,255,255,0.5);line-height:1.4}
+.push-badge{display:inline-block;margin-top:10px;padding:4px 10px;border-radius:99px;background:rgba(184,255,44,0.08);color:#B8FF2C;font-size:10px;font-weight:600}
 
-/* section */
-.section{margin-bottom:24px}
-.section-label{font-size:11px;font-weight:700;color:#FFF;letter-spacing:0.02em;margin-bottom:14px;display:flex;align-items:center;gap:8px}
-.section-label .count{font-size:9px;font-weight:500;color:#5F5F5F;background:rgba(255,255,255,0.04);padding:1px 7px;border-radius:99px}
+/* ====== DELIVERY ====== */
+.delivery-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;position:relative}
+.delivery-card{padding:24px;border-radius:26px;background:#161616;border:1px solid rgba(255,255,255,0.04);text-align:center}
+.delivery-icon{width:48px;height:48px;border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
+.delivery-icon.blue{background:rgba(0,136,204,0.1)}
+.delivery-icon.blue svg{stroke:#0088CC}
+.delivery-icon.green{background:rgba(184,255,44,0.06)}
+.delivery-icon.green svg{stroke:#B8FF2C}
+.delivery-icon svg{width:24px;height:24px;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.delivery-label{font-size:13px;font-weight:600;color:#FFF;margin-bottom:4px}
+.delivery-desc{font-size:11px;color:#5F5F5F;line-height:1.4}
+.delivery-arrow{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:20px;color:rgba(184,255,44,0.3);animation:arrowPulse 2s ease-in-out infinite}
+@keyframes arrowPulse{0%,100%{opacity:0.3;transform:translate(-50%,-50%) translateX(0)}50%{opacity:1;transform:translate(-50%,-50%) translateX(4px)}}
 
-/* detail grid */
-.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.detail-item{padding:12px 14px;border-radius:12px;background:rgba(255,255,255,0.01);border:0.5px solid rgba(255,255,255,0.04)}
-.detail-item.full{grid-column:1/-1}
-.detail-label{font-size:8px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px}
-.detail-value{font-size:13px;font-weight:700;color:#FFF}
-.detail-value.green{color:#C7FF38}
-.detail-value.small{font-size:11px}
+/* ====== AI REVIEW ====== */
+.ai-card{padding:28px 24px;border-radius:32px;background:#161616;border:1px solid rgba(255,255,255,0.04);animation:fadeUp .5s ease-out}
+.ai-header{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.ai-mascot{font-size:40px;line-height:1;opacity:0.8}
+.ai-title-text{font-size:13px;font-weight:500;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.04em}
+.ai-review-text{font-size:18px;font-weight:500;color:rgba(255,255,255,0.85);line-height:1.6;margin-bottom:20px}
+.ai-review-text strong{color:#FFF;font-weight:700}
+.ai-details{font-size:14px;color:#5F5F5F;line-height:1.7;margin-bottom:20px;padding:16px 0;border-top:1px solid rgba(255,255,255,0.04);border-bottom:1px solid rgba(255,255,255,0.04)}
+.ai-details strong{color:#FFF;font-weight:600}
+.ai-grade-row{display:flex;align-items:center;justify-content:space-between}
+.ai-grade-label{font-size:13px;font-weight:500;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.04em}
+.ai-grade-badge{width:56px;height:56px;border-radius:50%;background:rgba(184,255,44,0.06);border:1.5px solid rgba(184,255,44,0.15);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#B8FF2C;box-shadow:0 0 20px rgba(184,255,44,0.06)}
 
-/* session bars */
-.session-grid{display:flex;gap:8px;margin-top:10px}
-.session-card{flex:1;padding:10px 6px;border-radius:10px;background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.04);text-align:center}
-.session-name{font-size:8px;font-weight:700;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px}
-.session-bar{height:32px;border-radius:4px;margin:0 auto 4px;width:16px;background:rgba(199,255,56,0.06);position:relative;overflow:hidden}
-.session-fill{position:absolute;bottom:0;left:0;right:0;border-radius:4px;background:linear-gradient(to top,#C7FF38,rgba(199,255,56,0.3));transition:height 1s ease-out}
-.session-r{font-size:10px;font-weight:700;color:#FFF}
-.session-pct{font-size:8px;color:#5F5F5F}
+/* ====== SHARE ====== */
+.share-card{padding:28px 24px;border-radius:32px;background:#161616;border:1px solid rgba(255,255,255,0.04)}
+.share-title{font-size:22px;font-weight:700;color:#FFF;margin-bottom:20px;letter-spacing:-0.5px}
+.share-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.share-btn{display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px 8px;border-radius:20px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.04);cursor:pointer;transition:all .2s;font-family:inherit}
+.share-btn:hover{border-color:rgba(184,255,44,0.15);transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,0.2)}
+.share-btn:active{transform:translateY(0)}
+.share-btn-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center}
+.share-btn-icon svg{width:20px;height:20px;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.share-btn-label{font-size:11px;font-weight:600;color:rgba(255,255,255,0.7)}
+.share-btn.instagram .share-btn-icon{background:linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)}
+.share-btn.instagram .share-btn-icon svg{stroke:#FFF}
+.share-btn.instagram-post .share-btn-icon{background:linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)}
+.share-btn.instagram-post .share-btn-icon svg{stroke:#FFF}
+.share-btn.telegram .share-btn-icon{background:rgba(0,136,204,0.1)}
+.share-btn.telegram .share-btn-icon svg{stroke:#0088CC}
+.share-btn.whatsapp .share-btn-icon{background:rgba(37,211,102,0.08)}
+.share-btn.whatsapp .share-btn-icon svg{stroke:#25D366}
+.share-btn.twitter .share-btn-icon{background:rgba(255,255,255,0.04)}
+.share-btn.twitter .share-btn-icon svg{stroke:#FFF}
+.share-btn.save .share-btn-icon{background:rgba(184,255,44,0.06)}
+.share-btn.save .share-btn-icon svg{stroke:#B8FF2C}
 
-/* history */
-.history-list{margin-top:8px}
-.history-item{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,0.01);border:0.5px solid rgba(255,255,255,0.04);margin-bottom:6px;cursor:pointer;transition:all .2s}
-.history-item:hover{background:rgba(255,255,255,0.03);border-color:rgba(199,255,56,0.08)}
-.history-item.active{border-color:rgba(199,255,56,0.15);background:rgba(199,255,56,0.03)}
-.history-week{font-size:12px;font-weight:600;color:#FFF}
-.history-week span{font-size:9px;font-weight:400;color:#5F5F5F;margin-left:4px}
-.history-r{font-size:12px;font-weight:700}
-.history-r.pos{color:#C7FF38}
-.history-r.neg{color:#FF5D5D}
-.history-grade{font-size:9px;font-weight:600;padding:2px 7px;border-radius:99px;background:rgba(199,255,56,0.08);color:#C7FF38;margin-left:8px}
-.history-arrow{color:#5F5F5F;font-size:10px;margin-left:8px}
+/* ====== HISTORY (horizontal scroll) ====== */
+.history-scroll{display:flex;gap:12px;overflow-x:auto;padding:4px 0 12px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
+.history-scroll::-webkit-scrollbar{height:2px}
+.history-scroll::-webkit-scrollbar-thumb{background:rgba(184,255,44,0.1);border-radius:2px}
+.history-card{flex-shrink:0;width:160px;scroll-snap-align:start;padding:20px 16px;border-radius:26px;background:#161616;border:1px solid rgba(255,255,255,0.04);cursor:pointer;transition:all .2s}
+.history-card:hover{border-color:rgba(184,255,44,0.1);transform:translateY(-2px)}
+.history-card.active{border-color:rgba(184,255,44,0.15);background:rgba(184,255,44,0.02)}
+.history-week{font-size:12px;font-weight:500;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:8px}
+.history-week strong{font-size:18px;font-weight:700;color:#FFF;display:block;letter-spacing:-0.3px;text-transform:none;margin-top:2px}
+.history-r{font-size:24px;font-weight:800;color:#B8FF2C;margin-bottom:6px;letter-spacing:-1px}
+.history-grade{font-size:11px;font-weight:600;color:#5F5F5F}
+.history-grade span{display:inline-block;padding:2px 8px;border-radius:99px;background:rgba(184,255,44,0.08);color:#B8FF2C;margin-left:4px}
+.history-mini-chart{height:2px;border-radius:1px;background:rgba(255,255,255,0.04);margin-top:12px;overflow:hidden}
+.history-mini-fill{height:100%;border-radius:1px;background:#B8FF2C;transition:width .8s ease-out}
 
-/* tab bar */
-.tab-bar{display:flex;gap:0;margin-bottom:16px;border-bottom:0.5px solid rgba(255,255,255,0.06)}
-.tab{flex:1;padding:10px 0;text-align:center;font-size:11px;font-weight:500;color:#5F5F5F;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;font-family:inherit;background:none;border-top:none;border-left:none;border-right:none}
-.tab.active{color:#C7FF38;border-bottom-color:#C7FF38;font-weight:600}
+/* ====== ANNUAL PREVIEW ====== */
+.annual-card{position:relative;border-radius:32px;overflow:hidden;background:#161616;border:1px solid rgba(255,255,255,0.04);padding:32px 24px}
+.annual-bg{position:absolute;inset:0;pointer-events:none}
+.annual-chart{position:absolute;bottom:0;right:0;width:200px;height:160px;opacity:0.08}
+.annual-chart svg{width:100%;height:100%}
+.annual-mascot{position:absolute;bottom:16px;right:16px;font-size:48px;opacity:0.6;pointer-events:none}
+.annual-title{font-size:26px;font-weight:800;letter-spacing:-1px;color:#FFF;margin-bottom:4px;position:relative}
+.annual-sub{font-size:13px;color:#5F5F5F;margin-bottom:24px;position:relative}
+.annual-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;position:relative}
+.annual-item{padding:12px 14px;border-radius:16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04)}
+.annual-item.full{grid-column:1/-1}
+.annual-label{font-size:10px;font-weight:500;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px}
+.annual-value{font-size:18px;font-weight:800;color:#FFF}
+.annual-value.green{color:#B8FF2C}
+.annual-badge{display:inline-block;margin-top:16px;padding:8px 16px;border-radius:99px;background:rgba(184,255,44,0.06);border:1px solid rgba(184,255,44,0.1);color:#B8FF2C;font-size:12px;font-weight:700}
 
-/* footer */
-.footer-text{text-align:center;font-size:10px;color:#5F5F5F;padding:20px 0 40px;line-height:1.6}
+/* ====== FOOTER ====== */
+.footer{text-align:center;padding:48px 0 60px}
+.footer-logo{font-size:12px;font-weight:600;color:#B8FF2C;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:8px}
+.footer-text{font-size:13px;color:#5F5F5F;line-height:1.6}
 .footer-text strong{color:rgba(255,255,255,0.3);font-weight:600}
 
-/* mascot */
-.mascot{position:fixed;bottom:20px;right:16px;width:48px;height:48px;border-radius:50%;background:rgba(199,255,56,0.06);border:0.5px solid rgba(199,255,56,0.1);display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;transition:all .2s;z-index:20;backdrop-filter:blur(8px)}
-.mascot:hover{transform:scale(1.1);background:rgba(199,255,56,0.1)}
+/* ====== ANIMATIONS ====== */
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes countUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
-/* modal overlay */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);z-index:100;display:none;align-items:center;justify-content:center;padding:20px;animation:fadeIn .2s}
-.modal-overlay.open{display:flex}
-.modal-card{background:#111112;border-radius:20px;border:0.5px solid rgba(199,255,56,0.08);padding:28px 24px;max-width:360px;width:100%;animation:scaleIn .3s ease-out}
-.modal-title{font-size:16px;font-weight:700;color:#FFF;margin-bottom:8px;text-align:center}
-.modal-sub{font-size:12px;color:#5F5F5F;text-align:center;margin-bottom:20px;line-height:1.5}
-.modal-options{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
-.modal-opt{text-align:center;cursor:pointer;transition:all .2s}
-.modal-opt:hover{transform:translateY(-2px)}
-.modal-opt-icon{width:52px;height:52px;border-radius:14px;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;font-size:20px;border:0.5px solid rgba(255,255,255,0.06)}
-.modal-opt-label{font-size:9px;font-weight:500;color:#5F5F5F}
-.modal-close{width:100%;padding:14px;border-radius:12px;border:0.5px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:#5F5F5F;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .2s}
-.modal-close:hover{background:rgba(255,255,255,0.04);color:#FFF}
+/* stagger */
+.stagger > *{animation:fadeUp .4s ease-out both}
+.stagger > *:nth-child(1){animation-delay:0s}
+.stagger > *:nth-child(2){animation-delay:0.05s}
+.stagger > *:nth-child(3){animation-delay:0.1s}
+.stagger > *:nth-child(4){animation-delay:0.15s}
+.stagger > *:nth-child(5){animation-delay:0.2s}
+.stagger > *:nth-child(6){animation-delay:0.25s}
 
-/* share preview for export */
-#sharePreview{position:fixed;left:-9999px;top:0;width:420px;background:#0A0A0A;padding:0;z-index:-1}
+/* ====== MASCOT GLOW ====== */
+.mascot-glow{position:relative;display:inline-block}
+.mascot-glow::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:80px;height:80px;border-radius:50%;background:radial-gradient(circle,rgba(184,255,44,0.06),transparent 70%);animation:mascotBreathe 3.5s ease-in-out infinite;pointer-events:none}
+@keyframes mascotBreathe{0%,100%{opacity:0.4;transform:translate(-50%,-50%) scale(0.9)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.1)}}
 
-/* animations */
-@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-@keyframes fadeIn{from{opacity:0}to{opacity:1}}
-@keyframes scaleIn{from{opacity:0;transform:scale(0.92)}to{opacity:1;transform:scale(1)}}
-@keyframes countUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+/* line draw */
+.line-draw{animation:lineGrow .8s ease-out}
+@keyframes lineGrow{from{width:0%}to{width:100%}}
 
 /* responsive */
-@media(max-width:420px){.container{padding:0 12px 80px}.report-card-inner{padding:24px 16px 20px}.perf-r{font-size:42px}}
+@media(max-width:420px){
+  .container{padding:0 16px 80px}
+  .hero-title{font-size:40px}
+  .hero-week{font-size:48px}
+  .section-title{font-size:26px}
+  .total-r-value{font-size:52px}
+  .stat-mini-value{font-size:18px}
+  .stat-row{gap:8px}
+  .annual-title{font-size:22px}
+  .share-grid{grid-template-columns:repeat(3,1fr);gap:8px}
+  .timeline-item{width:120px;padding:16px 12px}
+}
 </style>
 </head>
 <body>
 
-<!-- Header -->
-<div class="header">
-  <div class="header-left">
-    <div class="header-icon">
-      <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+<div class="container">
+
+  <!-- ====== SECTION 1: HERO ====== -->
+  <section class="hero">
+    <div class="hero-bg">
+      <div class="hero-chart">
+        <svg viewBox="0 0 260 200" preserveAspectRatio="none">
+          <path d="M0 180 L30 160 L50 170 L70 120 L90 130 L110 80 L130 90 L150 40 L170 50 L190 20 L210 30 L230 10 L260 0" stroke="#B8FF2C" stroke-width="2" fill="none" opacity="0.8"/>
+          <path d="M0 180 L30 160 L50 170 L70 120 L90 130 L110 80 L130 90 L150 40 L170 50 L190 20 L210 30 L230 10 L260 0" stroke="#B8FF2C" stroke-width="8" fill="none" opacity="0.05"/>
+          <path d="M0 190 L30 170 L50 180 L70 140 L90 150 L110 100 L130 110 L150 60 L170 70 L190 40 L210 50 L230 20 L260 10" stroke="#B8FF2C" stroke-width="1" fill="none" opacity="0.3"/>
+        </svg>
+      </div>
+      <div class="hero-particles">
+        <span class="particle"></span>
+        <span class="particle"></span>
+        <span class="particle"></span>
+        <span class="particle"></span>
+        <span class="particle"></span>
+      </div>
+      <div class="hero-glow"></div>
+      <div class="hero-mascot mascot-glow">🐉</div>
     </div>
-    <h1>Weekly Report</h1>
-    <span class="header-badge">Week 31</span>
-  </div>
-  <div class="header-right">
-    <button class="header-btn" onclick="showHistory()" title="History">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-    </button>
-    <button class="header-btn" onclick="showShareModal()" title="Share">
-      <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-    </button>
-  </div>
-</div>
+    <div class="hero-title" style="position:relative;z-index:1">
+      Weekly<br>Report
+      <span>Your trading performance summary</span>
+    </div>
+    <div class="hero-week" style="position:relative;z-index:1">31</div>
+  </section>
 
-<div class="container" id="mainContainer">
+  <!-- ====== SECTION 2: WORKFLOW TIMELINE ====== -->
+  <div class="gap-48"></div>
+  <div class="section-title">How It Works</div>
+  <div class="timeline">
+    <div class="timeline-item">
+      <div class="timeline-icon">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="8" y2="18"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="16" y1="14" x2="16" y2="18"/></svg>
+      </div>
+      <div class="timeline-step">Week Ends</div>
+      <div class="timeline-desc">Friday market close</div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2a4 4 0 0 1 4 4c0 1.2-.5 2.3-1.4 3.1L12 17l-2.6-1.9A4 4 0 0 1 8 12a4 4 0 0 1 4-4z"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M12 2v2"/><path d="M12 20v2"/><circle cx="12" cy="12" r="10"/></svg>
+      </div>
+      <div class="timeline-step">AI Analysis</div>
+      <div class="timeline-desc">Bot analyses every trade</div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-icon">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      </div>
+      <div class="timeline-step">Generate</div>
+      <div class="timeline-desc">Creates performance card</div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-icon">
+        <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </div>
+      <div class="timeline-step">Telegram</div>
+      <div class="timeline-desc">Posts report automatically</div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-icon">
+        <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </div>
+      <div class="timeline-step">Notify</div>
+      <div class="timeline-desc">Push notification sent</div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-icon">
+        <svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12" y2="18"/></svg>
+      </div>
+      <div class="timeline-step">View in App</div>
+      <div class="timeline-desc">Tap to open and share</div>
+    </div>
+  </div>
 
-  <!-- Report Card -->
+  <!-- ====== SECTION 3: REPORT CARD ====== -->
+  <div class="gap-48"></div>
+  <div class="section-title">This Week</div>
   <div class="report-card" id="reportCard">
-    <div class="report-glow"></div>
-    <div class="report-glow2"></div>
-    <div class="report-card-inner">
-
-      <!-- Brand -->
-      <div class="card-header">
-        <div class="card-brand">
-          <div class="card-logo">S</div>
-          <div class="card-brand-text">
-            The Slayers
-            <span>Weekly Performance</span>
-          </div>
+    <div class="card-header">
+      <div class="card-brand">
+        <div class="card-logo">
+          <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
         </div>
-        <div class="card-week">
-          <div class="card-week-num">31</div>
-          <div class="card-week-label">Week</div>
+        <div class="card-brand-text">
+          The Slayers
+          <strong>Weekly Performance</strong>
         </div>
       </div>
-
-      <!-- Performance Number -->
-      <div class="perf-number">
-        <div class="perf-r" id="perfR">+12.4<span class="r-suffix">R</span></div>
-        <div class="perf-label">Net Return</div>
+      <div>
+        <div class="card-week-num">31</div>
+        <div class="card-week-label">Week</div>
       </div>
+    </div>
 
-      <!-- Stats Grid -->
-      <div class="stat-grid">
-        <div class="stat-item">
-          <div class="stat-value green" id="winRate">100%</div>
-          <div class="stat-label">Win Rate</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-value" id="totalTrades">5</div>
-          <div class="stat-label">Trades</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-value green" id="totalWins">5</div>
-          <div class="stat-label">Wins</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-value red" id="totalLosses">0</div>
-          <div class="stat-label">Losses</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-value yellow" id="totalBEs">2</div>
-          <div class="stat-label">BE</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-value" id="avgRR">2.8</div>
-          <div class="stat-label">Avg RR</div>
-        </div>
+    <div class="total-r">
+      <div class="total-r-value" id="totalR">+12.4<span style="font-size:28px;font-weight:600;opacity:0.7">R</span></div>
+      <div class="total-r-label">Net Return</div>
+    </div>
+
+    <!-- Row 1 -->
+    <div class="stat-row">
+      <div class="stat-mini">
+        <div class="stat-mini-value green" id="winRate">100%</div>
+        <div class="stat-mini-label">Win Rate</div>
       </div>
-
-      <!-- Best / Worst -->
-      <div class="best-worst">
-        <div class="bw-item">
-          <div class="bw-label">Best Trade</div>
-          <div class="bw-value green" id="bestTrade">+3.8R</div>
-          <div class="bw-value sub">GBPUSD · BUY</div>
-        </div>
-        <div class="bw-item">
-          <div class="bw-label">Worst Trade</div>
-          <div class="bw-value" id="worstTrade">0R</div>
-          <div class="bw-value sub">Capital Protected</div>
-        </div>
+      <div class="stat-mini">
+        <div class="stat-mini-value" id="trades">5</div>
+        <div class="stat-mini-label">Trades</div>
       </div>
-
-      <!-- Consistency -->
-      <div class="consistency">
-        <div class="cons-label">
-          <span>Consistency Score</span>
-          <span id="consScore">96%</span>
-        </div>
-        <div class="cons-bar">
-          <div class="cons-fill" id="consFill" style="width:0%"></div>
-        </div>
+      <div class="stat-mini">
+        <div class="stat-mini-value yellow" id="bes">2</div>
+        <div class="stat-mini-label">Break Even</div>
       </div>
+    </div>
 
-      <!-- Trade Quality -->
-      <div style="display:flex;gap:10px;margin-bottom:4px">
-        <div style="flex:1;padding:10px 14px;border-radius:12px;background:rgba(199,255,56,0.04);border:0.5px solid rgba(199,255,56,0.08)">
-          <div style="font-size:8px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px">Trade Quality</div>
-          <div style="font-size:14px;font-weight:700;color:#C7FF38">Elite</div>
-        </div>
-        <div style="flex:1;padding:10px 14px;border-radius:12px;background:rgba(255,255,255,0.01);border:0.5px solid rgba(255,255,255,0.04)">
-          <div style="font-size:8px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px">Avg Hold</div>
-          <div style="font-size:14px;font-weight:700;color:#FFF" id="avgHold">4h 32m</div>
-        </div>
+    <!-- Row 2 -->
+    <div class="stat-row">
+      <div class="stat-mini">
+        <div class="stat-mini-value green" id="bestTrade">+3.8R</div>
+        <div class="stat-mini-label">Best Trade</div>
       </div>
+      <div class="stat-mini">
+        <div class="stat-mini-value" id="worstTrade">0R</div>
+        <div class="stat-mini-label">Worst Trade</div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-mini-value green" id="capitalProtected">✓</div>
+        <div class="stat-mini-label">Capital Protected</div>
+      </div>
+    </div>
 
-      <!-- Mascot + Footer -->
-      <div style="text-align:center;margin-top:24px;padding-top:20px;border-top:0.5px solid rgba(255,255,255,0.04)">
-        <div style="font-size:9px;color:#5F5F5F;line-height:1.5;font-style:italic">
-          Trade With Structure.<br>
-          <strong style="color:rgba(199,255,56,0.5);font-weight:600">Win With Discipline.</strong>
+    <!-- Circular rings -->
+    <div class="rings-row">
+      <div class="ring-item">
+        <canvas class="ring-canvas" id="ringConsistency" width="56" height="56"></canvas>
+        <div class="ring-label">Consistency</div>
+        <div class="ring-value" id="ringConsistencyVal">96</div>
+      </div>
+      <div class="ring-item">
+        <canvas class="ring-canvas" id="ringQuality" width="56" height="56"></canvas>
+        <div class="ring-label">Trade Quality</div>
+        <div class="ring-value" id="ringQualityVal">Elite</div>
+      </div>
+      <div class="ring-item">
+        <canvas class="ring-canvas" id="ringAvgRR" width="56" height="56"></canvas>
+        <div class="ring-label">Avg RR</div>
+        <div class="ring-value" id="ringAvgRRVal">2.8</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== SECTION 4: PUSH NOTIFICATION ====== -->
+  <div class="gap-48"></div>
+  <div class="section-title">Push Notification</div>
+  <div class="push-card">
+    <div class="push-phone">
+      <div class="push-time">Now</div>
+      <div class="push-content">
+        <div class="push-icon-small">
+          <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        </div>
+        <div class="push-text">
+          <div class="push-app">The Slayers</div>
+          <div class="push-title">🏆 Weekly Report Ready</div>
+          <div class="push-body">You finished this week at +12.4R. Tap to view your report.</div>
+          <div class="push-badge">Swipe to open</div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- AI Coach -->
-  <div class="section">
-    <div class="section-label">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C7FF38" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.7"><path d="M12 2a4 4 0 0 1 4 4c0 1.2-.5 2.3-1.4 3.1L12 17l-2.6-1.9A4 4 0 0 1 8 12a4 4 0 0 1 4-4z"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M12 2v2"/><path d="M12 20v2"/><circle cx="12" cy="12" r="10"/></svg>
-      AI Coach Review
+  <!-- ====== SECTION 5: DELIVERY ====== -->
+  <div class="gap-48"></div>
+  <div class="section-title">Delivery</div>
+  <div class="delivery-grid">
+    <div class="delivery-card">
+      <div class="delivery-icon blue">
+        <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </div>
+      <div class="delivery-label">Telegram</div>
+      <div class="delivery-desc">Weekly recap posted automatically</div>
     </div>
-    <div class="ai-section">
-      <div class="ai-header">
-        <div class="ai-icon">✦</div>
-        <div class="ai-title">Weekly Analysis</div>
+    <div class="delivery-arrow">→</div>
+    <div class="delivery-card">
+      <div class="delivery-icon green">
+        <svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12" y2="18"/></svg>
       </div>
-      <div class="ai-review" id="aiReview">
-        <strong>Excellent discipline this week.</strong> You followed your trading plan consistently and avoided overtrading. Your strongest performance came during <strong>London sessions</strong>.
-      </div>
-      <div class="ai-detail">
-        <span>Most profitable pair:</span> <strong style="color:#FFF;font-weight:600">GBPUSD</strong><br>
-        <span>Weakest area:</span> Holding winners too conservatively after TP1.<br>
-        <span>Recommendation:</span> Focus on allowing runners to reach TP2 whenever market structure remains intact.
-      </div>
-      <div class="ai-grade">
-        <span class="ai-grade-label">Overall Grade</span>
-        <span class="ai-grade-value" id="aiGrade">A</span>
-      </div>
+      <div class="delivery-label">App</div>
+      <div class="delivery-desc">Your personalized report is ready</div>
     </div>
   </div>
 
-  <!-- Weekly Detail -->
-  <div class="section">
-    <div class="section-label">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-      Weekly Summary
-    </div>
-    <div class="detail-grid">
-      <div class="detail-item">
-        <div class="detail-label">Total R</div>
-        <div class="detail-value green">+12.4R</div>
-      </div>
-      <div class="detail-item">
-        <div class="detail-label">Win Rate</div>
-        <div class="detail-value">100%</div>
-      </div>
-      <div class="detail-item">
-        <div class="detail-label">Best Pair</div>
-        <div class="detail-value" style="font-size:11px">GBPUSD</div>
-      </div>
-      <div class="detail-item">
-        <div class="detail-label">Worst Pair</div>
-        <div class="detail-value" style="font-size:11px;color:#5F5F5F">—</div>
+  <!-- ====== SECTION 6: AI REVIEW ====== -->
+  <div class="gap-48"></div>
+  <div class="section-title">AI Coach</div>
+  <div class="ai-card">
+    <div class="ai-header">
+      <div class="ai-mascot">🐉</div>
+      <div>
+        <div class="ai-title-text">Weekly Analysis</div>
       </div>
     </div>
+    <div class="ai-review-text">
+      <strong>Excellent discipline this week.</strong> You respected your risk management plan and avoided overtrading during low-conviction setups.
+    </div>
+    <div class="ai-details">
+      Most profits came during <strong>London Session</strong>.<br><br>
+      <strong>Weakness:</strong> You exited runners too early after TP1.<br><br>
+      <strong>Recommendation:</strong> Hold trades longer when market structure remains valid. Consider trailing stops to capture TP2 on trend days.
+    </div>
+    <div class="ai-grade-row">
+      <span class="ai-grade-label">Overall Grade</span>
+      <div class="ai-grade-badge" id="aiGradeBadge">A</div>
+    </div>
+  </div>
 
-    <!-- Sessions -->
-    <div style="margin-top:16px">
-      <div class="detail-label" style="margin-bottom:8px">Most Profitable Session</div>
-      <div class="session-grid">
-        <div class="session-card">
-          <div class="session-name">London</div>
-          <div class="session-bar">
-            <div class="session-fill" style="height:85%"></div>
-          </div>
-          <div class="session-r">+8.2R</div>
-          <div class="session-pct">66%</div>
+  <!-- ====== SECTION 7: SHARE ====== -->
+  <div class="gap-48"></div>
+  <div class="section-title">Share</div>
+  <div class="share-card">
+    <div class="share-title">Share Your Success</div>
+    <div class="share-grid stagger">
+      <button class="share-btn instagram" onclick="shareTo('instagram-story')">
+        <div class="share-btn-icon">
+          <svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.5" y2="6.5"/></svg>
         </div>
-        <div class="session-card">
-          <div class="session-name">New York</div>
-          <div class="session-bar">
-            <div class="session-fill" style="height:45%"></div>
-          </div>
-          <div class="session-r">+4.2R</div>
-          <div class="session-pct">34%</div>
+        <span class="share-btn-label">Story</span>
+      </button>
+      <button class="share-btn instagram-post" onclick="shareTo('instagram-post')">
+        <div class="share-btn-icon">
+          <svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.5" y2="6.5"/></svg>
         </div>
-        <div class="session-card">
-          <div class="session-name">Asia</div>
-          <div class="session-bar">
-            <div class="session-fill" style="height:5%"></div>
-          </div>
-          <div class="session-r" style="color:#5F5F5F">0R</div>
-          <div class="session-pct">0%</div>
+        <span class="share-btn-label">Post</span>
+      </button>
+      <button class="share-btn telegram" onclick="shareTo('telegram')">
+        <div class="share-btn-icon">
+          <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
         </div>
-      </div>
-    </div>
-
-    <!-- Scores -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:16px">
-      <div class="detail-item" style="text-align:center">
-        <div class="detail-label">Psychology</div>
-        <div class="detail-value" style="font-size:16px;color:#C7FF38">92</div>
-      </div>
-      <div class="detail-item" style="text-align:center">
-        <div class="detail-label">Execution</div>
-        <div class="detail-value" style="font-size:16px;color:#C7FF38">88</div>
-      </div>
-      <div class="detail-item" style="text-align:center">
-        <div class="detail-label">Consistency</div>
-        <div class="detail-value" style="font-size:16px;color:#C7FF38">96</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Share Button -->
-  <div class="share-section">
-    <button class="share-main" onclick="showShareModal()">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-      Share Results
-    </button>
-    <div class="share-options">
-      <button class="share-opt" onclick="shareTo('instagram')" title="Instagram">📸</button>
-      <button class="share-opt" onclick="shareTo('twitter')" title="X (Twitter)">𝕏</button>
-      <button class="share-opt" onclick="shareTo('telegram')" title="Telegram">✈️</button>
-      <button class="share-opt" onclick="shareTo('whatsapp')" title="WhatsApp">💬</button>
-      <button class="share-opt" onclick="saveImage()" title="Save Image">💾</button>
+        <span class="share-btn-label">Telegram</span>
+      </button>
+      <button class="share-btn whatsapp" onclick="shareTo('whatsapp')">
+        <div class="share-btn-icon">
+          <svg viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+        </div>
+        <span class="share-btn-label">WhatsApp</span>
+      </button>
+      <button class="share-btn twitter" onclick="shareTo('twitter')">
+        <div class="share-btn-icon">
+          <svg viewBox="0 0 24 24"><path d="M4 4l11.733 16h4.267l-11.733 -16zM4 20l6.768 -6.768M19.5 4l-6.768 6.768"/></svg>
+        </div>
+        <span class="share-btn-label">X</span>
+      </button>
+      <button class="share-btn save" onclick="saveImage()">
+        <div class="share-btn-icon">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </div>
+        <span class="share-btn-label">Save</span>
+      </button>
     </div>
   </div>
 
-  <div class="divider"></div>
+  <!-- ====== SECTION 8: HISTORY ====== -->
+  <div class="gap-48"></div>
+  <div class="section-title">History</div>
+  <div class="history-scroll" id="historyScroll"></div>
 
-  <!-- History -->
-  <div class="section">
-    <div class="section-label">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-      Performance History
-      <span class="count">8 weeks</span>
+  <!-- ====== SECTION 9: ANNUAL PREVIEW ====== -->
+  <div class="gap-48"></div>
+  <div class="section-title">Annual</div>
+  <div class="annual-card">
+    <div class="annual-bg">
+      <div class="annual-chart">
+        <svg viewBox="0 0 200 160" preserveAspectRatio="none">
+          <path d="M0 140 L20 130 L40 135 L60 100 L80 110 L100 70 L120 75 L140 40 L160 45 L180 25 L200 10" stroke="#B8FF2C" stroke-width="2" fill="none" opacity="0.8"/>
+          <path d="M0 150 L20 140 L40 145 L60 115 L80 125 L100 85 L120 90 L140 55 L160 60 L180 40 L200 20" stroke="#B8FF2C" stroke-width="6" fill="none" opacity="0.04"/>
+        </svg>
+      </div>
+      <div class="annual-mascot">🐉</div>
     </div>
-    <div class="history-list" id="historyList"></div>
-  </div>
-
-  <div class="footer-text">
-    <strong>✦ The Slayers ✦</strong><br>
-    Trade With Structure. Win With Discipline.
-  </div>
-</div>
-
-<!-- Mascot -->
-<div class="mascot" onclick="scrollToTop()">🐉</div>
-
-<!-- Share Modal -->
-<div class="modal-overlay" id="shareModal">
-  <div class="modal-card">
-    <div class="modal-title">Share Your Report</div>
-    <div class="modal-sub">Show the world your weekly performance</div>
-    <div class="modal-options">
-      <div class="modal-opt" onclick="shareTo('instagram')">
-        <div class="modal-opt-icon" style="background:linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)">📸</div>
-        <div class="modal-opt-label">Story</div>
+    <div class="annual-title">2026 Trading Report</div>
+    <div class="annual-sub">Your year in review</div>
+    <div class="annual-grid">
+      <div class="annual-item">
+        <div class="annual-label">Total Return</div>
+        <div class="annual-value green" id="annualReturn">+286R</div>
       </div>
-      <div class="modal-opt" onclick="shareTo('twitter')">
-        <div class="modal-opt-icon" style="background:rgba(255,255,255,0.04)">𝕏</div>
-        <div class="modal-opt-label">X</div>
+      <div class="annual-item">
+        <div class="annual-label">Win Rate</div>
+        <div class="annual-value" id="annualWR">72%</div>
       </div>
-      <div class="modal-opt" onclick="shareTo('telegram')">
-        <div class="modal-opt-icon" style="background:rgba(0,136,204,0.1)">✈️</div>
-        <div class="modal-opt-label">Telegram</div>
+      <div class="annual-item">
+        <div class="annual-label">Trades</div>
+        <div class="annual-value" id="annualTrades">214</div>
       </div>
-      <div class="modal-opt" onclick="saveImage()">
-        <div class="modal-opt-icon" style="background:rgba(199,255,56,0.06)">💾</div>
-        <div class="modal-opt-label">Save</div>
+      <div class="annual-item">
+        <div class="annual-label">Best Month</div>
+        <div class="annual-value" style="font-size:14px" id="annualBestMonth">September</div>
+      </div>
+      <div class="annual-item">
+        <div class="annual-label">Best Pair</div>
+        <div class="annual-value" style="font-size:14px" id="annualBestPair">GBPUSD</div>
+      </div>
+      <div class="annual-item">
+        <div class="annual-label">Win Streak</div>
+        <div class="annual-value" id="annualStreak">14</div>
+      </div>
+      <div class="annual-item full">
+        <div class="annual-label">Consistency</div>
+        <div class="annual-value green" id="annualConsistency">95%</div>
       </div>
     </div>
-    <button class="modal-close" onclick="closeShareModal()">Cancel</button>
+    <div class="annual-badge">✦ Elite Trader</div>
   </div>
+
+  <!-- ====== FOOTER ====== -->
+  <div class="footer">
+    <div class="footer-logo">✦ The Slayers ✦</div>
+    <div class="footer-text">
+      Trade With Structure.<br>
+      <strong>Win With Discipline.</strong>
+    </div>
+  </div>
+
 </div>
 
 <script>
 // ====== SAMPLE DATA ======
-var weeklyData={
+var data={
   week:31,
-  perfR:12.4,
+  totalR:12.4,
   winRate:100,
-  totalTrades:5,
+  trades:5,
   wins:5,
   losses:0,
   bes:2,
-  avgRR:2.8,
   bestTrade:3.8,
-  bestPair:'GBPUSD',
-  bestDir:'BUY',
   worstTrade:0,
+  avgRR:2.8,
   consScore:96,
-  avgHold:'4h 32m',
-  aiGrade:'A',
-  aiReview:'Excellent discipline this week. You followed your trading plan consistently and avoided overtrading. Your strongest performance came during <strong>London sessions</strong>.',
-  aiBestPair:'GBPUSD',
-  aiWeakness:'Holding winners too conservatively after TP1.',
-  aiRec:'Focus on allowing runners to reach TP2 whenever market structure remains intact.',
-  sessions:{london:8.2,ny:4.2,asia:0},
-  psychScore:92,
-  execScore:88,
-  consScore2:96
+  grade:'A'
 };
 
 var historyData=[
-  {week:31,r:12.4,grade:'A',winRate:100,trades:5},
-  {week:30,r:8.2,grade:'A',winRate:80,trades:5},
-  {week:29,r:-2.1,grade:'C',winRate:40,trades:5},
-  {week:28,r:15.6,grade:'A+',winRate:86,trades:7},
-  {week:27,r:6.8,grade:'B+',winRate:75,trades:4},
-  {week:26,r:3.2,grade:'B',winRate:67,trades:3},
-  {week:25,r:11.4,grade:'A',winRate:83,trades:6},
-  {week:24,r:5.0,grade:'B+',winRate:71,trades:7}
+  {week:31,r:12.4,grade:'A',pct:100},
+  {week:30,r:8.2,grade:'A',pct:85},
+  {week:29,r:-2.1,grade:'C',pct:40},
+  {week:28,r:15.6,grade:'A+',pct:92},
+  {week:27,r:6.8,grade:'B+',pct:75},
+  {week:26,r:3.2,grade:'B',pct:60},
+  {week:25,r:11.4,grade:'A',pct:90},
+  {week:24,r:5.0,grade:'B+',pct:70}
 ];
 
-// ====== RENDER ======
-function renderReport(){
-  var d=weeklyData;
-  document.getElementById('perfR').innerHTML=(d.perfR>=0?'+':'')+d.perfR.toFixed(1)+'<span class="r-suffix">R</span>';
-  document.getElementById('winRate').textContent=d.winRate+'%';
-  document.getElementById('totalTrades').textContent=d.totalTrades;
-  document.getElementById('totalWins').textContent=d.wins;
-  document.getElementById('totalLosses').textContent=d.losses;
-  document.getElementById('totalBEs').textContent=d.bes;
-  document.getElementById('avgRR').textContent=d.avgRR;
-  document.getElementById('bestTrade').textContent='+'+d.bestTrade+'R';
-  document.getElementById('worstTrade').textContent=d.worstTrade>0?'-'+d.worstTrade+'R':'0R';
-  document.getElementById('consScore').textContent=d.consScore+'%';
-  document.getElementById('avgHold').textContent=d.avgHold;
-  document.getElementById('aiGrade').textContent=d.aiGrade;
-  document.getElementById('aiReview').innerHTML=d.aiReview;
-
-  // consistency bar animation
-  setTimeout(function(){
-    document.getElementById('consFill').style.width=d.consScore+'%';
-  },300);
+// ====== CIRCULAR RINGS ======
+function drawRing(canvasId,pct,color){
+  var c=document.getElementById(canvasId);
+  if(!c)return;
+  var ctx=c.getContext('2d');
+  var w=c.width,h=c.height,cx=w/2,cy=h/2,r=22,start=-Math.PI/2,end=start+(pct/100)*Math.PI*2;
+  ctx.clearRect(0,0,w,h);
+  ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.strokeStyle='rgba(255,255,255,0.04)';ctx.lineWidth=3;ctx.stroke();
+  ctx.beginPath();ctx.arc(cx,cy,r,start,end);ctx.strokeStyle=color;ctx.lineWidth=3;ctx.lineCap='round';ctx.stroke();
 }
 
+function initRings(){
+  setTimeout(function(){
+    drawRing('ringConsistency',96,'#B8FF2C');
+    drawRing('ringQuality',85,'#B8FF2C');
+    drawRing('ringAvgRR',70,'#B8FF2C');
+  },400);
+}
+
+// ====== HISTORY ======
 function renderHistory(){
   var html='';
   for(var i=0;i<historyData.length;i++){
     var h=historyData[i];
-    var isPos=h.r>=0;
     var active=i===0;
-    html+='<div class="history-item'+(active?' active':'')+'" onclick="viewWeek('+i+')">'+
-      '<div><div class="history-week">Week '+h.week+' <span>'+h.trades+' trades · '+h.winRate+'% WR</span></div></div>'+
-      '<div style="display:flex;align-items:center">'+
-        '<span class="history-grade">'+h.grade+'</span>'+
-        '<span class="history-r '+(isPos?'pos':'neg')+'" style="margin-left:8px">'+(isPos?'+':'')+h.r+'R</span>'+
-        '<span class="history-arrow">→</span>'+
-      '</div></div>';
+    html+='<div class="history-card'+(active?' active':'')+'" onclick="selectWeek('+i+')">'+
+      '<div class="history-week">Week <strong>'+h.week+'</strong></div>'+
+      '<div class="history-r">'+(h.r>=0?'+':'')+h.r+'R</div>'+
+      '<div class="history-grade">Grade <span>'+h.grade+'</span></div>'+
+      '<div class="history-mini-chart"><div class="history-mini-fill" style="width:'+h.pct+'%"></div></div>'+
+    '</div>';
   }
-  document.getElementById('historyList').innerHTML=html;
+  document.getElementById('historyScroll').innerHTML=html;
 }
 
-function viewWeek(idx){
+function selectWeek(idx){
   var h=historyData[idx];
-  // animate stats to that week's data
-  animateTo(h);
-  // highlight
-  var items=document.querySelectorAll('.history-item');
-  for(var i=0;i<items.length;i++)items[i].classList.toggle('active',i===idx);
-}
-
-function animateTo(data){
-  weeklyData.perfR=data.r;
-  weeklyData.winRate=data.winRate;
-  weeklyData.totalTrades=data.trades;
-  weeklyData.week=data.week;
-  document.querySelector('.card-week-num').textContent=data.week;
-  document.getElementById('perfR').innerHTML=(data.r>=0?'+':'')+data.r.toFixed(1)+'<span class="r-suffix">R</span>';
-  document.getElementById('winRate').textContent=data.winRate+'%';
-  document.getElementById('totalTrades').textContent=data.trades;
-  document.getElementById('consScore').textContent=Math.min(100,50+data.winRate*0.5)+'%';
-  document.getElementById('consFill').style.width=Math.min(100,50+data.winRate*0.5)+'%';
-  document.getElementById('aiGrade').textContent=data.grade.replace('+','');
+  document.querySelectorAll('.history-card').forEach(function(el,i){el.classList.toggle('active',i===idx);});
+  document.querySelector('.card-week-num').textContent=h.week;
+  document.getElementById('totalR').innerHTML=(h.r>=0?'+':'')+h.r+'<span style="font-size:28px;font-weight:600;opacity:0.7">R</span>';
+  document.getElementById('winRate').textContent=h.pct+'%';
 }
 
 // ====== SHARE ======
-function showShareModal(){
-  document.getElementById('shareModal').classList.add('open');
-}
-
-function closeShareModal(){
-  document.getElementById('shareModal').classList.remove('open');
-}
-
 function shareTo(platform){
-  closeShareModal();
-  var text='🏆 Slayers Weekly Report — Week '+weeklyData.week+'\n'+
-    (weeklyData.perfR>=0?'+':'')+weeklyData.perfR+'R · '+weeklyData.winRate+'% Win Rate · Grade '+weeklyData.aiGrade+'\n\n'+
+  var text='🏆 Slayers Weekly Report — Week '+data.week+'\n'+
+    (data.totalR>=0?'+':'')+data.totalR+'R · '+data.winRate+'% Win Rate · Grade '+data.grade+'\n\n'+
     'Trade With Structure. Win With Discipline.';
   var url='https://slayersbot.onrender.com/app/';
   switch(platform){
     case 'twitter':window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent(text)+'&url='+encodeURIComponent(url),'_blank');break;
     case 'telegram':window.open('https://t.me/share/url?url='+encodeURIComponent(url)+'&text='+encodeURIComponent(text),'_blank');break;
     case 'whatsapp':window.open('https://wa.me/?text='+encodeURIComponent(text+' '+url),'_blank');break;
-    case 'instagram':
-      showToast('📸 Save the image first, then upload to Instagram Story');
-      break;
+    default:showToast('📸 Image saved! Upload to '+platform.replace('-',' '));
   }
 }
 
 function saveImage(){
-  closeShareModal();
   if(typeof html2canvas==='undefined'){
-    showToast('💾 Save feature requires html2canvas (loading...)');
+    showToast('💾 Loading html2canvas...');
     var s=document.createElement('script');
     s.src='https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-    s.onload=function(){showToast('✅ Ready! Tap Save again.');};
+    s.onload=function(){showToast('✅ Ready — tap Save again!');};
     document.head.appendChild(s);
     return;
   }
-  html2canvas(document.getElementById('reportCard'),{
-    backgroundColor:'#0A0A0A',
-    scale:2,
-    useCORS:true,
-    logging:false
-  }).then(function(canvas){
-    var link=document.createElement('a');
-    link.download='Slayers_Week'+weeklyData.week+'_Report.png';
-    link.href=canvas.toDataURL('image/png');
-    link.click();
-    showToast('✅ Report saved!');
-  }).catch(function(){
-    showToast('⚠️ Could not generate image. Try again.');
-  });
+  html2canvas(document.getElementById('reportCard'),{backgroundColor:'#0B0B0B',scale:2,useCORS:true,logging:false})
+    .then(function(canvas){
+      var link=document.createElement('a');
+      link.download='Slayers_Week'+data.week+'_Report.png';
+      link.href=canvas.toDataURL('image/png');
+      link.click();
+      showToast('✅ Saved!');
+    }).catch(function(){showToast('⚠️ Try again');});
 }
 
 // ====== TOAST ======
 function showToast(msg){
-  var existing=document.querySelector('.toast');
-  if(existing)existing.remove();
   var t=document.createElement('div');
-  t.className='toast';
-  t.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#111112;border:0.5px solid rgba(199,255,56,0.12);color:#FFF;padding:10px 18px;border-radius:10px;font-size:12px;font-weight:500;z-index:200;box-shadow:0 8px 32px rgba(0,0,0,0.5);animation:fadeIn .2s;max-width:320px;text-align:center';
+  t.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#161616;border:1px solid rgba(184,255,44,0.1);color:#FFF;padding:12px 20px;border-radius:14px;font-size:13px;font-weight:500;z-index:200;box-shadow:0 8px 32px rgba(0,0,0,0.5);animation:fadeUp .2s;max-width:340px;text-align:center';
   t.textContent=msg;
   document.body.appendChild(t);
   setTimeout(function(){t.style.opacity='0';t.style.transition='opacity .3s';setTimeout(function(){t.remove();},300);},2500);
 }
 
-// ====== SCROLL TO TOP ======
-function scrollToTop(){
-  window.scrollTo({top:0,behavior:'smooth'});
-}
+// ====== HTML2CANVAS PRELOAD ======
+var _hs=document.createElement('script');
+_hs.src='https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+document.head.appendChild(_hs);
 
 // ====== INIT ======
-renderReport();
 renderHistory();
-
-// Load html2canvas in background
-var s=document.createElement('script');
-s.src='https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-document.head.appendChild(s);
+initRings();
 </script>
 </body>
 </html>
