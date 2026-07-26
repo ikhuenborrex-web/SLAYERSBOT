@@ -905,27 +905,76 @@ function intelScreen(){
     if(!c||!c.length)return null;
     var cat=acat.toLowerCase(),out=[];
     function add(asset,dir){out.push({a:asset,d:dir});}
-    function dirOf(name){for(var xi=0;xi<c.length;xi++){if(c[xi].name===name){var d=c[xi].signalDir;return d==='BULLISH'?'bullish':d==='BEARISH'?'bearish':null;}}return null;}
+    function dirOf(name){
+      for(var xi=0;xi<c.length;xi++){
+        if(c[xi].name===name){
+          var d=c[xi].signalDir||'';
+          if(d==='BULLISH')return'bullish';
+          if(d==='BEARISH')return'bearish';
+          var wb=c[xi].weeklyBias||'';
+          if(wb==='BULLISH')return'bullish';
+          if(wb==='BEARISH')return'bearish';
+          return null;
+        }
+      }
+      return null;
+    }
+    function matchedAssets(names){
+      var found=[];
+      for(var xi=0;xi<c.length;xi++){
+        var pn=c[xi].name||c[xi].id||'';
+        for(var ni=0;ni<names.length;ni++){
+          if(pn.indexOf(names[ni])>-1||names[ni].indexOf(pn)>-1){
+            found.push(c[xi]);
+            break;
+          }
+        }
+      }
+      return found;
+    }
+    function getBias(name){
+      for(var xi=0;xi<c.length;xi++){
+        if(c[xi].name===name||c[xi].id===name){
+          var d=c[xi].signalDir||c[xi].weeklyBias||'';
+          if(d==='BULLISH')return'bullish';
+          if(d==='BEARISH')return'bearish';
+          return'neutral';
+        }
+      }
+      return'neutral';
+    }
     if(cat.indexOf('crypto')>-1||cat.indexOf('btc')>-1||cat.indexOf('eth')>-1){
-      ['BTC','ETH','SOL'].forEach(function(asset){var d=dirOf(asset);if(d)add(asset,d);});
+      matchedAssets(['BTC','ETH','SOL','XRP']).forEach(function(p){
+        add(p.name||p.id,getBias(p.name||p.id));
+      });
     }
-    if(cat.indexOf('commodities')>-1||cat.indexOf('gold')>-1||cat.indexOf('xau')>-1){
-      ['XAU/USD','XAG/USD'].forEach(function(asset){var d=dirOf(asset);if(d)add(asset,d);});
+    if(cat.indexOf('commodities')>-1||cat.indexOf('gold')>-1||cat.indexOf('xau')>-1||cat.indexOf('silver')>-1||cat.indexOf('xag')>-1){
+      matchedAssets(['XAU','GOLD','XAG','SILVER','COPPER','PLATINUM']).forEach(function(p){
+        add(p.name||p.id,getBias(p.name||p.id));
+      });
     }
-    if(cat.indexOf('indices')>-1||cat.indexOf('nas')>-1||cat.indexOf('spx')>-1){
-      ['NAS100','US30','SPX500'].forEach(function(asset){var d=dirOf(asset);if(d)add(asset,d);});
+    if(cat.indexOf('indices')>-1||cat.indexOf('nas')>-1||cat.indexOf('spx')>-1||cat.indexOf('dow')>-1||cat.indexOf('us30')>-1){
+      matchedAssets(['NAS100','US30','SPX500','DAX','FTSE','NIKKEI','HSI']).forEach(function(p){
+        add(p.name||p.id,getBias(p.name||p.id));
+      });
     }
-    if(cat.indexOf('energy')>-1||cat.indexOf('oil')>-1||cat.indexOf('crude')>-1){
-      var e=c.find(function(p){return p.name&&(p.name.indexOf('OIL')>-1||p.name.indexOf('NG')>-1);});
-      if(e)add(e.name,dirOf(e.name)||'neutral');
+    if(cat.indexOf('energy')>-1||cat.indexOf('oil')>-1||cat.indexOf('crude')>-1||cat.indexOf('gas')>-1){
+      matchedAssets(['OIL','WTI','BRENT','NG','NATURAL','GAS']).forEach(function(p){
+        add(p.name||p.id,getBias(p.name||p.id));
+      });
     }
-    if(cat.indexOf('currencies')>-1||cat.indexOf('forex')>-1||cat.indexOf('macro')>-1||cat.indexOf('central')>-1){
-      var fx=c.filter(function(p){return p.name&&p.name.indexOf('/')>-1&&p.name.indexOf('USD')>-1;});
-      fx.slice(0,3).forEach(function(p){var d=dirOf(p.name);if(d)add(p.name,d);});
+    if(cat.indexOf('currencies')>-1||cat.indexOf('forex')>-1||cat.indexOf('fx')>-1||cat.indexOf('macro')>-1||cat.indexOf('central')>-1||cat.indexOf('economy')>-1||cat.indexOf('gdp')>-1||cat.indexOf('inflation')>-1||cat.indexOf('rate')>-1){
+      matchedAssets(['USD','EUR','GBP','JPY','AUD','NZD','CAD','CHF']).forEach(function(p){
+        add(p.name||p.id,getBias(p.name||p.id));
+      });
     }
     if(!out.length){
-      var any=c.slice(0,3);
-      any.forEach(function(p){var d=dirOf(p.name);if(d)add(p.name||p.id,d);});
+      var any=c.slice(0,4);
+      any.forEach(function(p){
+        var d=p.signalDir||p.weeklyBias||'';
+        var dir=d==='BULLISH'?'bullish':d==='BEARISH'?'bearish':'neutral';
+        add(p.name||p.id,dir);
+      });
     }
     return out.length?out:null;
   }
