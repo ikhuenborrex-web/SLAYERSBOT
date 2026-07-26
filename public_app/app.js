@@ -253,16 +253,12 @@ async function fetchAll(bg){
   promises.push(ft(withCode('/api/settings')).then(function(r){return j(r).then(function(d){state.settings=d.settings||null;render();});}).catch(function(){}));
   promises.push(ft(withCode('/api/trade-history')).then(function(r){return j(r).then(function(d){state.botHistory=d.outcomes||[];render();});}).catch(function(){}));
   promises.push(ft(withCode('/api/weekly-summary')).then(function(r){return j(r).then(function(d){state.weeklySummary=d.summary||null;render();});}).catch(function(){}));
-  promises.push(fetch(withCode('/api/scalp')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){
-    var ss=d.signals||[];
+  promises.push(ft(withCode('/api/scalp')).then(function(r){return j(r).then(function(d){var ss=d.signals||[];
     if(lastScalpIds.length&&ss.length>lastScalpIds.length&&!bg){for(var si=0;si<ss.length;si++){if(lastScalpIds.indexOf(ss[si].id)===-1){showToast('\u26A1 Scalp '+(ss[si].type==='BULLISH'?'\uD83D\uDCC8 ':'\uD83D\uDCC9 ')+(ss[si].name||ss[si].pair)+' \u00b7 score '+ss[si].score+'/5');break;}}}
-    lastScalpIds=ss.map(function(s){return s.id;});state.scalpSignals=ss;render();
-  }).catch(function(){}));
-  promises.push(fetch(withCode('/api/scalp/active')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){state.scalpActive=d.trades||[];render();}).catch(function(){}));
-  promises.push(fetch(withCode('/api/scalp/stats')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){state.scalpStats=d;render();}).catch(function(){}));
-  promises.push(fetch(withCode('/api/scalp/pulse')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){state.scalpPulse=d.pairs||[];render();}).catch(function(){}));
-  promises.push(ft(withCode('/api/sentiment')).then(function(r){return j(r).then(function(d){state.sentiment=d;render();});}).catch(function(){}));
-  promises.push(ft(withCode('/api/daily-bias')).then(function(r){return j(r).then(function(d){state.dailyBias=Array.isArray(d)?d:d.pairs||d.bias||[];render();});}).catch(function(){}));
+    lastScalpIds=ss.map(function(s){return s.id;});state.scalpSignals=ss;render();});}).catch(function(){}));
+  promises.push(ft(withCode('/api/scalp/active')).then(function(r){return j(r).then(function(d){state.scalpActive=d.trades||[];render();});}).catch(function(){}));
+  promises.push(ft(withCode('/api/scalp/stats')).then(function(r){return j(r).then(function(d){state.scalpStats=d;render();});}).catch(function(){}));
+  promises.push(ft(withCode('/api/scalp/pulse')).then(function(r){return j(r).then(function(d){state.scalpPulse=d.pairs||[];render();});}).catch(function(){}));
   promises.push(ft(withCode('/api/intel-summary')).then(function(r){return j(r).then(function(d){state.briefing=d.briefing||d.summary||d.text||d.content||null;lastRefreshTime=Date.now();render();});}).catch(function(){}));
   state.loading=false;
   if(promises.length&&!bg){
@@ -663,7 +659,7 @@ function journalScreen(){
 
   // ====== TRADE CARDS ======
   var displayEntries=entries;
-  _journalDisplayEntries=displayEntries;
+  _journalDisplayEntries=displayEntries.slice();
   var cardsHtml='';
   for(var i=0;i<displayEntries.length;i++){
     var e=displayEntries[i],rv=e.rMultiple||e.r||0;
@@ -1012,7 +1008,7 @@ function intelScreen(){
   for(var ai=0;ai<arts.length;ai++){
     var raw=(arts[ai].category||'General').toLowerCase().replace(/[^a-z0-9]/g,'_');
     var norm=catMap[raw]||null;
-    if(norm)availCats[norm]=availCats[norm]||++ai;else availCats['All Intel']=availCats['All Intel']||0;
+    if(norm)availCats[norm]=availCats[norm]||ai;else availCats['All Intel']=availCats['All Intel']||0;
   }
   var catList=['All Intel'];
   for(var k in catMap){var n=catMap[k];if(n!=='All Intel'&&availCats[n]&&catList.indexOf(n)===-1)catList.push(n);}
@@ -2122,5 +2118,5 @@ document.getElementById('wtFinalBtn').addEventListener('click',function(){
 });
 
 // Auto-start on first launch
-if(getCode()){preloadMascot();var _localP=JSON.parse(localStorage.getItem('notifPrefs')||'{}');state.notifPrefs=Object.assign({},state.notifPrefs,_localP);render();fetchAll();setTimeout(function(){if(!localStorage.getItem('wt_done'))startOnboarding();},1500);}else{renderLogin();}
+if(getCode()){preloadMascot();try{var _localP=JSON.parse(localStorage.getItem('notifPrefs')||'{}');state.notifPrefs=Object.assign({},state.notifPrefs,_localP);}catch(e){}render();fetchAll();setTimeout(function(){try{if(!localStorage.getItem('wt_done'))startOnboarding();}catch(e){}},1500);}else{renderLogin();}
 setInterval(function(){if(getCode())fetchAll(true);},300000);

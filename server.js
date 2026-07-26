@@ -229,7 +229,7 @@ function saveState(){
       weeklyCache,prevWeeklyCache,recentQMRFires,qmr4HCache,suppressedPairs:[...suppressedPairs],
       lastBriefing,lastEOD,lastWeeklySummary,lastMonthlyRecap,pairPerformance,
       dailyAlertLog,dailyOutcomeLog,
-      qmrSeen:[...qmrSeen],scalpSeen:[...scalpSeen],earlyEntryCache,appSignalFeed,lastBriefingSnapshot,lastBriefingTime,lastIntelHash,lastIntelPushTime,lastIntelBriefing,lastIntelBriefingTime,      pushSubscriptions,memberCodes,trackedTrades,memberStats,weeklySummaryData,scalpSignals,activeScalpTrades,scalpTradeHistory,scanCount,lastScanTime,
+      qmrSeen:[...qmrSeen],scalpSeen:[...scalpSeen],earlyEntryCache,appSignalFeed,lastBriefingSnapshot,lastBriefingTime,lastIntelHash,lastIntelPushTime,lastIntelBriefing,lastIntelBriefingTime,      pushSubscriptions,memberCodes,trackedTrades,memberStats,weeklySummaryData,scalpSignals,activeScalpTrades,scalpTradeHistory,scanCount,lastScanTime,alertLog,chartCounter,
       savedAt:Date.now()
     };
     const json=JSON.stringify(state);
@@ -1209,6 +1209,7 @@ function autoJournalEntry(t,outcome,rMultiple,durationMin){
     if(!member.code||member.code==='admin')continue;
     if(!member.journal)member.journal=[];
     member.journal.push({...base,id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),createdAt:new Date().toISOString()});
+    if(member.journal.length>200)member.journal=member.journal.slice(-200);
   }
 }
 function scalpJournalEntry(t,outcome,rMultiple,durationMin,extraTags){
@@ -1228,6 +1229,7 @@ function scalpJournalEntry(t,outcome,rMultiple,durationMin,extraTags){
     if(!member.code||member.code==='admin')continue;
     if(!member.journal)member.journal=[];
     member.journal.push({...base,id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),createdAt:new Date().toISOString()});
+    if(member.journal.length>200)member.journal=member.journal.slice(-200);
   }
 }
 
@@ -1537,7 +1539,7 @@ async function runScan(manual=false){
                 {price:eQ.tp2,text:'TP2',color:'rgb(245,166,35)'}
               ],'\u26A1 EARLY '+(eQ.type==='BULLISH'?'BUY':'SELL')+' '+inst.id+' 1H QMR\nAggressive: '+eQ.entryPrice.toFixed(instObj.dec)+' | SL: '+eQ.retestSL.toFixed(instObj.dec)+' | TP2: '+eQ.tp2.toFixed(instObj.dec)+'\n\u2014 The Slayers Model by Rexroz',eSigId+'-agg');
               // Cache for conservative update
-              earlyEntryCache[inst.id+'-'+eQ.type+'-'+eQ.qmLevel.toFixed(3)]={aggEntry:eQ.entryPrice,aggSl:eQ.retestSL,aggTp1:eQ.tp1,aggTp2:eQ.tp2,aggChartFile:eSigId+'-agg',aggTradeId,criteria:eQ.criteria};
+              earlyEntryCache[inst.id+'-'+eQ.type+'-'+eQ.qmLevel.toFixed(3)]={aggEntry:eQ.entryPrice,aggSl:eQ.retestSL,aggTp1:eQ.tp1,aggTp2:eQ.tp2,aggChartFile:eSigId+'-agg.png',aggTradeId,criteria:eQ.criteria};
               appSignalFeed.unshift({
                 id:eSigId,system:'QMR',pair:inst.id,tf:'1H',type:eQ.type,
                 zone:eIsB?'DISCOUNT':'PREMIUM',
