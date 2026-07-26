@@ -2153,22 +2153,25 @@ app.post('/api/subscribe',(req,res)=>{
   res.json({ok:true});
 });
 app.post('/api/test-push',async (req,res)=>{
-  if(!webpush||!VAPID_PUBLIC||!VAPID_PRIVATE||!pushSubscriptions.length)return res.json({error:'No push subscribers'});
-  const payload=JSON.stringify({title:'Daily Briefing',body:'Good evening Slayers \u2014 market pulse is live.','url':'/app/'});
-  const dead=[];
-  // Queue for bell panel
-  serverNotifQueue.push({id:'srv_'+(Date.now()),type:'trophy',icon:'\uD83C\uDFC6',title:'Daily Briefing',body:'Good evening Slayers \u2014 market pulse is live.',time:Date.now(),unread:true,url:'/app/'});
-  if(serverNotifQueue.length>50)serverNotifQueue=serverNotifQueue.slice(-50);
-  for(const entry of pushSubscriptions){
-    const {code,...sub}=entry;
-    try{await webpush.sendNotification(sub,payload);}
-    catch(e){
-      if(e.statusCode===410||e.statusCode===404)dead.push(entry);
-      else log('Push error: '+e.message);
+  const code=req.query.code||req.headers['x-access-code'];
+  const sub=pushSubscriptions.find(s=>s.code===code);
+  if(!sub)return res.json({error:'No push subscription found for your account'});
+  if(!webpush||!VAPID_PUBLIC||!VAPID_PRIVATE)return res.json({error:'Push not configured'});
+  const payload=JSON.stringify({title:'\u2705 Test Notification',body:'If you see this, push is working perfectly.','url':'/app/'});
+  try{
+    const {code:_,...subData}=sub;
+    await webpush.sendNotification(subData,payload);
+    res.json({ok:true,sent:1});
+  }catch(e){
+    if(e.statusCode===410||e.statusCode===404){
+      pushSubscriptions=pushSubscriptions.filter(s=>s.code!==code);
+      saveState();
+      res.json({error:'Subscription expired. Please re-enable notifications.'});
+    }else{
+      log('Test push error: '+e.message);
+      res.json({error:'Push failed: '+e.message});
     }
   }
-  if(dead.length){pushSubscriptions=pushSubscriptions.filter(s=>!dead.includes(s));saveState();}
-  res.json({ok:true,sent:pushSubscriptions.length-dead.length});
 });
 app.post('/api/member/notif-prefs',(req,res)=>{
   const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
