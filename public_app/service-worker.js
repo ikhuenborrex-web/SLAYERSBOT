@@ -34,11 +34,12 @@ self.addEventListener('push', e => {
   let data = {};
   try { data = e.data ? e.data.json() : {}; } catch (err) { data = { title: 'Slayers Bot', body: e.data ? e.data.text() : 'New signal' }; }
   const title = data.title || 'New Slayers Signal';
+  const appUrl = self.location.origin + '/app/';
   const options = {
     body: data.body || 'A new setup just fired.',
-    icon: '/app/icon-192.png',
-    badge: '/app/icon-192.png',
-    data: { url: data.url || '/app/' }
+    icon: appUrl + 'icon-192.png',
+    badge: appUrl + 'icon-192.png',
+    data: { url: appUrl }
   };
   e.waitUntil(Promise.all([
     self.registration.showNotification(title, options),

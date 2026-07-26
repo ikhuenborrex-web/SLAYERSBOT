@@ -2128,7 +2128,7 @@ app.post('/api/subscribe',(req,res)=>{
 });
 app.post('/api/test-push',async (req,res)=>{
   if(!webpush||!VAPID_PUBLIC||!VAPID_PRIVATE||!pushSubscriptions.length)return res.json({error:'No push subscribers'});
-  const payload=JSON.stringify({title:'Daily Briefing',body:'Good evening Slayers \u2014 market pulse is live.','url':'/'});
+  const payload=JSON.stringify({title:'Daily Briefing',body:'Good evening Slayers \u2014 market pulse is live.','url':'/app/'});
   const dead=[];
   for(const entry of pushSubscriptions){
     const {code,...sub}=entry;
