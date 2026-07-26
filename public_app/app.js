@@ -836,35 +836,166 @@ function intelScreen(){
     gaugeHtml+='</div></div>';
   }
 
-  // ====== LAYER 2: INTELLIGENCE SUMMARY ======
+  // ====== LAYER 2: SLAYERS INTELLIGENCE ======
   var briefHtml='';
-  var briefLines=[];
-  var ws=state.weeklyStats||{},ac=state.active||[],sigs=state.signals||[];
-  if(ac.length)briefLines.push(ac.length+' active trade'+(ac.length>1?'s':'')+' running');
-  if(ws.totalR)briefLines.push((ws.totalR>0?'+':'')+ws.totalR.toFixed(1)+'R this week');
-  if(ws.winRate)briefLines.push(ws.winRate+'% win rate');
-  if(confl.length)briefLines.push(confl.length+' market pulse pairs tracked');
-  if(sigs.length)briefLines.push(sigs.length+' recent signals');
-  if(arts.length)briefLines.push(arts.length+' news articles');
-  if(confl.length){
-    var topPulse=confl.slice(0,2).map(function(p){return p.name||p.id;}).join(' \u00b7 ');
-    briefLines.push('Focus: '+topPulse);
-  }
-  if(briefLines.length){
+  try{
+    var ws=state.weeklyStats||{},ac=state.active||[],sigs=state.signals||[],bf=state.briefing||{};
+    var bullC=0,bearC=0;
+    for(var xi=0;xi<confl.length;xi++){
+      var d=confl[xi].signalDir||confl[xi].weeklyBias||'';
+      if(d==='BULLISH')bullC++;else if(d==='BEARISH')bearC++;
+    }
+    var totC=bullC+bearC;
+    var mktSent=totC?(bullC/totC>0.55?'bullish':bearC/totC>0.55?'bearish':'mixed'):'neutral';
+    var usdStrong=(sent.usdStrength||50)>55;
+    var volHigh=(sent.volatility||50)>62;
+    var riskHigh=(sent.riskAppetite||50)>55;
+
+    function activeSessionName(){
+      var h=new Date().getUTCHours(),defs=[{n:'Sydney',o:22,c:7},{n:'Tokyo',o:0,c:9},{n:'London',o:8,c:17},{n:'New York',o:13,c:22}];
+      for(var i=0;i<defs.length;i++){var s=defs[i];if(s.o<=s.c?h>=s.o&&h<s.c:h>=s.o||h<s.c)return s.n;}
+      return'';
+    }
+    var sessN=activeSessionName();
+
+    var overviewTxt=(bf&&(bf.overview||bf.marketOverview))||
+      'Markets are trading in a '+mktSent+' bias as '+(usdStrong?'the USD holds firm':'USD faces selling pressure')+
+      (ac.length?' with '+ac.length+' active trade'+(ac.length>1?'s':'')+'':'')+'. '+
+      'Risk appetite is '+(riskHigh?'elevated':'cautious')+' ahead of the '+(sessN||'next')+' session.';
+
+    var whyTxt=(bf&&(bf.why||bf.whyHappening))||
+      (usdStrong?'The Dollar continues to draw support from '+(volHigh?'elevated yields and a hawkish rate outlook':'steady economic data and rate differentials')+
+      '. This is weighing on EUR/USD and commodity currencies while keeping Gold under pressure.':
+      'Dollar softness is driving a recovery in risk assets. Weaker USD momentum is providing a tailwind for Gold and EUR/USD.')+
+      ' Equity futures reflect '+(riskHigh?'optimism':'caution')+' with '+(bullC>bearC?'more bullish':'bearish-leaning')+' market pulse signals.';
+
+    var expectTxt=(bf&&(bf.expect||bf.whatToExpect))||
+      'Expect '+(volHigh?'elevated':'moderate')+' volatility during '+(sessN||'the upcoming')+' session. '+
+      (usdStrong?'If USD strength continues, expect further downside in Gold and EUR/USD.':
+      'If USD weakness persists, look for Gold and EUR/USD to extend their recoveries.')+
+      (ac.length?' Active trades need close monitoring — manage SL levels.':' Watch for fresh setups as new signals emerge.');
+
+    function findAssetDir(kws){
+      var best=null;
+      for(var xi=0;xi<confl.length;xi++){
+        var pn=confl[xi].name||confl[xi].id||'';
+        for(var ni=0;ni<kws.length;ni++){if(pn.indexOf(kws[ni])>-1||kws[ni].indexOf(pn)>-1){if(!best)best=confl[xi];break;}}
+      }
+      if(!best)return'neutral';
+      var dd=best.signalDir||best.weeklyBias||'';
+      return dd==='BULLISH'?'bullish':dd==='BEARISH'?'bearish':'neutral';
+    }
+
+    var assets=[
+      {l:'USD',k:['USD']},{l:'Gold',k:['XAU','GOLD']},{l:'Indices',k:['NAS100','US30','SPX500']},
+      {l:'EUR',k:['EUR']},{l:'Bitcoin',k:['BTC']},{l:'GBP',k:['GBP']}
+    ];
+    var assetHtml='';
+    for(var ai=0;ai<assets.length;ai++){
+      var a=assets[ai],ad=findAssetDir(a.k);
+      var aC=ad==='bullish'?C.lime:ad==='bearish'?C.red:C.text2,aS=ad==='bullish'?'\u2191':ad==='bearish'?'\u2193':'\u2192';
+      var aL=ad==='bullish'?'Bullish':ad==='bearish'?'Bearish':'Neutral';
+      assetHtml+='<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 10px;border-radius:8px;background:rgba(255,255,255,0.02)">'+
+        '<span style="font-size:10px;font-weight:700;color:#FFF">'+a.l+'</span>'+
+        '<span style="font-size:9px;font-weight:600;color:'+aC+'">'+aS+' '+aL+'</span></div>';
+    }
+
+    function findPairsByDir(dir){
+      var out=[];
+      for(var xi=0;xi<confl.length;xi++){
+        var dd=confl[xi].signalDir||confl[xi].weeklyBias||'';
+        if(dd===dir)out.push(confl[xi].name||confl[xi].id);
+      }
+      return out;
+    }
+    var bulls=findPairsByDir('BULLISH'),bears=findPairsByDir('BEARISH');
+
+    var avoidList=[];
+    if(bears.length)avoidList.push('Counter-trend buys in '+bears.slice(0,2).join(' & ')+' while bearish momentum holds');
+    else if(usdStrong)avoidList.push('Counter-trend Gold buys while USD momentum is strong');
+    else avoidList.push('Chasing momentum into overbought levels without confirmation');
+    if(volHigh)avoidList.push('Oversized positions with wide stops in high-volatility conditions');
+    else avoidList.push('Low-volume breakouts ahead of the next major catalyst');
+    if(bulls.length&&bears.length)avoidList.push('Adding to positions in '+bears[0]+' — mixed signals suggest range-bound risk');
+    else if(usdStrong)avoidList.push('Short USD pairs near strong support levels');
+    else avoidList.push('Fading strong directional moves without divergence confirmation');
+
+    var focusList=[];
+    if(usdStrong)focusList.push('USD strength continuation into '+(sessN||'NY')+' session');
+    else focusList.push('USD weakness — look for long setups in EUR/USD and Gold');
+    if(ac.length){var ba=ac[0];focusList.push('Manage active '+(ba.instName||ba.pair||'trade')+' — trail stops as price moves');}
+    else if(bulls.length)focusList.push(bulls[0]+' long if key resistance breaks with volume');
+    else focusList.push('Monitor EUR/USD for potential breakout above resistance');
+    if(bears.length)focusList.push(bears[0]+' sell on rallies if bearish structure holds');
+    else if(!usdStrong)focusList.push('Watch Gold for continuation above recent highs');
+    else focusList.push('Monitor USD/JPY for trend continuation setup');
+    focusList.push('Watch price action during '+(sessN||'London')+' — '+(bulls.length?'key levels to test':'potential setup brewing'));
+
+    var confScore=Math.min(100,Math.max(0,Math.round((ws.winRate||65)*0.6+Math.min(sigs.length,10)*1.5+Math.min(ac.length,5)*2+(riskHigh?5:0))));
+    var confLabel=confScore>=75?'High':confScore>=55?'Medium':'Low';
+    var riskVal=sent.volatility||50;
+    var riskLevel=riskVal>65?'High':riskVal>40?'Medium':'Low';
+    var riskReason=riskLevel==='High'?'Elevated volatility':riskLevel==='Medium'?'Normal conditions':'Quiet session ahead';
+
+    var watchPs=confl.slice(0,3);
+    var quotes=[
+      '"Don\'t force trades today. Let the market come to you."',
+      '"Plan the trade, trade the plan. Stick to your levels."',
+      '"The trend is your friend until the bend at the end."',
+      '"Patience is a trader\'s edge. Wait for confirmation."',
+      '"Manage risk first. Profits take care of themselves."',
+      '"Sometimes the best trade is the one you don\'t take."'
+    ];
+    var qIdx=new Date().getDate()%quotes.length;
+
     briefHtml='<div style="margin-bottom:16px">'+
       '<div class="section-label" style="margin-bottom:10px">'+icon(I.sparkles,C.text2,10)+' Slayers Intelligence</div>'+
-      '<div class="card" style="padding:18px;margin-bottom:0;border-radius:20px;background:#151515;position:relative;overflow:hidden">'+
-        '<div style="position:absolute;top:-30px;right:-30px;width:100px;height:100px;border-radius:50%;background:radial-gradient(circle,rgba(183,255,42,0.04),transparent 70%);pointer-events:none"></div>'+
-        '<div style="display:flex;gap:10px;margin-bottom:10px">'+
-          icon(I.brain,C.lime,18)+
-          '<div><div style="font-size:13px;font-weight:600;color:#FFF">The Slayers</div>'+
-          '<div style="font-size:10px;color:#5F5F5F">Live Market Briefing</div></div></div>'+
-        '<div style="font-size:11px;color:#8E8E8E;line-height:1.8">'+briefLines.map(function(l){return '\u2022 '+esc(l);}).join('<br>')+'</div>'+
-        '<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">'+
-          (ac.length?'<span style="font-size:8px;padding:3px 8px;border-radius:6px;background:'+C.limeSoft+';color:'+C.lime+';font-weight:600;border:0.5px solid '+C.limeBorder+'">Live</span>':'')+
-          '<span style="font-size:8px;padding:3px 8px;border-radius:6px;background:rgba(255,255,255,0.03);color:#5F5F5F;font-weight:500">'+timeAgo(Date.now())+'</span>'+
-        '</div></div></div>';
-  }
+      '<div class="card" style="padding:20px;margin-bottom:0;border-radius:24px;background:#151515;position:relative;overflow:hidden;border:0.5px solid rgba(255,255,255,0.05)">'+
+        '<div style="position:absolute;top:-60px;right:-60px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(199,255,56,0.03),transparent 70%);pointer-events:none"></div>'+
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">'+
+          icon(I.eye,C.lime,14)+'<span style="font-size:10px;font-weight:700;color:#FFF">The Slayers Intelligence</span></div>'+
+        '<div style="font-size:7px;color:#5F5F5F;margin-bottom:14px">Updated '+timeAgo(Date.now())+'</div>'+
+
+        '<div style="font-size:8px;font-weight:700;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px">\u2460 Market Overview</div>'+
+        '<p style="font-size:11px;color:#CECECE;line-height:1.55;margin-bottom:12px">'+esc(overviewTxt)+'</p>'+
+
+        '<div style="font-size:8px;font-weight:700;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px">\u2461 Why It\'s Happening</div>'+
+        '<p style="font-size:11px;color:#CECECE;line-height:1.55;margin-bottom:12px">'+esc(whyTxt)+'</p>'+
+
+        '<div style="font-size:8px;font-weight:700;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px">\u2462 What To Expect</div>'+
+        '<p style="font-size:11px;color:#CECECE;line-height:1.55;margin-bottom:12px">'+esc(expectTxt)+'</p>'+
+
+        '<div style="font-size:8px;font-weight:700;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:5px">\u2463 Asset Strength</div>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:12px">'+assetHtml+'</div>'+
+
+        '<div style="font-size:8px;font-weight:700;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px">\u2464 What To Avoid</div>'+
+        avoidList.slice(0,3).map(function(l){return '<div style="display:flex;align-items:flex-start;gap:5px;font-size:9px;color:#8E8E8E;padding:3px 0"><span style="color:#FF5D5D;flex-shrink:0;font-weight:700;font-size:10px">\u2715</span> '+esc(l)+'</div>';}).join('')+
+        '<div style="margin-bottom:10px"></div>'+
+
+        '<div style="font-size:8px;font-weight:700;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px">\u2465 Today\'s Focus</div>'+
+        focusList.slice(0,4).map(function(l){return '<div style="display:flex;align-items:flex-start;gap:5px;font-size:9px;color:#CECECE;padding:3px 0"><span style="color:#C7FF38;flex-shrink:0;font-weight:700;font-size:10px">\u2713</span> '+esc(l)+'</div>';}).join('')+
+        '<div style="margin-bottom:12px"></div>'+
+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'+
+          '<div style="border-radius:12px;background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.04);padding:10px;text-align:center">'+
+            '<div style="font-size:7px;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px">Confidence</div>'+
+            '<div style="font-size:20px;font-weight:800;color:'+(confScore>=75?C.lime:confScore>=55?C.text2:C.red)+'">'+confScore+'%</div>'+
+            '<div style="font-size:9px;font-weight:600;color:'+(confScore>=75?C.lime:confScore>=55?C.text2:C.red)+'">'+confLabel+'</div></div>'+
+          '<div style="border-radius:12px;background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.04);padding:10px;text-align:center">'+
+            '<div style="font-size:7px;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px">Risk</div>'+
+            '<div style="font-size:20px;font-weight:800;color:'+(riskLevel==='High'?C.red:riskLevel==='Medium'?C.text2:C.lime)+'">'+riskLevel+'</div>'+
+            '<div style="font-size:8px;color:#5F5F5F;margin-top:1px">'+riskReason+'</div></div>'+
+        '</div>'+
+
+        (watchPs.length?'<div style="display:flex;align-items:center;gap:6px;font-size:9px;color:#5F5F5F;margin-bottom:10px;flex-wrap:wrap">'+
+          '<span style="font-weight:600;color:#8E8E8E">Session:</span> '+(sessN||'Sydney')+
+          watchPs.map(function(p){return '<span style="padding:2px 8px;border-radius:4px;background:rgba(199,255,56,0.06);color:#C7FF38;font-weight:600;font-size:8px">'+(p.name||p.id||'')+'</span>';}).join('')+
+        '</div>':'')+
+
+        '<div style="font-size:10px;color:'+C.lime+';font-style:italic;line-height:1.4;padding-top:10px;border-top:0.5px solid rgba(255,255,255,0.06)">'+quotes[qIdx]+'</div>'+
+
+      '</div></div>';
+  }catch(e){}
 
   // ====== LAYER 3: NEWS FEED ======
   var catMap={

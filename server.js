@@ -216,6 +216,8 @@ let lastBriefingSnapshot=[];
 let lastBriefingTime=null;
 let weeklySummaryData=null;
 let saveTimer=null;
+let lastIntelHash=0;
+let lastIntelPushTime=0;
 function saveState(){
   // debounce: collapse rapid calls into one write
   if(saveTimer)clearTimeout(saveTimer);
@@ -225,7 +227,7 @@ function saveState(){
       weeklyCache,prevWeeklyCache,recentQMRFires,qmr4HCache,suppressedPairs:[...suppressedPairs],
       lastBriefing,lastEOD,lastWeeklySummary,lastMonthlyRecap,pairPerformance,
       dailyAlertLog,dailyOutcomeLog,
-      qmrSeen:[...qmrSeen],scalpSeen:[...scalpSeen],earlyEntryCache,appSignalFeed,lastBriefingSnapshot,lastBriefingTime,      pushSubscriptions,memberCodes,trackedTrades,memberStats,weeklySummaryData,scalpSignals,activeScalpTrades,scalpTradeHistory,
+      qmrSeen:[...qmrSeen],scalpSeen:[...scalpSeen],earlyEntryCache,appSignalFeed,lastBriefingSnapshot,lastBriefingTime,lastIntelHash,lastIntelPushTime,      pushSubscriptions,memberCodes,trackedTrades,memberStats,weeklySummaryData,scalpSignals,activeScalpTrades,scalpTradeHistory,
       savedAt:Date.now()
     };
     const json=JSON.stringify(state);
@@ -331,6 +333,8 @@ async function loadState(){
     if(Array.isArray(st.appSignalFeed))appSignalFeed=st.appSignalFeed;
     if(Array.isArray(st.lastBriefingSnapshot))lastBriefingSnapshot=st.lastBriefingSnapshot;
     if(st.lastBriefingTime)lastBriefingTime=st.lastBriefingTime;
+    if(typeof st.lastIntelHash==='number')lastIntelHash=st.lastIntelHash;
+    if(typeof st.lastIntelPushTime==='number')lastIntelPushTime=st.lastIntelPushTime;
     if(Array.isArray(st.pushSubscriptions))pushSubscriptions=st.pushSubscriptions;
     if(Array.isArray(st.memberCodes))memberCodes=st.memberCodes;
     if(st.trackedTrades&&typeof st.trackedTrades==='object')trackedTrades=st.trackedTrades;
@@ -1616,7 +1620,124 @@ async function runScan(manual=false){
     scalpSeen=new Set(arr.slice(-100));
   }
   scanCount++;lastScanTime=new Date().toISOString();saveState();
+  checkIntelChangeAndPush().catch(function(){});
   log(`Scan complete #${scanCount}`);
+}
+
+// ====== SLAYERS INTELLIGENCE ======
+function intelSnapshot(){
+  var parts=[];
+  parts.push('ac:'+(activeQMRTrades.length||0));
+  parts.push('nf:'+(newsFeedCache.length||0));
+  var biases=[];
+  for(var k in weeklyCache){var b=weeklyCache[k].bias||'NEUTRAL';biases.push(k+':'+b);}
+  parts.push('wb:'+biases.sort().join(','));
+  parts.push('sg:'+(appSignalFeed.filter(function(s){return!s.outcome;}).length||0));
+  return parts.join('|');
+}
+
+function generateIntelBriefing(){
+  var now=new Date();
+  var acCount=activeQMRTrades.length||0;
+  var newsCount=newsFeedCache.length||0;
+  var sigCount=appSignalFeed.filter(function(s){return!s.outcome;}).length||0;
+  var bullCount=0,bearCount=0;
+  for(var k in weeklyCache){
+    var b=weeklyCache[k].bias||'';
+    if(b==='BULLISH')bullCount++;else if(b==='BEARISH')bearCount++;
+  }
+  var totBias=bullCount+bearCount;
+  var mktSent=totBias?(bullCount/totBias>0.55?'bullish':bearCount/totBias>0.55?'bearish':'mixed'):'neutral';
+  var usdStrong=false;
+  for(var k in weeklyCache){
+    if(k.indexOf('USD')>-1&&weeklyCache[k].bias==='BULLISH'){usdStrong=true;break;}
+    if(k.indexOf('USD')>-1&&weeklyCache[k].bias==='BEARISH'){usdStrong=false;break;}
+  }
+
+  var overview='Markets are trading in a '+mktSent+' bias as '+(usdStrong?'the USD holds firm':'USD faces selling pressure')+
+    (acCount?' with '+acCount+' active trade'+(acCount>1?'s':'')+'':'')+'. '+
+    'Risk appetite is '+(bullCount>bearCount?'elevated':'cautious')+' with '+newsCount+' news articles in the feed.';
+
+  var why='The Dollar '+(usdStrong?'continues to draw support from yields and rate differentials':'shows signs of softness as markets reassess the rate path')+
+    '. '+(bullCount>bearCount?'Bullish momentum is dominant across market pulse pairs.':'Bearish pressure is visible across multiple pairs.')+
+    ' Equity futures reflect '+(bullCount>bearCount?'optimism':'caution')+'.';
+
+  var expect='Expect '+(acCount>2?'elevated':'moderate')+' volatility with '+
+    (acCount?' active trades requiring close management.':' fresh setups developing across pairs.')+
+    ' '+(usdStrong?'If USD continues to strengthen, expect further downside in Gold and EUR/USD.':'If USD weakness persists, look for Gold and EUR/USD to extend.')+
+    (sigCount?' '+sigCount+' active signals in the feed.':'');
+
+  var assets=[];
+  function findBias(keywords){
+    for(var k in weeklyCache){
+      for(var ni=0;ni<keywords.length;ni++){if(k.indexOf(keywords[ni])>-1||keywords[ni].indexOf(k)>-1)return weeklyCache[k].bias||'NEUTRAL';}
+    }
+    return 'NEUTRAL';
+  }
+  var assetCats=[
+    {l:'USD',k:['USD']},{l:'Gold',k:['XAU','GOLD']},{l:'Indices',k:['NAS100','US30','SPX500']},
+    {l:'EUR',k:['EUR']},{l:'Bitcoin',k:['BTC']},{l:'GBP',k:['GBP']}
+  ];
+  for(var ai=0;ai<assetCats.length;ai++){
+    var a=assetCats[ai],ab=findBias(a.k);
+    assets.push({n:a.l,d:ab==='BULLISH'?'bullish':ab==='BEARISH'?'bearish':'neutral'});
+  }
+
+  var bulls=[],bears=[];
+  for(var k in weeklyCache){
+    var b=weeklyCache[k].bias||'';
+    if(b==='BULLISH')bulls.push(k);else if(b==='BEARISH')bears.push(k);
+  }
+
+  var avoid=[];
+  if(bears.length)avoid.push('Counter-trend buys in '+bears.slice(0,2).join(' & ')+' while bearish momentum holds');
+  else if(usdStrong)avoid.push('Counter-trend Gold buys while USD momentum is strong');
+  else avoid.push('Chasing momentum into overbought levels without confirmation');
+  if(acCount>1)avoid.push('Adding to multiple positions simultaneously in current conditions');
+  else avoid.push('Low-volume breakouts ahead of the next major catalyst');
+  if(bulls.length&&bears.length)avoid.push('Trading in mixed-signal conditions — wait for clearer direction');
+  else if(usdStrong)avoid.push('Short USD pairs near strong support levels');
+  else avoid.push('Fading strong directional moves without confirmation');
+
+  var focus=[];
+  if(usdStrong)focus.push('USD strength continuation — look for USD longs');
+  else focus.push('USD weakness — look for long setups in EUR/USD and Gold');
+  if(acCount){focus.push('Manage active trades — trail stops as price moves');}
+  else if(bulls.length)focus.push(bulls[0]+' long if key resistance breaks');
+  else focus.push('Monitor EUR/USD for breakout setup');
+  if(bears.length)focus.push(bears[0]+' sell on rallies if bearish structure holds');
+  else focus.push('Watch Gold for continuation above recent highs');
+  focus.push('Watch price action during key sessions for setup triggers');
+
+  var confScore=Math.min(100,Math.max(0,Math.round(65*0.6+sigCount*1.5+acCount*2+(!usdStrong?5:0))));
+
+  return{
+    overview:overview,why:why,expect:expect,
+    assets:assets,avoid:avoid,focus:focus,
+    confidence:confScore,
+    riskLevel:acCount>2||newsCount>30?'High':acCount>0||newsCount>15?'Medium':'Low',
+    activeTrades:acCount,articles:newsCount,signals:sigCount,
+    updatedAt:new Date().toISOString()
+  };
+}
+
+async function checkIntelChangeAndPush(){
+  if(!webpush||!VAPID_PUBLIC||!VAPID_PRIVATE||!pushSubscriptions.length)return;
+  var snap=intelSnapshot(),hash=0;
+  for(var i=0;i<snap.length;i++){hash=((hash<<5)-hash)+snap.charCodeAt(i);hash|=0;}
+  if(hash===lastIntelHash)return;
+  var now=Date.now();
+  if(now-lastIntelPushTime<10*60*1000)return; // max 1 push per 10 min
+  lastIntelHash=hash;
+  lastIntelPushTime=now;
+  saveState();
+  var acCount=activeQMRTrades.length||0,newsCount=newsFeedCache.length||0,sigCount=appSignalFeed.filter(function(s){return!s.outcome;}).length||0;
+  var body='Intel briefing updated';
+  if(newsCount)body+=' \u00B7 '+newsCount+' articles';
+  if(acCount)body+=' \u00B7 '+acCount+' active trade'+(acCount>1?'s':'');
+  if(sigCount)body+=' \u00B7 '+sigCount+' signal'+(sigCount>1?'s':'');
+  sendPushToAll('\uD83D\uDCA1 Slayers Intelligence',body,'/');
+  log('Intel change detected — push sent');
 }
 
 // Dashboard
@@ -2041,6 +2162,12 @@ app.get('/api/news-feed',(req,res)=>{
   if(codeCheck!=='ok')return res.status(401).json({error:'Invalid or expired access code',reason:codeCheck});
   res.json({articles:newsFeedCache,fetchedAt:Date.now()});
 });
+app.get('/api/intel-summary',(req,res)=>{
+  const codeCheck=checkMemberCode(req);
+  if(codeCheck!=='ok')return res.status(401).json({error:'Invalid or expired access code',reason:codeCheck});
+  const briefing=generateIntelBriefing();
+  res.json({briefing,fetchedAt:Date.now()});
+});
 app.get('/api/journal',(req,res)=>{
   const codeCheck=checkMemberCode(req);
   if(codeCheck!=='ok')return res.status(401).json({error:'Invalid or expired access code',reason:codeCheck});
@@ -2382,8 +2509,8 @@ loadState().then(()=>{
   var cleaned=0;
   for(var sigId in trackedTrades){if(!activeSet.has(sigId)){delete trackedTrades[sigId];cleaned++;}}
   if(cleaned)log(`Startup cleanup: removed ${cleaned} stale tracking entr(ies) from closed trades`);
-  fetchNewsFeed().then(function(){log('News feed: initial fetch complete ('+newsFeedCache.length+' articles)');});
-  setInterval(function(){fetchNewsFeed().catch(function(){});},10*60*1000);
+  fetchNewsFeed().then(function(){log('News feed: initial fetch complete ('+newsFeedCache.length+' articles)');checkIntelChangeAndPush().catch(function(){});});
+  setInterval(function(){fetchNewsFeed().then(function(){checkIntelChangeAndPush().catch(function(){});}).catch(function(){});},10*60*1000);
   runScan(true).then(function(){setInterval(function(){runScan(false).catch(function(){});},CHECK_MS);log('Scanning every '+CHECK_MS/60000+' minutes');});
   // Scalp trade check loop — runs every 2 min during active sessions
   setInterval(async function(){
