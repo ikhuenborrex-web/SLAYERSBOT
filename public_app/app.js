@@ -1149,7 +1149,7 @@ function weeklyReportScreen(){
   return '<div class="sc" style="padding:16px;background:#090909;min-height:100vh;display:flex;flex-direction:column;align-items:center">'+
     '<div style="width:100%;max-width:400px;position:relative">'+
       // Back button
-      '<button onclick="setTab(\'dash\')" style="background:none;border:none;color:#8E8E8E;font-size:14px;padding:8px 0;margin-bottom:8px;cursor:pointer">\u2190 Dashboard</button>'+
+      '<button onclick="setTab(\'dash\');location.hash=\'\'" style="background:none;border:none;color:#8E8E8E;font-size:14px;padding:8px 0;margin-bottom:8px;cursor:pointer">\u2190 Dashboard</button>'+
       
       // Header with mascot
       '<div style="text-align:center;margin:8px 0 20px">'+
