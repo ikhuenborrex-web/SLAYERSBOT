@@ -2109,6 +2109,134 @@ app.post('/api/admin/backtest',async(req,res)=>{
     });
   }catch(e){res.status(500).json({error:'Backtest error: '+e.message});}
 });
+// ===== ADMIN API: Operations Center =====
+app.get('/api/admin/dashboard',(req,res)=>{
+  if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
+  const today=new Date();today.setHours(0,0,0,0);
+  const todayTrades=tradeHistory.filter(t=>t.time&&new Date(t.time)>=today);
+  const todayWins=todayTrades.filter(t=>t.outcome==='TP1'||t.outcome==='TP2'||t.outcome==='WIN').length;
+  const todayLosses=todayTrades.filter(t=>t.outcome==='SL').length;
+  res.json({
+    uptime:process.uptime(),scanCount,lastScanTime,
+    activeTrades:activeQMRTrades.length,
+    activeScalpTrades:activeScalpTrades.filter(t=>!t.closed).length,
+    pendingSignals:appSignalFeed.filter(s=>!s.outcome).length,
+    totalSignals:appSignalFeed.length,
+    activeUsers:memberCodes.filter(m=>m.boundDevice).length,
+    totalUsers:memberCodes.length,
+    pushSubscribers:pushSubscriptions.length,
+    totalTradeHistory:tradeHistory.length,
+    todayTrades:todayTrades.length,todayWins,todayLosses,
+    winStreak,lossStreak,
+    weeklySummary:weeklySummaryData,
+    alertLog:alertLog.slice(-10),
+    recentNotifications:serverNotifQueue.slice(-10),
+    isWeekend:isWeekend(),session:getSess()
+  });
+});
+app.get('/api/admin/trades',async(req,res)=>{
+  if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
+  const allInsts=[...QMR_INSTS,...SCALP_INSTS,...CRT_INSTS];
+  const tradesWithPrices=[];
+  for(const trade of activeQMRTrades){
+    const inst=allInsts.find(i=>i.id===trade.instId);
+    let currentPrice=null,rMultiple=0;
+    try{
+      const pRes=await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst?.sym||trade.instId)}&interval=1h&outputsize=1&apikey=${API_KEY}`);
+      const pJson=await pRes.json();const c=parseC(pJson);
+      if(c.length){currentPrice=c[0].close;rMultiple=computeR(trade,currentPrice);}
+    }catch(e){}
+    tradesWithPrices.push({
+      sigId:trade.sigId,instId:trade.instId,instName:trade.instName,
+      tf:trade.tf,type:trade.type,entry:trade.qmLevel,
+      currentPrice,sl:trade.sl,origSL:trade.origSL,
+      tp1:trade.tp1,tp2:trade.tp2,beLevel:trade.beLevel,
+      beFired:trade.beFired,tp1Fired:trade.tp1Fired,tp2Fired:trade.tp2Fired,
+      slFired:trade.slFired,trailActive:trade.trailActive,
+      rMultiple,isElite:trade.isElite,entryType:trade.entryType,
+      openTime:trade.openTime,
+      age:trade.openTime?Math.round((Date.now()-trade.openTime)/60000):null,
+      trackedBy:trackedTrades[trade.sigId]?.length||0,dec:trade.dec
+    });
+  }
+  res.json({trades:tradesWithPrices,count:tradesWithPrices.length});
+});
+app.get('/api/admin/scalp-trades',(req,res)=>{
+  if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
+  res.json({trades:activeScalpTrades.filter(t=>!t.closed),count:activeScalpTrades.filter(t=>!t.closed).length});
+});
+app.get('/api/admin/trade-history',(req,res)=>{
+  if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
+  const limit=Math.min(parseInt(req.query.limit)||50,200);
+  const history=[...tradeHistory].reverse().slice(0,limit);
+  res.json({trades:history,count:history.length,total:tradeHistory.length});
+});
+app.post('/api/admin/force-scan',async(req,res)=>{
+  if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
+  try{await runScan(true);res.json({ok:true,message:'Scan completed',time:new Date().toISOString()});}
+  catch(e){res.status(500).json({error:e.message});}
+});
+app.post('/api/admin/trades/:sigId/close',async(req,res)=>{
+  if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
+  const sigId=req.params.sigId;
+  const idx=activeQMRTrades.findIndex(t=>t.sigId===sigId&&!t.slFired);
+  if(idx===-1)return res.status(404).json({error:'Active trade not found'});
+  const t=activeQMRTrades[idx];
+  let price;
+  try{
+    const allInsts=[...QMR_INSTS,...SCALP_INSTS,...CRT_INSTS];
+    const inst=allInsts.find(i=>i.id===t.instId)||{sym:t.instId};
+    const pRes=await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym||t.instId)}&interval=1h&outputsize=1&apikey=${API_KEY}`);
+    const pJson=await pRes.json();const c=parseC(pJson);
+    if(!c.length)return res.status(502).json({error:'Could not fetch current price'});
+    price=c[0].close;
+  }catch(e){return res.status(502).json({error:'Price fetch failed: '+e.message});}
+  const isB=t.type==='BULLISH';
+  const rMultiple=computeR(t,price);
+  const inProfit=isB?price>=t.qmLevel:price<=t.qmLevel;
+  const outcome=inProfit?'WIN':'SL';
+  const duration=t.openTime?Math.round((Date.now()-t.openTime)/60000):null;
+  tradeHistory.push({instId:t.instId,type:t.type,tf:t.tf,outcome,rMultiple,time:new Date().toISOString(),duration,manualClose:true});
+  updateMemberStats(t.sigId,outcome,rMultiple);
+  autoJournalEntry(t,outcome,rMultiple,duration);
+  dailyOutcomeLog.push({id:t.instId,name:t.instName,tf:t.tf,type:t.type,outcome,time:new Date().toISOString()});
+  if(outcome==='WIN'){lossStreak=0;winStreak++;}else{winStreak=0;lossStreak++;}
+  const rStr=rMultiple>=0?'+'+rMultiple.toFixed(t.dec||2)+'R':rMultiple.toFixed(t.dec||2)+'R';
+  await tgSend('\uD83D\uDD04 MANUAL CLOSE - '+t.instId+'\n'+'='.repeat(28)+'\n\uD83D\uDCCA '+t.instName+' \u00B7 '+t.tf+' | '+(isB?'BUY':'SELL')+' QMR\n\n\uD83D\uDCCD Entry: '+t.qmLevel.toFixed(t.dec||5)+'\n\uD83C\uDF1F Exit: '+price.toFixed(t.dec||5)+'\n\uD83D\uDCB0 '+rStr+'\n\nTrade closed manually by admin.\n'+(outcome==='WIN'?'\u2705 Profit secured.':'Stay disciplined, next setup coming.')+'\n\n\u2014 The Slayers Model by Rexroz');
+  try{sendPushToTrackers(t.sigId,'\uD83D\uDD04 Manual Close '+t.instName+' \u2014 '+rStr,t.instName,outcome==='WIN'?'tp2':'sl');}catch(e){}
+  markFeedOutcome(t.sigId,outcome);
+  clearAggBanner(t.sigId);
+  delete trackedTrades[t.sigId];
+  activeQMRTrades.splice(idx,1);
+  saveState();
+  res.json({ok:true,pair:t.instId,outcome,rMultiple,exitPrice:price});
+});
+app.post('/api/admin/trades/:sigId/move-be',(req,res)=>{
+  if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
+  const t=activeQMRTrades.find(t=>t.sigId===req.params.sigId&&!t.slFired);
+  if(!t)return res.status(404).json({error:'Active trade not found'});
+  t.sl=t.qmLevel;t.beFired=true;t.beLevel=t.qmLevel;
+  saveState();
+  res.json({ok:true,pair:t.instId,message:'SL moved to breakeven at '+t.qmLevel.toFixed(t.dec||5)});
+});
+app.post('/api/admin/trades/:sigId/move-sl',(req,res)=>{
+  if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
+  const newSl=parseFloat(req.body&&req.body.price);
+  if(!newSl||!isFinite(newSl))return res.status(400).json({error:'New SL price required in body.price'});
+  const t=activeQMRTrades.find(t=>t.sigId===req.params.sigId&&!t.slFired);
+  if(!t)return res.status(404).json({error:'Active trade not found'});
+  t.sl=newSl;if(t.origSL===undefined||t.origSL===null)t.origSL=t.sl;
+  saveState();
+  res.json({ok:true,pair:t.instId,message:'SL moved to '+newSl.toFixed(t.dec||5)});
+});
+app.get('/api/admin/logs',(req,res)=>{
+  if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
+  res.json({
+    alertLog:alertLog.slice(-20),
+    notifications:serverNotifQueue.slice(-20),
+    dailyOutcomeLog:[...dailyOutcomeLog].reverse().slice(0,20)
+  });
+});
 app.get('/api/scalp',(req,res)=>{
   const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
   const myCode=req.query.code||req.headers['x-access-code'];
