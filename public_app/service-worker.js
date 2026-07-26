@@ -29,7 +29,7 @@ self.addEventListener('fetch', e => {
   );
 });
 
-// Push notification handling — unchanged
+// Push notification handling — tell app to refresh when a push arrives
 self.addEventListener('push', e => {
   let data = {};
   try { data = e.data ? e.data.json() : {}; } catch (err) { data = { title: 'Slayers Bot', body: e.data ? e.data.text() : 'New signal' }; }
@@ -40,7 +40,12 @@ self.addEventListener('push', e => {
     badge: '/app/icon-192.png',
     data: { url: data.url || '/app/' }
   };
-  e.waitUntil(self.registration.showNotification(title, options));
+  e.waitUntil(Promise.all([
+    self.registration.showNotification(title, options),
+    self.clients.matchAll({ type: 'window' }).then(clients => {
+      clients.forEach(c => c.postMessage({ type: 'refresh' }));
+    })
+  ]));
 });
 
 self.addEventListener('notificationclick', e => {

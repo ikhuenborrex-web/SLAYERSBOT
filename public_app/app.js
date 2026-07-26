@@ -1437,6 +1437,9 @@ async function checkPushStatus(){
 }
 if('serviceWorker'in navigator){
   navigator.serviceWorker.register('/app/service-worker.js').then(function(reg){swRegistration=reg;if(getCode())checkPushStatus();}).catch(function(e){});
+  navigator.serviceWorker.addEventListener('message',function(e){
+    if(e.data&&e.data.type==='refresh'&&getCode())fetchAll(true);
+  });
 }
 document.addEventListener('click',function(e){
   var btn=e.target.closest('.nav-btn');
