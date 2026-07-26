@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Notification Bell — Prototype</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#090909;color:#FFF;min-height:100vh;display:flex;flex-direction:column;align-items:center}
+  .screen{width:100%;max-width:400px;height:100vh;position:relative;overflow:hidden;background:#090909;display:flex;flex-direction:column}
+  /* Scrollable content area */
+  .content{flex:1;overflow-y:auto;padding:20px 16px}
+  /* ===== JOURNAL HEADER WITH BELL ===== */
+  .journal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-top:8px}
+  .journal-header h2{font-size:24px;font-weight:700;color:#FFF;letter-spacing:-0.03em}
+  .journal-header .sub{font-size:12px;color:#5F5F5F;margin-top:2px}
+  .header-actions{display:flex;gap:8px;align-items:center}
+  /* ===== BELL BUTTON ===== */
+  .bell-btn{width:40px;height:40px;border-radius:99px;background:rgba(255,255,255,0.04);border:0.5px solid rgba(255,255,255,0.06);cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative;transition:all .2s}
+  .bell-btn:active{transform:scale(0.92);background:rgba(255,255,255,0.08)}
+  .bell-btn svg{width:18px;height:18px}
+  /* ===== BADGE ===== */
+  .badge{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;border-radius:99px;background:#FF5252;color:#FFF;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px;border:2px solid #090909;box-shadow:0 0 0 0 rgba(255,82,82,0.4);animation:none}
+  .badge.pulse{animation:badgePulse 2s infinite}
+  @keyframes badgePulse{0%,100%{box-shadow:0 0 0 0 rgba(255,82,82,0.4)}50%{box-shadow:0 0 0 8px rgba(255,82,82,0)}}
+  /* ===== NOTIFICATION PANEL (slide up) ===== */
+  .notif-overlay{position:fixed;top:0;left:0;right:0;bottom:0;z-index:999;background:rgba(9,9,9,0.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);opacity:0;pointer-events:none;transition:opacity .3s}
+  .notif-overlay.open{opacity:1;pointer-events:auto}
+  .notif-panel{position:fixed;bottom:0;left:0;right:0;z-index:1000;max-width:400px;margin:0 auto;background:#121212;border-radius:20px 20px 0 0;padding:0 0 env(safe-area-inset-bottom,16px);transform:translateY(100%);transition:transform .35s cubic-bezier(0.32,0.72,0,1);max-height:75vh;display:flex;flex-direction:column}
+  .notif-panel.open{transform:translateY(0)}
+  .notif-handle{width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,0.12);margin:12px auto 8px;flex-shrink:0}
+  .notif-header{display:flex;align-items:center;justify-content:space-between;padding:8px 20px 12px;flex-shrink:0}
+  .notif-header h3{font-size:17px;font-weight:700;color:#FFF}
+  .notif-header .clear-btn{background:none;border:none;color:#FF5252;font-size:13px;font-weight:500;cursor:pointer;padding:4px 8px;border-radius:6px}
+  .notif-header .clear-btn:active{background:rgba(255,82,82,0.1)}
+  .notif-list{flex:1;overflow-y:auto;padding:0 16px 8px;-webkit-overflow-scrolling:touch}
+  /* ===== NOTIFICATION ITEM ===== */
+  .notif-item{display:flex;gap:12px;padding:14px 0;border-bottom:0.5px solid rgba(255,255,255,0.04);cursor:pointer;transition:background .15s}
+  .notif-item:active{background:rgba(255,255,255,0.02);margin:0 -12px;padding:14px 12px;border-radius:12px}
+  .notif-item:last-child{border-bottom:none}
+  .notif-icon{width:40px;height:40px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px}
+  .notif-icon.trophy{background:rgba(183,255,42,0.12);color:#B7FF2A}
+  .notif-icon.trade{background:rgba(255,82,82,0.12);color:#FF5252}
+  .notif-icon.scalp{background:rgba(249,115,22,0.12);color:#f97316}
+  .notif-icon.info{background:rgba(59,130,246,0.12);color:#3b82f6}
+  .notif-body{flex:1;min-width:0}
+  .notif-body .title{font-size:14px;font-weight:600;color:#FFF;line-height:1.3}
+  .notif-body .body{font-size:13px;color:#8E8E8E;line-height:1.3;margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .notif-body .time{font-size:11px;color:#5F5F5F;margin-top:4px}
+  .notif-unread{position:relative}
+  .notif-unread::before{content:'';width:8px;height:8px;border-radius:50%;background:#B7FF2A;position:absolute;top:16px;left:0}
+  .notif-unread .notif-body .title{color:#B7FF2A}
+  .notif-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;color:#5F5F5F;text-align:center}
+  .notif-empty svg{width:48px;height:48px;margin-bottom:12px;opacity:0.3}
+  .notif-empty .t{font-size:15px;font-weight:600;color:#8E8E8E;margin-bottom:4px}
+  .notif-empty .s{font-size:13px}
+  /* ===== TABS in journal ===== */
+  .journal-tabs{display:flex;gap:6px;margin-bottom:16px}
+  .journal-tab{padding:6px 14px;border-radius:99px;font-size:12px;font-weight:500;cursor:pointer;background:rgba(255,255,255,0.04);color:#8E8E8E;border:0.5px solid transparent;transition:all .2s}
+  .journal-tab.active{background:rgba(183,255,42,0.08);color:#B7FF2A;border-color:rgba(183,255,42,0.15)}
+  /* ===== DUMMY JOURNAL TABLE ===== */
+  .journal-placeholder{background:rgba(255,255,255,0.02);border-radius:12px;padding:20px;text-align:center;color:#5F5F5F;font-size:13px;line-height:1.5;margin-top:8px}
+  .journal-placeholder svg{width:32px;height:32px;margin:0 auto 8px;display:block;opacity:0.2}
+</style>
+</head>
+<body>
+<div class="screen">
+  <!-- ===== CONTENT AREA (journal screen) ===== -->
+  <div class="content">
+    <!-- Journal Header with Bell -->
+    <div class="journal-header">
+      <div>
+        <h2>Journal</h2>
+        <div class="sub">Trade history & performance</div>
+      </div>
+      <div class="header-actions">
+        <button class="bell-btn" id="bellBtn" onclick="togglePanel()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#8E8E8E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+            <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+          </svg>
+          <span class="badge pulse" id="badge">3</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Journal Tabs -->
+    <div class="journal-tabs">
+      <span class="journal-tab active">All</span>
+      <span class="journal-tab">Wins</span>
+      <span class="journal-tab">Losses</span>
+      <span class="journal-tab">Notes</span>
+    </div>
+
+    <!-- Journal placeholder content -->
+    <div class="journal-placeholder">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#5F5F5F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+        <line x1="16" y1="2" x2="16" y2="6"/>
+        <line x1="8" y1="2" x2="8" y2="6"/>
+        <line x1="3" y1="10" x2="21" y2="10"/>
+      </svg>
+      <div>Your journal entries will appear here.<br>Track your trades to build your record.</div>
+    </div>
+  </div>
+
+  <!-- ===== NOTIFICATION OVERLAY ===== -->
+  <div class="notif-overlay" id="notifOverlay" onclick="closePanel()"></div>
+
+  <!-- ===== NOTIFICATION PANEL ===== -->
+  <div class="notif-panel" id="notifPanel">
+    <div class="notif-handle"></div>
+    <div class="notif-header">
+      <h3>Notifications</h3>
+      <button class="clear-btn" onclick="clearAll()">Clear all</button>
+    </div>
+    <div class="notif-list" id="notifList">
+      <!-- Rendered by JS -->
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== SAMPLE NOTIFICATION DATA =====
+var notifications = [
+  {
+    id: 'n1',
+    type: 'trophy',
+    icon: '\uD83C\uDFC6',
+    title: 'Weekly Report Ready',
+    body: 'You finished at +12.4R \u00B7 100% WR. Tap to view.',
+    time: Date.now() - 1000 * 60 * 5, // 5 min ago
+    unread: true,
+    url: '/app/#weekly-report'
+  },
+  {
+    id: 'n2',
+    type: 'trade',
+    icon: '\uD83D\uDCC8',
+    title: 'TP1 Hit \u2014 GBPUSD',
+    body: 'Price hit TP1 at 1.2876. Position moved to breakeven.',
+    time: Date.now() - 1000 * 60 * 120, // 2 hrs ago
+    unread: true,
+    url: '/app/#detail/abc123'
+  },
+  {
+    id: 'n3',
+    type: 'scalp',
+    icon: '\u26A1',
+    title: 'Scalp Signal \u2014 EURUSD',
+    body: 'New 1H scalp signal with score 5/5. Check now.',
+    time: Date.now() - 1000 * 60 * 60 * 5, // 5 hrs ago
+    unread: true,
+    url: '/app/#scalp/xyz456'
+  },
+  {
+    id: 'n4',
+    type: 'trophy',
+    icon: '\uD83C\uDFC6',
+    title: 'Weekly Report Ready',
+    body: 'You finished at +8.2R \u00B7 75% WR. Tap to view.',
+    time: Date.now() - 1000 * 60 * 60 * 24 * 7, // 7 days ago
+    unread: false,
+    url: '/app/#weekly-report'
+  },
+  {
+    id: 'n5',
+    type: 'info',
+    icon: '\u2139\uFE0F',
+    title: 'Market Open \u2014 London Session',
+    body: 'London session just opened. High-impact news expected in 30 min.',
+    time: Date.now() - 1000 * 60 * 60 * 24 * 2, // 2 days ago
+    unread: false,
+    url: '/app/#intel'
+  }
+];
+
+// ===== RENDER NOTIFICATIONS =====
+function renderNotifs(){
+  var list = document.getElementById('notifList');
+  if(!notifications.length){
+    list.innerHTML = '<div class="notif-empty">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="#5F5F5F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>' +
+        '<path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>' +
+      '</svg>' +
+      '<div class="t">No notifications yet</div>' +
+      '<div class="s">Trade alerts and weekly reports will appear here.</div>' +
+      '</div>';
+    return;
+  }
+  var html = '';
+  for(var i = 0; i < notifications.length; i++){
+    var n = notifications[i];
+    var timeAgo = getTimeAgo(n.time);
+    var unreadClass = n.unread ? 'notif-unread' : '';
+    html += '<div class="notif-item ' + unreadClass + '" onclick="openNotif(\'' + n.id + '\')">' +
+      '<div class="notif-icon ' + n.type + '">' + n.icon + '</div>' +
+      '<div class="notif-body">' +
+        '<div class="title">' + n.title + '</div>' +
+        '<div class="body">' + n.body + '</div>' +
+        '<div class="time">' + timeAgo + '</div>' +
+      '</div>' +
+    '</div>';
+  }
+  list.innerHTML = html;
+  updateBadge();
+}
+
+function getTimeAgo(ts){
+  var diff = Date.now() - ts;
+  var mins = Math.floor(diff / 60000);
+  if(mins < 1) return 'Just now';
+  if(mins < 60) return mins + 'm ago';
+  var hrs = Math.floor(mins / 60);
+  if(hrs < 24) return hrs + 'h ago';
+  var days = Math.floor(hrs / 24);
+  if(days < 7) return days + 'd ago';
+  return Math.floor(days / 7) + 'w ago';
+}
+
+function updateBadge(){
+  var count = notifications.filter(function(n){ return n.unread; }).length;
+  var badge = document.getElementById('badge');
+  if(count > 0){
+    badge.textContent = count;
+    badge.style.display = 'flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function togglePanel(){
+  var panel = document.getElementById('notifPanel');
+  var overlay = document.getElementById('notifOverlay');
+  var isOpen = panel.classList.contains('open');
+  if(isOpen){
+    closePanel();
+  } else {
+    panel.classList.add('open');
+    overlay.classList.add('open');
+  }
+}
+
+function closePanel(){
+  document.getElementById('notifPanel').classList.remove('open');
+  document.getElementById('notifOverlay').classList.remove('open');
+}
+
+function openNotif(id){
+  // Mark as read
+  for(var i = 0; i < notifications.length; i++){
+    if(notifications[i].id === id){
+      notifications[i].unread = false;
+      break;
+    }
+  }
+  renderNotifs();
+  // Close panel (in real app, navigate to the URL)
+  closePanel();
+}
+
+function clearAll(){
+  notifications = [];
+  renderNotifs();
+  closePanel();
+}
+
+// Init
+renderNotifs();
+</script>
+</body>
+</html>
