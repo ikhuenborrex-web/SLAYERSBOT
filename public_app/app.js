@@ -2,6 +2,7 @@ try{document.getElementById('app').innerHTML='<div style="padding:30px;color:rgb
 window.onerror=function(m,u,l,c,err){try{document.getElementById('app').innerHTML='<div style="padding:30px;color:#FF5252;text-align:center;font-family:monospace;font-size:12px;line-height:1.5">JS Error: '+m+' line: '+l+'</div>';}catch(e){}};
 
 var C={bg:"#090909",surface:"#121212",card:"#121212",white:"#FFF",text2:"#8E8E8E",text3:"#5F5F5F",lime:"#B7FF2A",limeSoft:"rgba(183,255,42,0.08)",limeBorder:"rgba(183,255,42,0.25)",red:"#FF5252",redSoft:"rgba(255,82,82,0.12)",orange:"#f97316",orangeSoft:"rgba(249,115,22,0.1)",blue:"#3b82f6",blueSoft:"rgba(59,130,246,0.1)",border:"rgba(255,255,255,0.06)"};
+var lastRefreshTime=Date.now();
 
 var _mascotData='';
 var IMG_MASCOT='/app/mascot.png';
@@ -261,7 +262,7 @@ async function fetchAll(bg){
   promises.push(fetch(withCode('/api/scalp/pulse')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){state.scalpPulse=d.pairs||[];render();}).catch(function(){}));
   promises.push(ft(withCode('/api/sentiment')).then(function(r){return j(r).then(function(d){state.sentiment=d;render();});}).catch(function(){}));
   promises.push(ft(withCode('/api/daily-bias')).then(function(r){return j(r).then(function(d){state.dailyBias=Array.isArray(d)?d:d.pairs||d.bias||[];render();});}).catch(function(){}));
-  promises.push(ft(withCode('/api/intel-summary')).then(function(r){return j(r).then(function(d){state.briefing=d.briefing||d.summary||d.text||d.content||null;render();});}).catch(function(){}));
+  promises.push(ft(withCode('/api/intel-summary')).then(function(r){return j(r).then(function(d){state.briefing=d.briefing||d.summary||d.text||d.content||null;lastRefreshTime=Date.now();render();});}).catch(function(){}));
   state.loading=false;
   if(promises.length&&!bg){
     Promise.allSettled(promises).then(function(){refreshPill.complete();});
@@ -954,7 +955,7 @@ function intelScreen(){
         '<div style="position:absolute;top:-60px;right:-60px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(199,255,56,0.03),transparent 70%);pointer-events:none"></div>'+
         '<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">'+
           icon(I.eye,C.lime,14)+'<span style="font-size:10px;font-weight:700;color:#FFF">The Slayers Intelligence</span></div>'+
-        '<div style="font-size:7px;color:#5F5F5F;margin-bottom:14px">Updated '+timeAgo(Date.now())+'</div>'+
+        '<div style="font-size:7px;color:#5F5F5F;margin-bottom:14px">Updated '+timeAgo(bf.updatedAt||lastRefreshTime)+'</div>'+
 
         '<div style="font-size:8px;font-weight:700;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px">\u2460 Market Overview</div>'+
         '<p style="font-size:11px;color:#CECECE;line-height:1.55;margin-bottom:12px">'+esc(overviewTxt)+'</p>'+

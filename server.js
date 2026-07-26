@@ -218,6 +218,8 @@ let weeklySummaryData=null;
 let saveTimer=null;
 let lastIntelHash=0;
 let lastIntelPushTime=0;
+let lastIntelBriefing=null;
+let lastIntelBriefingTime=null;
 function saveState(){
   // debounce: collapse rapid calls into one write
   if(saveTimer)clearTimeout(saveTimer);
@@ -227,7 +229,7 @@ function saveState(){
       weeklyCache,prevWeeklyCache,recentQMRFires,qmr4HCache,suppressedPairs:[...suppressedPairs],
       lastBriefing,lastEOD,lastWeeklySummary,lastMonthlyRecap,pairPerformance,
       dailyAlertLog,dailyOutcomeLog,
-      qmrSeen:[...qmrSeen],scalpSeen:[...scalpSeen],earlyEntryCache,appSignalFeed,lastBriefingSnapshot,lastBriefingTime,lastIntelHash,lastIntelPushTime,      pushSubscriptions,memberCodes,trackedTrades,memberStats,weeklySummaryData,scalpSignals,activeScalpTrades,scalpTradeHistory,
+      qmrSeen:[...qmrSeen],scalpSeen:[...scalpSeen],earlyEntryCache,appSignalFeed,lastBriefingSnapshot,lastBriefingTime,lastIntelHash,lastIntelPushTime,lastIntelBriefing,lastIntelBriefingTime,      pushSubscriptions,memberCodes,trackedTrades,memberStats,weeklySummaryData,scalpSignals,activeScalpTrades,scalpTradeHistory,
       savedAt:Date.now()
     };
     const json=JSON.stringify(state);
@@ -335,6 +337,8 @@ async function loadState(){
     if(st.lastBriefingTime)lastBriefingTime=st.lastBriefingTime;
     if(typeof st.lastIntelHash==='number')lastIntelHash=st.lastIntelHash;
     if(typeof st.lastIntelPushTime==='number')lastIntelPushTime=st.lastIntelPushTime;
+    if(st.lastIntelBriefing)lastIntelBriefing=st.lastIntelBriefing;
+    if(st.lastIntelBriefingTime)lastIntelBriefingTime=st.lastIntelBriefingTime;
     if(Array.isArray(st.pushSubscriptions))pushSubscriptions=st.pushSubscriptions;
     if(Array.isArray(st.memberCodes))memberCodes=st.memberCodes;
     if(st.trackedTrades&&typeof st.trackedTrades==='object')trackedTrades=st.trackedTrades;
@@ -1730,6 +1734,8 @@ async function checkIntelChangeAndPush(){
   if(now-lastIntelPushTime<10*60*1000)return; // max 1 push per 10 min
   lastIntelHash=hash;
   lastIntelPushTime=now;
+  lastIntelBriefing=generateIntelBriefing();
+  lastIntelBriefingTime=new Date().toISOString();
   saveState();
   var acCount=activeQMRTrades.length||0,newsCount=newsFeedCache.length||0,sigCount=appSignalFeed.filter(function(s){return!s.outcome;}).length||0;
   var body='Intel briefing updated';
@@ -2165,8 +2171,13 @@ app.get('/api/news-feed',(req,res)=>{
 app.get('/api/intel-summary',(req,res)=>{
   const codeCheck=checkMemberCode(req);
   if(codeCheck!=='ok')return res.status(401).json({error:'Invalid or expired access code',reason:codeCheck});
-  const briefing=generateIntelBriefing();
-  res.json({briefing,fetchedAt:Date.now()});
+  var snap=intelSnapshot(),hash=0;
+  for(var i=0;i<snap.length;i++){hash=((hash<<5)-hash)+snap.charCodeAt(i);hash|=0;}
+  if(hash===lastIntelHash&&lastIntelBriefing){res.json({briefing:lastIntelBriefing,fetchedAt:Date.now()});return;}
+  lastIntelHash=hash;
+  lastIntelBriefing=generateIntelBriefing();
+  lastIntelBriefingTime=new Date().toISOString();
+  res.json({briefing:lastIntelBriefing,fetchedAt:Date.now()});
 });
 app.get('/api/journal',(req,res)=>{
   const codeCheck=checkMemberCode(req);
