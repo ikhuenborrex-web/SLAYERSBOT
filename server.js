@@ -1265,7 +1265,7 @@ async function runScan(manual=false){
     await tgEODSummary();await tgEveningMessage();
   }
   const thisWeek=now.toISOString().slice(0,10);
-  if(dow===0&&h===20&&m<30&&lastWeeklySummary!==thisWeek){lastWeeklySummary=thisWeek;await tgWeeklySummary();}
+  if(dow===0&&h===20&&m<30&&lastWeeklySummary!==thisWeek){lastWeeklySummary=thisWeek;await tgWeeklySummary();if(weeklySummaryData){var w=weeklySummaryData;sendPushToAll('\uD83C\uDFC6 Weekly Report Ready','You finished at '+(w.totalR>=0?'+'+w.totalR.toFixed(1):w.totalR.toFixed(1))+'R \u00B7 '+w.wr+'% WR. Tap to view.','/app/#weekly-report');}}
   const tomorrow=new Date(now.getTime()+864e5);
   const isLastDayOfMonth=tomorrow.getUTCMonth()!==now.getUTCMonth();
   const thisMonth=now.toISOString().slice(0,7);
@@ -2370,6 +2370,12 @@ app.get('/api/stats/detailed',(req,res)=>{
 app.get('/api/weekly-summary',(req,res)=>{
   const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:'Invalid or expired access code',reason:codeCheck});
   res.json({summary:weeklySummaryData});
+});
+app.get('/api/weekly-report',(req,res)=>{
+  const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:'Invalid or expired access code',reason:codeCheck});
+  const code=req.query.code||req.headers['x-access-code'];
+  const ms=memberStats[code]||{};
+  res.json({report:weeklySummaryData,myStats:{totalR:ms.totalR||0,total:ms.total||0,wins:ms.wins||0,losses:ms.losses||0,bes:ms.bes||0,winRate:ms.total?(ms.wins+ms.losses)?Math.round((ms.wins/(ms.wins+ms.losses))*100):0:0}});
 });
 app.get('/api/member/stats',(req,res)=>{
   const codeCheck=checkMemberCode(req);

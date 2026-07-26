@@ -253,6 +253,7 @@ async function fetchAll(bg){
   promises.push(ft(withCode('/api/settings')).then(function(r){return j(r).then(function(d){state.settings=d.settings||null;render();});}).catch(function(){}));
   promises.push(ft(withCode('/api/trade-history')).then(function(r){return j(r).then(function(d){state.botHistory=d.outcomes||[];render();});}).catch(function(){}));
   promises.push(ft(withCode('/api/weekly-summary')).then(function(r){return j(r).then(function(d){state.weeklySummary=d.summary||null;render();});}).catch(function(){}));
+  promises.push(ft(withCode('/api/weekly-report')).then(function(r){return j(r).then(function(d){state.weeklyReportData=d;render();});}).catch(function(){}));
   promises.push(ft(withCode('/api/scalp')).then(function(r){return j(r).then(function(d){var ss=d.signals||[];
     if(lastScalpIds.length&&ss.length>lastScalpIds.length&&!bg){for(var si=0;si<ss.length;si++){if(lastScalpIds.indexOf(ss[si].id)===-1){showToast('\u26A1 Scalp '+(ss[si].type==='BULLISH'?'\uD83D\uDCC8 ':'\uD83D\uDCC9 ')+(ss[si].name||ss[si].pair)+' \u00b7 score '+ss[si].score+'/5');break;}}}
     lastScalpIds=ss.map(function(s){return s.id;});state.scalpSignals=ss;render();});}).catch(function(){}));
@@ -1120,6 +1121,75 @@ function switchIntelTab(ck){
   });
 }
 
+function weeklyReportScreen(){
+  var wd=state.weeklyReportData;
+  if(!wd)return '<div class="sc" style="padding:16px"><div class="loading-spinner" style="margin:40% auto"></div></div>';
+  var weekEnd=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+  var r=wd.report||{},ms=wd.myStats||{};
+  var totalR=ms.totalR||0,wr=ms.winRate||0,total=ms.total||0;
+  var rLabel=totalR>=0?'+'+totalR.toFixed(1)+'':'';
+  var wrBar='<div style="height:6px;border-radius:3px;background:rgba(255,255,255,0.06);overflow:hidden;margin:12px 0 6px"><div style="height:100%;width:'+wr+'%;border-radius:3px;background:linear-gradient(90deg,#B7FF2A,#7FFF00);transition:width 1s"></div></div>';
+  var grade=wr>=80?'A':wr>=60?'B':wr>=40?'C':wr>=20?'D':'F';
+  var gradeCol=grade==='A'?'#B7FF2A':grade==='B'?'#7FFF00':grade==='C'?'#FFD700':grade==='D'?'#FF8C00':'#FF5252';
+  var aiMsg=wr>=80?'Excellent discipline. You followed the model perfectly — keep this up and 100K/month is inevitable.':
+    wr>=60?'Solid execution. A few small mistakes but overall you stayed in control.':
+    wr>=40?'Average performance. Review your losses — were you chasing or forcing trades?':
+    wr>=20?'Below par. Take a step back, reduce size, and focus only on A+ setups.':
+    'Tough week. Trust the process — every great trader has these. Rest, review, reset.';
+
+  return '<div class="sc" style="padding:16px;background:#090909;min-height:100vh;display:flex;flex-direction:column;align-items:center">'+
+    '<div style="width:100%;max-width:400px;position:relative">'+
+      // Back button
+      '<button onclick="setTab(\'dash\')" style="background:none;border:none;color:#8E8E8E;font-size:14px;padding:8px 0;margin-bottom:8px;cursor:pointer">\u2190 Dashboard</button>'+
+      
+      // Header with mascot
+      '<div style="text-align:center;margin:8px 0 20px">'+
+        '<img src="mascot.png" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid rgba(183,255,42,0.3);margin-bottom:8px" onerror="this.style.display=\'none\'">'+
+        '<div style="font-size:20px;font-weight:700;color:#FFF">Weekly Report</div>'+
+        '<div style="font-size:13px;color:#8E8E8E;margin-top:2px">Week ending '+esc(weekEnd)+'</div>'+
+      '</div>'+
+
+      // R-Multiple card
+      '<div style="background:linear-gradient(135deg,#1A1A1A,#121212);border-radius:16px;padding:24px;margin-bottom:12px;border:1px solid rgba(255,255,255,0.06);text-align:center">'+
+        '<div style="font-size:15px;color:#8E8E8E;margin-bottom:4px">Total R</div>'+
+        '<div style="font-size:48px;font-weight:800;color:#B7FF2A;line-height:1.1">'+rLabel+'R</div>'+
+        '<div style="font-size:13px;color:#5F5F5F;margin-top:2px">Across '+total+' trade'+(total!==1?'s':'')+'</div>'+
+      '</div>'+
+
+      // Win Rate card
+      '<div style="background:#121212;border-radius:16px;padding:20px;margin-bottom:12px;border:1px solid rgba(255,255,255,0.06)">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+
+          '<span style="font-size:15px;color:#8E8E8E">Win Rate</span>'+
+          '<span style="font-size:24px;font-weight:700;color:#FFF">'+wr+'%</span>'+
+        '</div>'+wrBar+
+        '<div style="display:flex;justify-content:space-between;font-size:12px;color:#5F5F5F">'+
+          '<span>'+ (ms.wins||0) + 'W</span><span>' + (ms.losses||0) + 'L</span><span>' + (ms.bes||0) + 'BE</span>'+
+        '</div>'+
+      '</div>'+
+
+      // AI Coach section
+      '<div style="background:#121212;border-radius:16px;padding:20px;margin-bottom:12px;border:1px solid rgba(255,255,255,0.06)">'+
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">'+
+          '<span style="font-size:28px;font-weight:700;color:'+gradeCol+'">'+grade+'</span>'+
+          '<span style="font-size:13px;color:#8E8E8E">AI Coach Grade</span>'+
+        '</div>'+
+        '<div style="font-size:14px;color:#CCC;line-height:1.5">'+esc(aiMsg)+'</div>'+
+      '</div>'+
+
+      // Share button
+      '<button onclick="shareWeeklyReport()" style="width:100%;padding:14px;border-radius:12px;border:1px solid rgba(183,255,42,0.3);background:transparent;color:#B7FF2A;font-size:15px;font-weight:600;margin-top:4px;cursor:pointer">Share Report</button>'+
+    '</div>'+
+  '</div>';
+}
+
+function shareWeeklyReport(){
+  if(navigator.share){
+    var wd=state.weeklyReportData;
+    if(!wd)return;
+    var ms=wd.myStats||{},r=ms.totalR||0,wr=ms.winRate||0,t=ms.total||0;
+    navigator.share({title:'Weekly Trade Report',text:'\uD83D\uDCCA My trades this week: '+(r>=0?'+'+r.toFixed(1):r.toFixed(1))+'R \u00B7 '+wr+'% WR \u00B7 '+t+' trades'});
+  }
+}
 function render(){
   var app=document.getElementById('app');
   if(!window._sp)window._sp={};
@@ -1132,6 +1202,7 @@ function render(){
   else if(t==='scalp'){app.innerHTML=scalpScreen();}
   else if(t==='intel'){app.innerHTML=intelScreen();}
   else if(t==='settings'){app.innerHTML=settingsScreen();}
+  else if(t==='weekly-report'){app.innerHTML=weeklyReportScreen();}
   else{app.innerHTML=overviewScreen();}
   void app.offsetWidth;
   var newSc=app.querySelector('.sc');
@@ -2117,6 +2188,10 @@ document.getElementById('wtFinalBtn').addEventListener('click',function(){
   endOnboarding(true);
 });
 
+function checkHash(){
+  if(location.hash==='#weekly-report'&&getCode()){state.tab='weekly-report';render();}
+}
 // Auto-start on first launch
-if(getCode()){preloadMascot();try{var _localP=JSON.parse(localStorage.getItem('notifPrefs')||'{}');state.notifPrefs=Object.assign({},state.notifPrefs,_localP);}catch(e){}render();fetchAll();setTimeout(function(){try{if(!localStorage.getItem('wt_done'))startOnboarding();}catch(e){}},1500);}else{renderLogin();}
+if(getCode()){preloadMascot();try{var _localP=JSON.parse(localStorage.getItem('notifPrefs')||'{}');state.notifPrefs=Object.assign({},state.notifPrefs,_localP);}catch(e){}checkHash();render();fetchAll();setTimeout(function(){try{if(!localStorage.getItem('wt_done'))startOnboarding();}catch(e){}},1500);}else{renderLogin();}
 setInterval(function(){if(getCode())fetchAll(true);},300000);
+window.addEventListener('hashchange',checkHash);
