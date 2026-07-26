@@ -2118,4 +2118,4 @@ document.getElementById('wtFinalBtn').addEventListener('click',function(){
 
 // Auto-start on first launch
 if(getCode()){preloadMascot();var _localP=JSON.parse(localStorage.getItem('notifPrefs')||'{}');state.notifPrefs=Object.assign({},state.notifPrefs,_localP);render();fetchAll();setTimeout(function(){if(!localStorage.getItem('wt_done'))startOnboarding();},1500);}else{renderLogin();}
-setInterval(function(){if(getCode())fetchAll(true);},120000);
+setInterval(function(){if(getCode())fetchAll(true);},300000);
