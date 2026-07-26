@@ -2157,7 +2157,7 @@ app.post('/api/test-push',async (req,res)=>{
   const sub=pushSubscriptions.find(s=>s.code===code);
   if(!sub)return res.json({error:'No push subscription found for your account'});
   if(!webpush||!VAPID_PUBLIC||!VAPID_PRIVATE)return res.json({error:'Push not configured'});
-  const payload=JSON.stringify({title:'\u2705 Test Notification',body:'If you see this, push is working perfectly.','url':'/app/'});
+  const payload=JSON.stringify({title:'\u2705 Push Notifications Active',body:'You will now receive real-time signals, weekly reports, and intel alerts.','url':'/app/'});
   try{
     const {code:_,...subData}=sub;
     await webpush.sendNotification(subData,payload);
