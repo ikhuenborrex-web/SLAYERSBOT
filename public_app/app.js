@@ -1227,12 +1227,17 @@ function clearNotifs(){
   render();
 }
 function openNotif(id){
+  var n=null;
   for(var i=0;i<state.notifications.length;i++){
-    if(state.notifications[i].id===id){state.notifications[i].unread=false;break;}
+    if(state.notifications[i].id===id){state.notifications[i].unread=false;n=state.notifications[i];break;}
   }
   saveNotifs();
   closeNotifPanel();
   render();
+  if(n&&n.url&&n.url!=='/app/'){
+    if(n.url.indexOf('#weekly-report')>-1){state.tab='weekly-report';render();}
+    else if(n.url.indexOf('#')>-1){location.hash=n.url.split('#')[1];}
+  }
 }
 function closeNotifPanel(){
   state.showNotifPanel=false;
