@@ -196,11 +196,12 @@ var lastSignalIds=[],lastScalpIds=[];
 var state={
   tab:'dash',selected:null,signals:[],active:[],confluence:[],stats:null,myStats:null,journal:[],
   news:[],articles:[],settings:null,notifPrefs:{},botHistory:[],scalpSignals:[],scalpActive:[],
-  scalpStats:null,scalpPulse:[],weeklyStats:null,weeklySummary:null,detailedStats:null,
+  scalpStats:null,scalpPulse:[],weeklyStats:null,weeklySummary:null,detailedStats:null,weeklyReportData:null,
   loading:true,showCalc:false,showOnboarding:false,onboardingStep:-1,showFilters:false,userBusy:false,
   filter:{pair:'',tf:'',dir:'',minScore:0,dateFrom:'',dateTo:'',sort:'time'},
   journalTab:'all',journalTime:'ALL',journalSearch:'',showJournalSearch:false,
-  intelTab:'all',sentiment:null,dailyBias:null,briefing:null
+  intelTab:'all',sentiment:null,dailyBias:null,briefing:null,
+  notifications:[],showNotifPanel:false
 };
 var _progExp={};
 var _journalExp={};
@@ -602,7 +603,10 @@ function journalScreen(){
   var header='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'+
     '<div><div style="font-size:24px;font-weight:800;color:#FFF;letter-spacing:-0.04em">Journal</div>'+
     '<div style="font-size:11px;color:#5F5F5F;margin-top:4px">Every trade. Every lesson.</div></div>'+
-    '<div></div></div>';
+    '<button onclick="toggleNotifPanel()" style="width:40px;height:40px;border-radius:99px;background:rgba(255,255,255,0.04);border:0.5px solid rgba(255,255,255,0.06);cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative;flex-shrink:0">'+
+      icon(I.bell,'#8E8E8E',16)+
+      (unreadCount()?'<span style="position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;border-radius:99px;background:#FF5252;color:#FFF;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px;border:2px solid #090909">'+unreadCount()+'</span>':'')+
+    '</button></div>';
 
   // ====== EQUITY HERO ======
   var equityHero='<div style="background:#111111;border-radius:20px;padding:20px;margin:14px 0;border:1px solid rgba(255,255,255,0.05);position:relative;overflow:hidden">'+
@@ -1189,6 +1193,104 @@ function shareWeeklyReport(){
     var ms=wd.myStats||{},r=ms.totalR||0,wr=ms.winRate||0,t=ms.total||0;
     navigator.share({title:'Weekly Trade Report',text:'\uD83D\uDCCA My trades this week: '+(r>=0?'+'+r.toFixed(1):r.toFixed(1))+'R \u00B7 '+wr+'% WR \u00B7 '+t+' trades'});
   }
+}
+
+// ===== NOTIFICATION HELPERS =====
+function loadNotifs(){
+  try{state.notifications=JSON.parse(localStorage.getItem('sl_notifs')||'[]');}catch(e){state.notifications=[];}
+}
+function saveNotifs(){
+  try{localStorage.setItem('sl_notifs',JSON.stringify(state.notifications));}catch(e){}
+}
+function unreadCount(){
+  return state.notifications.filter(function(n){return n.unread;}).length;
+}
+function addNotification(n){
+  if(!n.id)n.id='notif_'+(Date.now())+'_'+Math.random().toString(36).slice(2,6);
+  n.time=n.time||Date.now();
+  n.unread=n.unread!==false;
+  state.notifications.unshift(n);
+  if(state.notifications.length>50)state.notifications=state.notifications.slice(0,50);
+  saveNotifs();
+}
+function clearNotifs(){
+  state.notifications=[];
+  saveNotifs();
+  if(state.showNotifPanel)closeNotifPanel();
+  render();
+}
+function openNotif(id){
+  for(var i=0;i<state.notifications.length;i++){
+    if(state.notifications[i].id===id){state.notifications[i].unread=false;break;}
+  }
+  saveNotifs();
+  closeNotifPanel();
+  render();
+}
+function closeNotifPanel(){
+  state.showNotifPanel=false;
+  var p=document.getElementById('notifPanel');if(p)p.classList.remove('open');
+  var o=document.getElementById('notifOverlay');if(o)o.classList.remove('open');
+  setTimeout(function(){
+    var p2=document.getElementById('notifPanel');if(p2)p2.remove();
+    var o2=document.getElementById('notifOverlay');if(o2)o2.remove();
+  },350);
+}
+function toggleNotifPanel(){
+  var p=document.getElementById('notifPanel');
+  if(p&&p.classList.contains('open')){closeNotifPanel();return;}
+  state.showNotifPanel=true;
+  var div=document.createElement('div');
+  div.id='notifOverlay';
+  div.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;z-index:999;background:rgba(9,9,9,0.6);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);opacity:0;transition:opacity .3s';
+  div.onclick=closeNotifPanel;
+  document.body.appendChild(div);
+  var panel=document.createElement('div');
+  panel.id='notifPanel';
+  panel.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:1000;max-width:400px;margin:0 auto;background:#121212;border-radius:20px 20px 0 0;padding:0 0 env(safe-area-inset-bottom,16px);transform:translateY(100%);transition:transform .35s cubic-bezier(0.32,0.72,0,1);max-height:75vh;display:flex;flex-direction:column';
+  var notifs=state.notifications;
+  var listHtml='';
+  if(notifs.length===0){
+    listHtml='<div style="display:flex;flex-direction:column;align-items:center;padding:40px 20px;color:#5F5F5F;text-align:center">'+
+      '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#5F5F5F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>'+
+      '<div style="font-size:15px;font-weight:600;color:#8E8E8E;margin-bottom:4px">No notifications</div>'+
+      '<div style="font-size:13px">Trade alerts and weekly reports will appear here.</div></div>';
+  }else{
+    for(var i=0;i<notifs.length;i++){
+      var n=notifs[i];
+      var ta=getTimeAgo(n.time);
+      listHtml+='<div style="display:flex;gap:12px;padding:14px 0;border-bottom:0.5px solid rgba(255,255,255,0.04);cursor:pointer;position:relative'+(n.unread?';padding-left:16px':'')+'" onclick="openNotif(\''+n.id+'\')">'+
+        (n.unread?'<div style="width:8px;height:8px;border-radius:50%;background:#B7FF2A;position:absolute;top:16px;left:0"></div>':'')+
+        '<div style="width:40px;height:40px;border-radius:50%;background:'+(n.type==='trophy'?'rgba(183,255,42,0.12)':n.type==='trade'?'rgba(255,82,82,0.12)':n.type==='scalp'?'rgba(249,115,22,0.12)':'rgba(59,130,246,0.12)')+';flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px">'+(n.icon||'\uD83D\uDD14')+'</div>'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="font-size:14px;font-weight:600;color:'+(n.unread?'#B7FF2A':'#FFF')+';line-height:1.3">'+esc(n.title||'')+'</div>'+
+          '<div style="font-size:13px;color:#8E8E8E;line-height:1.3;margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+esc(n.body||'')+'</div>'+
+          '<div style="font-size:11px;color:#5F5F5F;margin-top:4px">'+ta+'</div>'+
+        '</div></div>';
+    }
+  }
+  panel.innerHTML='<div style="width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,0.12);margin:12px auto 8px;flex-shrink:0"></div>'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 20px 12px;flex-shrink:0">'+
+      '<h3 style="font-size:17px;font-weight:700;color:#FFF;margin:0">Notifications'+(unreadCount()?' <span style="font-size:12px;color:#B7FF2A;font-weight:600">('+unreadCount()+')</span>':'')+'</h3>'+
+      (notifs.length?'<button onclick="clearNotifs()" style="background:none;border:none;color:#FF5252;font-size:13px;font-weight:500;cursor:pointer;padding:4px 8px;border-radius:6px">Clear all</button>':'')+
+    '</div>'+
+    '<div style="flex:1;overflow-y:auto;padding:0 16px 8px;-webkit-overflow-scrolling:touch">'+listHtml+'</div>';
+  document.body.appendChild(panel);
+  requestAnimationFrame(function(){
+    div.style.opacity='1';
+    panel.style.transform='translateY(0)';
+  });
+}
+function getTimeAgo(ts){
+  var diff=Date.now()-ts;
+  var mins=Math.floor(diff/60000);
+  if(mins<1)return'Just now';
+  if(mins<60)return mins+'m ago';
+  var hrs=Math.floor(mins/60);
+  if(hrs<24)return hrs+'h ago';
+  var days=Math.floor(hrs/24);
+  if(days<7)return days+'d ago';
+  return Math.floor(days/7)+'w ago';
 }
 function render(){
   var app=document.getElementById('app');
@@ -2192,6 +2294,12 @@ function checkHash(){
   if(location.hash==='#weekly-report'&&getCode()){state.tab='weekly-report';render();}
 }
 // Auto-start on first launch
-if(getCode()){preloadMascot();try{var _localP=JSON.parse(localStorage.getItem('notifPrefs')||'{}');state.notifPrefs=Object.assign({},state.notifPrefs,_localP);}catch(e){}checkHash();render();fetchAll();setTimeout(function(){try{if(!localStorage.getItem('wt_done'))startOnboarding();}catch(e){}},1500);}else{renderLogin();}
+if(getCode()){preloadMascot();try{var _localP=JSON.parse(localStorage.getItem('notifPrefs')||'{}');state.notifPrefs=Object.assign({},state.notifPrefs,_localP);}catch(e){}loadNotifs();checkHash();render();fetchAll();setTimeout(function(){try{if(!localStorage.getItem('wt_done'))startOnboarding();}catch(e){}},1500);}else{renderLogin();}
 setInterval(function(){if(getCode())fetchAll(true);},300000);
 window.addEventListener('hashchange',checkHash);
+navigator.serviceWorker.addEventListener('message',function(e){
+  if(e.data&&e.data.type==='push-notification'&&e.data.notification){
+    addNotification(e.data.notification);
+    if(!state.showNotifPanel)render();
+  }
+});

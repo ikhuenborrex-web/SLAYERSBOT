@@ -29,29 +29,36 @@ self.addEventListener('fetch', e => {
   );
 });
 
-// Push notification handling — tell app to refresh when a push arrives
+// Push notification handling — save to app notification history
 self.addEventListener('push', e => {
   let data = {};
   try { data = e.data ? e.data.json() : {}; } catch (err) { data = { title: 'Slayers Bot', body: e.data ? e.data.text() : 'New signal' }; }
   const title = data.title || 'New Slayers Signal';
   const appUrl = self.location.origin + '/app/';
+  const notifId = 'push_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
   const options = {
     body: data.body || 'A new setup just fired.',
     icon: appUrl + 'icon-192.png',
     badge: appUrl + 'icon-192.png',
-    data: { url: appUrl }
+    data: { url: data.url || appUrl, notifId: notifId }
   };
+  // Determine notification type for icon
+  let nType = 'info', nIcon = '\uD83D\uDD14';
+  if (title.toLowerCase().includes('weekly')) { nType = 'trophy'; nIcon = '\uD83C\uDFC6'; }
+  else if (title.toLowerCase().includes('scalp')) { nType = 'scalp'; nIcon = '\u26A1'; }
+  else if (title.toLowerCase().includes('tp') || title.toLowerCase().includes('profit') || title.toLowerCase().includes('hit')) { nType = 'trade'; nIcon = '\uD83D\uDCC8'; }
   e.waitUntil(Promise.all([
     self.registration.showNotification(title, options),
     self.clients.matchAll({ type: 'window' }).then(clients => {
-      clients.forEach(c => c.postMessage({ type: 'refresh' }));
+      const payload = { type: 'push-notification', notification: { id: notifId, type: nType, icon: nIcon, title: title, body: data.body || '', time: Date.now(), unread: true, url: data.url || '/app/' } };
+      clients.forEach(c => c.postMessage(payload));
     })
   ]));
 });
 
 self.addEventListener('notificationclick', e => {
   e.notification.close();
-  const url = self.location.origin + '/app/';
+  const url = e.notification.data && e.notification.data.url ? e.notification.data.url : self.location.origin + '/app/';
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
       for (const client of clientList) {
