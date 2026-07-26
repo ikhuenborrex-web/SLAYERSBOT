@@ -69,7 +69,7 @@ const SCALP_INSTS=[
   {id:'USDJPY',sym:'USD/JPY',name:'USD/JPY',dec:3},
   {id:'NAS100',sym:'NASDAQ100',name:'NAS100',dec:2},
 ];
-const CHECK_MS=60*60*1000,DELAY_MS=12000,PROX=0.007,IMPULSE=0.0015,MIN_FVG=0.0003;
+const CHECK_MS=30*60*1000,DELAY_MS=12000,PROX=0.007,IMPULSE=0.0015,MIN_FVG=0.0003;
 const QMR_MIN=3,WEEKLY_EVERY=24,LON_S=7,LON_E=16,NY_S=13,NY_E=22;
 
 // Correlation groups — pairs that move together; opposite-direction signals on correlated pairs flag a warning
@@ -1286,14 +1286,17 @@ async function runScan(manual=false){
         await sleep(DELAY_MS);
       }catch(e){log('Weekly '+inst.id+': '+e.message);}
     }
-    try{
-      const res=await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym)}&interval=1day&outputsize=100&apikey=${API_KEY}`);
-      const json=await res.json();if(json.status==='error'){await sleep(DELAY_MS);continue;}
-      const c=parseC(json);if(c.length<10){await sleep(DELAY_MS);continue;}
-      briefingData[inst.id]={price:fmtN(c[c.length-1].close,inst.dec)};
-      dailyCache[inst.id]={c,ts:Date.now()};
-      await sleep(DELAY_MS);
-    }catch(e){log('Daily '+inst.id+': '+e.message);await sleep(DELAY_MS);}
+    // Cache daily data for 2h to avoid over-fetching
+    if(!dailyCache[inst.id]||Date.now()-dailyCache[inst.id].ts>2*60*60*1000){
+      try{
+        const res=await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym)}&interval=1day&outputsize=100&apikey=${API_KEY}`);
+        const json=await res.json();if(json.status==='error'){await sleep(DELAY_MS);continue;}
+        const c=parseC(json);if(c.length<10){await sleep(DELAY_MS);continue;}
+        briefingData[inst.id]={price:fmtN(c[c.length-1].close,inst.dec)};
+        dailyCache[inst.id]={c,ts:Date.now()};
+        await sleep(DELAY_MS);
+      }catch(e){log('Daily '+inst.id+': '+e.message);await sleep(DELAY_MS);}
+    }
   }
 
   // Weekly bias fetch for QMR-only pairs (pairs not in CRT_INSTS)
@@ -1319,8 +1322,29 @@ async function runScan(manual=false){
     await tgBiasFlipBundle(biasFlips);
   }
 
-  // QMR scan — per-pair session aware (runs every scan, 60-min interval)
-  {
+  // Quick trade monitor — runs EVERY scan (30min) to catch TP/SL/BE early
+  // Fetches current price only for pairs with active trades (1 call each)
+  if(activeQMRTrades.length){
+    const allInsts=[...QMR_INSTS,...SCALP_INSTS,...CRT_INSTS];
+    for(const trade of activeQMRTrades){
+      const inst=allInsts.find(i=>i.id===trade.instId);
+      if(!inst)continue;
+      try{
+        const qres=await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym)}&interval=1h&outputsize=1&apikey=${API_KEY}`);
+        const qj=await qres.json();
+        if(qj.status!=='error'){
+          const qc=parseC(qj);
+          if(qc.length){
+            const price=qc[0].close;
+            await checkQMRTrades(trade.instId,price,price,price);
+          }
+        }
+      }catch(e){}
+    }
+  }
+
+  // Full QMR scan — runs every OTHER scan (60min) to detect new signals
+  if(manual||scanCount%2===0){
     for(const inst of QMR_INSTS){
       const dce=dailyCache[inst.id];
       if(!dce||Date.now()-dce.ts>26*60*60*1000){
