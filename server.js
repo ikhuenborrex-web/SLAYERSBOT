@@ -2392,17 +2392,22 @@ app.get('/api/weekly-report',(req,res)=>{
 });
 app.get('/api/notifications',(req,res)=>{
   const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:'Invalid or expired access code',reason:codeCheck});
-  const notifs=serverNotifQueue.splice(0,serverNotifQueue.length);
-  // Also add this week's report as a notification if it exists
+  // Return all pending notifications w/o clearing (app handles dedup)
+  const notifs=[];
+  // Include this week's report if it exists and not already in queue
   if(weeklySummaryData&&weeklySummaryData.totalR!==undefined){
-    const weekKey=weeklySummaryData.week||new Date().toISOString().slice(0,10);
-    const alreadyInQueue=notifs.some(function(n){return n.id&&n.id.indexOf('week_'+weekKey)>-1;});
+    const weekKey=weeklySummaryData.week||'wk'+weeklySummaryData.totalR;
+    const alreadyInQueue=serverNotifQueue.some(function(n){return n.id&&n.id.indexOf('week_'+weekKey)>-1;})||false;
     if(!alreadyInQueue){
       const wr=weeklySummaryData.wr||weeklySummaryData.winRate||0;
       const totalR=weeklySummaryData.totalR||0;
-      notifs.unshift({id:'week_'+weekKey,type:'trophy',icon:'\uD83C\uDFC6',title:'Weekly Report Ready',body:'You finished at '+(totalR>=0?'+'+totalR.toFixed(1):totalR.toFixed(1))+'R \u00B7 '+wr+'% WR. Tap to view.',time:Date.now(),unread:true,url:'/app/#weekly-report'});
+      serverNotifQueue.unshift({id:'week_'+weekKey,type:'trophy',icon:'\uD83C\uDFC6',title:'Weekly Report Ready',body:'You finished at '+(totalR>=0?'+'+totalR.toFixed(1):totalR.toFixed(1))+'R \u00B7 '+wr+'% WR. Tap to view.',time:Date.now(),unread:true,url:'/app/#weekly-report'});
     }
   }
+  serverNotifQueue.forEach(function(n){notifs.push(n);});
+  // Clean up old read notifications
+  serverNotifQueue=serverNotifQueue.filter(function(n){return n.unread!==false;});
+  if(serverNotifQueue.length>100)serverNotifQueue=serverNotifQueue.slice(-100);
   res.json({notifications:notifs});
 });
 app.get('/api/member/stats',(req,res)=>{

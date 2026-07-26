@@ -255,6 +255,11 @@ async function fetchAll(bg){
   promises.push(ft(withCode('/api/trade-history')).then(function(r){return j(r).then(function(d){state.botHistory=d.outcomes||[];render();});}).catch(function(){}));
   promises.push(ft(withCode('/api/weekly-summary')).then(function(r){return j(r).then(function(d){state.weeklySummary=d.summary||null;render();});}).catch(function(){}));
   promises.push(ft(withCode('/api/weekly-report')).then(function(r){return j(r).then(function(d){state.weeklyReportData=d;render();});}).catch(function(){}));
+  promises.push(ft(withCode('/api/notifications')).then(function(r){return j(r).then(function(d){
+    var notifs=d.notifications||[];
+    for(var ni=0;ni<notifs.length;ni++){addNotification(notifs[ni]);}
+    if(notifs.length)render();
+  });}).catch(function(){}));
   promises.push(ft(withCode('/api/scalp')).then(function(r){return j(r).then(function(d){var ss=d.signals||[];
     if(lastScalpIds.length&&ss.length>lastScalpIds.length&&!bg){for(var si=0;si<ss.length;si++){if(lastScalpIds.indexOf(ss[si].id)===-1){showToast('\u26A1 Scalp '+(ss[si].type==='BULLISH'?'\uD83D\uDCC8 ':'\uD83D\uDCC9 ')+(ss[si].name||ss[si].pair)+' \u00b7 score '+ss[si].score+'/5');break;}}}
     lastScalpIds=ss.map(function(s){return s.id;});state.scalpSignals=ss;render();});}).catch(function(){}));
@@ -1207,6 +1212,8 @@ function unreadCount(){
 }
 function addNotification(n){
   if(!n.id)n.id='notif_'+(Date.now())+'_'+Math.random().toString(36).slice(2,6);
+  // Dedup by id
+  for(var di=0;di<state.notifications.length;di++){if(state.notifications[di].id===n.id)return;}
   n.time=n.time||Date.now();
   n.unread=n.unread!==false;
   state.notifications.unshift(n);
@@ -2297,17 +2304,3 @@ function checkHash(){
 if(getCode()){preloadMascot();try{var _localP=JSON.parse(localStorage.getItem('notifPrefs')||'{}');state.notifPrefs=Object.assign({},state.notifPrefs,_localP);}catch(e){}loadNotifs();checkHash();render();fetchAll();setTimeout(function(){try{if(!localStorage.getItem('wt_done'))startOnboarding();}catch(e){}},1500);}else{renderLogin();}
 setInterval(function(){if(getCode())fetchAll(true);},300000);
 window.addEventListener('hashchange',checkHash);
-navigator.serviceWorker.addEventListener('message',function(e){
-  if(e.data&&e.data.type==='push-notification'&&e.data.notification){
-    addNotification(e.data.notification);
-    if(!state.showNotifPanel)render();
-  }
-});
-// Fetch notifications from server on startup
-if(getCode()){
-  fetch(withCode('/api/notifications')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){
-    var notifs=d.notifications||[];
-    for(var i=0;i<notifs.length;i++){addNotification(notifs[i]);}
-    if(notifs.length)render();
-  }).catch(function(){});
-}
