@@ -100,7 +100,7 @@ html,body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:-
 <div id="title-overlay">The Slayers</div>
 <div class="scene-label" id="sceneLabel"></div>
 
-<div id="save-btn" onclick="saveAd()" style="position:fixed;bottom:90px;left:50%;transform:translateX(-50%);z-index:9999;padding:12px 28px;border-radius:99px;background:rgba(183,255,42,0.08);border:0.5px solid rgba(183,255,42,0.15);display:flex;align-items:center;gap:8px;cursor:pointer;color:rgba(183,255,42,0.5);font-size:11px;font-weight:500;letter-spacing:0.04em;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)">&#xFE19; Save this ad</div>
+<a id="save-btn" download="the-slayers-decision.html" style="position:fixed;bottom:90px;left:50%;transform:translateX(-50%);z-index:9999;padding:12px 28px;border-radius:99px;background:rgba(183,255,42,0.08);border:0.5px solid rgba(183,255,42,0.15);display:flex;align-items:center;gap:8px;cursor:pointer;color:rgba(183,255,42,0.5);font-size:11px;font-weight:500;letter-spacing:0.04em;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);text-decoration:none;pointer-events:auto">&#x2193; Save this ad</a>
 
 <script>
 window.onerror=function(m,u,l,c,err){console.error('JS Error:',m,'line:',l,err);};
@@ -733,28 +733,18 @@ function scene8_reveal(){
 }
 
 // ============================================================
-// 8. SAVE
-// ============================================================
-function saveAd(){
-  var html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
-  try{
-    var file=new File([html],'the-slayers-decision.html',{type:'text/html'});
-    if(navigator.canShare&&navigator.canShare({files:[file]})){
-      navigator.share({files:[file],title:'The Slayers — The Decision'});
-      return;
-    }
-  }catch(e){}
-  // Fallback: navigate to data URI — then tap Share → Save to Files
-  var url='data:text/html,'+encodeURIComponent(html);
-  window.open(url,'_blank')||(document.location.href=url);
-}
-
-// ============================================================
-// 9. INIT
+// 8. INIT
 // ============================================================
 try{
   buildScenes();
   renderScenes();
+  // Set up save button with blob URL for direct download
+  (function(){
+    var html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
+    var blob=new Blob([html],{type:'text/html'});
+    var url=URL.createObjectURL(blob);
+    document.getElementById('save-btn').href=url;
+  })();
   setTimeout(function(){
     document.getElementById('title-overlay').classList.add('show');
     showScene(0);
