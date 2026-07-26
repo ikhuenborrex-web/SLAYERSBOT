@@ -2237,6 +2237,75 @@ app.get('/api/admin/logs',(req,res)=>{
     dailyOutcomeLog:[...dailyOutcomeLog].reverse().slice(0,20)
   });
 });
+app.get('/api/admin/services',(req,res)=>{
+  if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
+  const up=process.uptime();
+  res.json({
+    botEngine:{status:'running',uptime:up,label:'Bot Engine'},
+    marketScanner:{status:scanCount>0?'running':'idle',lastScan:lastScanTime,label:'Market Scanner'},
+    aiEngine:{status:lastIntelBriefing?'running':'idle',lastAnalysis:lastIntelBriefingTime,label:'AI Engine'},
+    telegramBot:{status:TG_TOKEN?'running':'offline',label:'Telegram Bot'},
+    pushNotifications:{status:webpush&&VAPID_PUBLIC?'running':'offline',subscribers:pushSubscriptions.length,label:'Push Notifications'},
+    database:{status:redis?'running':STATE_FILE?'running':'offline',label:'Database'},
+    apiServer:{status:'running',uptime:up,label:'API Server'}
+  });
+});
+app.get('/api/admin/ai-summary',(req,res)=>{
+  if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
+  res.json({
+    summary:lastIntelBriefing||{text:'No analysis yet. Run a scan to generate market intelligence.'},
+    lastUpdated:lastIntelBriefingTime,
+    hash:lastIntelHash
+  });
+});
+app.post('/api/admin/ai-refresh',async(req,res)=>{
+  if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
+  try{
+    await checkIntelChangeAndPush();
+    res.json({ok:true,message:'AI analysis refreshed',time:new Date().toISOString()});
+  }catch(e){res.status(500).json({error:e.message});}
+});
+app.get('/api/admin/performance',(req,res)=>{
+  if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
+  const period=req.query.period||'week';
+  const hist=tradeHistory.filter(t=>t.outcome&&t.outcome!=='INVALIDATED');
+  const now=Date.now();
+  const cut=period==='today'?now-86400000:period==='month'?now-2592000000:now-604800000;
+  const filtered=hist.filter(t=>t.time&&new Date(t.time).getTime()>=cut);
+  const equity=[];
+  let cumR=0;
+  const sorted=[...filtered].sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+  for(const t of sorted){
+    cumR+=typeof t.rMultiple==='number'?t.rMultiple:0;
+    equity.push({time:t.time,r:Math.round(cumR*100)/100});
+  }
+  const wins=filtered.filter(t=>t.outcome==='TP1'||t.outcome==='TP2'||t.outcome==='WIN').length;
+  const losses=filtered.filter(t=>t.outcome==='SL').length;
+  const bes=filtered.filter(t=>t.outcome==='BE').length;
+  const totalR=filtered.reduce((a,t)=>a+(typeof t.rMultiple==='number'?t.rMultiple:0),0);
+  res.json({
+    period,equity,
+    stats:{total:filtered.length,wins,losses,bes,totalR:Math.round(totalR*100)/100,winRate:filtered.length?Math.round(wins/(wins+losses)*100):0}
+  });
+});
+app.get('/api/admin/top-markets',(req,res)=>{
+  if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
+  const hist=tradeHistory.filter(t=>t.outcome&&t.outcome!=='INVALIDATED'&&t.instId);
+  const byPair={};
+  for(const t of hist){
+    if(!byPair[t.instId])byPair[t.instId]={pair:t.instName||t.instId,wins:0,losses:0,total:0,totalR:0};
+    byPair[t.instId].total++;
+    if(t.outcome==='TP1'||t.outcome==='TP2'||t.outcome==='WIN')byPair[t.instId].wins++;
+    else if(t.outcome==='SL')byPair[t.instId].losses++;
+    if(typeof t.rMultiple==='number')byPair[t.instId].totalR+=t.rMultiple;
+  }
+  const sorted=Object.values(byPair).sort((a,b)=>{
+    const aWr=a.total?Math.round(a.wins/(a.wins+a.losses)*100):0;
+    const bWr=b.total?Math.round(b.wins/(b.wins+b.losses)*100):0;
+    return bWr-aWr||b.total-a.total;
+  });
+  res.json({markets:sorted.slice(0,10)});
+});
 app.get('/api/scalp',(req,res)=>{
   const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
   const myCode=req.query.code||req.headers['x-access-code'];
