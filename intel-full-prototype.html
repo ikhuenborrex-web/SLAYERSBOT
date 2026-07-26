@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Intel — Full Page Prototype</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;background:#090909;color:#FFF;font-family:'Inter',-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+body{display:flex;flex-direction:column;max-width:420px;margin:0 auto;height:100dvh}
+
+.scroll{flex:1;overflow-y:auto;padding:34px 18px 100px;-webkit-overflow-scrolling:touch}
+
+/* ===== HEADER ===== */
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px}
+.header-left{}
+.header-title{font-size:24px;font-weight:700;color:#FFF;letter-spacing:-0.03em}
+.header-sub{font-size:12px;color:#5F5F5F;margin-top:2px}
+.header-actions{display:flex;gap:10px}
+.header-btn{width:40px;height:40px;border-radius:99px;background:rgba(255,255,255,0.04);border:0.5px solid rgba(255,255,255,0.06);cursor:pointer;display:flex;align-items:center;justify-content:center}
+
+/* ===== SECTIONS ===== */
+.sec-label{font-size:10px;font-weight:700;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.sec-label svg{width:12px;height:12px;opacity:0.5}
+.divider{height:2px;background:rgba(255,255,255,0.04);margin:16px 0 14px;border-radius:1px}
+
+/* ===== MARKET PULSE ===== */
+.h-scroll{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 0}
+.h-scroll::-webkit-scrollbar{display:none}
+.chip{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:99px;flex-shrink:0;font-size:9px;font-weight:600;background:#121212;border:0.5px solid rgba(255,255,255,0.06);color:#8E8E8E}
+.chip-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+
+/* ===== SESSIONS ===== */
+.sesh-chip{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:99px;flex-shrink:0;font-size:9px;font-weight:600;background:#121212;border:0.5px solid rgba(255,255,255,0.06);color:#8E8E8E}
+.sesh-chip.active{background:rgba(199,255,56,0.08);border-color:rgba(199,255,56,0.2);color:#C7FF38}
+
+/* ===== SENTIMENT GAUGES ===== */
+.gauge-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.gauge-card{display:flex;flex-direction:column;align-items:center;padding:16px 8px;border-radius:20px;background:#151515;border:0.5px solid rgba(255,255,255,0.04)}
+.gauge-val{font-size:20px;font-weight:800;color:#FFF}
+.gauge-label{font-size:9px;color:#5F5F5F;font-weight:500;margin-top:4px}
+
+/* ===== DAILY BIAS ===== */
+.bias-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)}
+.bias-row:last-child{border-bottom:none}
+.bias-pair{font-size:11px;font-weight:700;color:#FFF}
+.bias-dir{font-size:9px;font-weight:600;padding:2px 10px;border-radius:99px}
+
+/* ===== BRIEF CARD ===== */
+.brief{background:#151515;border-radius:24px;border:0.5px solid rgba(255,255,255,0.05);padding:20px;position:relative;overflow:hidden;margin-bottom:16px}
+.brief-glow{position:absolute;top:-60px;right:-60px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(199,255,56,0.03) 0%,transparent 70%);pointer-events:none}
+.brief-icon{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.brief-icon svg{width:14px;height:14px;color:#C7FF38}
+.brief-icon span{font-size:10px;font-weight:700;color:#FFF}
+.brief-time{font-size:7px;color:#5F5F5F;margin-bottom:12px}
+.brief h4{font-size:8px;font-weight:700;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:3px;display:flex;align-items:center;gap:4px}
+.brief p{font-size:11px;color:#CECECE;line-height:1.55;margin-bottom:12px}
+.brief-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-bottom:12px}
+.brief-asset{display:flex;align-items:center;justify-content:space-between;padding:4px 8px;border-radius:6px;background:rgba(255,255,255,0.02)}
+.brief-asset-name{font-size:9px;font-weight:700;color:#FFF}
+.brief-asset-dir{font-size:8px;font-weight:600}
+.brief-avoid{display:flex;align-items:flex-start;gap:5px;font-size:9px;color:#8E8E8E;padding:3px 0}
+.brief-avoid-x{color:#FF5D5D;flex-shrink:0;font-weight:700;font-size:10px}
+.brief-focus{display:flex;align-items:flex-start;gap:5px;font-size:9px;color:#CECECE;padding:3px 0}
+.brief-focus-c{color:#C7FF38;flex-shrink:0;font-weight:700;font-size:10px}
+.brief-final{font-size:10px;color:#C7FF38;font-style:italic;line-height:1.4;padding-top:10px;border-top:0.5px solid rgba(255,255,255,0.06)}
+
+/* ===== NEWS ===== */
+.tabs{display:flex;gap:0;overflow-x:auto;scrollbar-width:none;margin-bottom:12px}
+.tabs::-webkit-scrollbar{display:none}
+.tab-btn{position:relative;flex-shrink:0;padding:8px 14px;font-size:11px;font-weight:500;background:transparent;border:none;cursor:pointer;font-family:inherit;white-space:nowrap;color:#5F5F5F;transition:color .2s}
+.tab-btn.active{color:#FFF;font-weight:700}
+.tab-active-line{position:absolute;bottom:0;left:14px;right:14px;height:2px;border-radius:1px;background:#C7FF38;box-shadow:0 0 8px rgba(199,255,56,0.4)}
+
+.news-card{background:#151515;border-radius:20px;border:0.5px solid rgba(255,255,255,0.04);overflow:hidden;margin-bottom:12px}
+.news-inner{display:flex;gap:12px;padding:14px}
+.news-img{width:96px;height:72px;border-radius:10px;overflow:hidden;flex-shrink:0;background:#121212}
+.news-img-placeholder{display:flex;align-items:center;justify-content:center;height:100%;background:#121212}
+.news-title{font-size:11px;font-weight:700;color:#FFF;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.news-summary{font-size:9px;color:#8E8E8E;line-height:1.4;margin-top:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.news-meta{display:flex;align-items:center;gap:6px;margin-top:5px;flex-wrap:wrap}
+.news-source{font-size:7px;font-weight:600;padding:2px 6px;border-radius:4px;background:rgba(199,255,56,0.08);color:#C7FF38}
+.news-time{font-size:7px;color:#5F5F5F}
+.news-cat{font-size:7px;font-weight:600;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.03);color:#5F5F5F}
+
+/* ===== NAV ===== */
+.nav-wrap{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:420px;padding:0 18px 8px;z-index:5;pointer-events:none}
+.nav-inner{background:rgba(14,14,14,0.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:99px;border:0.5px solid rgba(255,255,255,0.06);display:flex;padding:4px;pointer-events:auto}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 0;border:none;background:none;cursor:pointer;font-family:inherit;border-radius:99px;transition:all .25s}
+.nav-btn.active{background:rgba(199,255,56,0.06)}
+.nav-btn svg{width:18px;height:18px}
+.nav-label{font-size:7px;font-weight:600;letter-spacing:0.02em}
+</style>
+</head>
+<body>
+
+<div class="scroll" id="scroll">
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <div class="header-title">Intel</div>
+      <div class="header-sub">Market intelligence & analysis</div>
+    </div>
+    <div class="header-actions">
+      <div class="header-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8E8E8E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+      <div class="header-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8E8E8E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+    </div>
+  </div>
+
+  <!-- MARKET PULSE -->
+  <div style="margin-bottom:14px">
+    <div class="sec-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Market Pulse</div>
+    <div class="h-scroll">
+      <div class="chip"><span class="chip-dot" style="background:#C7FF38"></span>XAU/USD <span style="font-size:8px;opacity:0.5">4H</span></div>
+      <div class="chip"><span class="chip-dot" style="background:#FF5D5D"></span>EUR/USD <span style="font-size:8px;opacity:0.5">4H</span></div>
+      <div class="chip"><span class="chip-dot" style="background:#C7FF38"></span>GBP/USD <span style="font-size:8px;opacity:0.5">W</span></div>
+      <div class="chip"><span class="chip-dot" style="background:#FF5D5D"></span>USD/JPY <span style="font-size:8px;opacity:0.5">4H</span></div>
+      <div class="chip"><span class="chip-dot" style="background:#C7FF38"></span>AUD/USD <span style="font-size:8px;opacity:0.5">W</span></div>
+    </div>
+  </div>
+
+  <!-- SESSIONS -->
+  <div style="margin-bottom:14px">
+    <div class="sec-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Sessions</div>
+    <div class="h-scroll">
+      <div class="sesh-chip">Sydney</div>
+      <div class="sesh-chip">Tokyo</div>
+      <div class="sesh-chip active"><span style="width:5px;height:5px;border-radius:50%;background:#C7FF38"></span>London</div>
+      <div class="sesh-chip">New York</div>
+    </div>
+  </div>
+
+  <!-- SENTIMENT GAUGES -->
+  <div style="margin-bottom:16px">
+    <div class="sec-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> Sentiment</div>
+    <div class="gauge-grid">
+      <div class="gauge-card"><div class="gauge-val" style="color:#C7FF38">72%</div><div class="gauge-label">Risk Appetite</div></div>
+      <div class="gauge-card"><div class="gauge-val" style="color:#C7FF38">65%</div><div class="gauge-label">Fear & Greed</div></div>
+      <div class="gauge-card"><div class="gauge-val" style="color:#C7FF38">68%</div><div class="gauge-label">USD Strength</div></div>
+      <div class="gauge-card"><div class="gauge-val" style="color:#FF5D5D">78%</div><div class="gauge-label">Volatility</div></div>
+    </div>
+  </div>
+
+  <!-- DAILY BIAS -->
+  <div style="margin-bottom:16px">
+    <div class="sec-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg> Daily Bias</div>
+    <div style="background:#151515;border-radius:18px;padding:10px 14px;border:0.5px solid rgba(255,255,255,0.04)">
+      <div class="bias-row"><span class="bias-pair">EURUSD</span><span class="bias-dir" style="color:#FF5D5D;background:rgba(255,93,93,0.1)">Bearish</span></div>
+      <div class="bias-row"><span class="bias-pair">GBPUSD</span><span class="bias-dir" style="color:#FFC857;background:rgba(255,200,87,0.1)">Neutral</span></div>
+      <div class="bias-row"><span class="bias-pair">XAUUSD</span><span class="bias-dir" style="color:#FF5D5D;background:rgba(255,93,93,0.1)">Bearish</span></div>
+      <div class="bias-row"><span class="bias-pair">BTCUSD</span><span class="bias-dir" style="color:#C7FF38;background:rgba(199,255,56,0.1)">Bullish</span></div>
+      <div class="bias-row"><span class="bias-pair">NAS100</span><span class="bias-dir" style="color:#C7FF38;background:rgba(199,255,56,0.1)">Bullish</span></div>
+    </div>
+  </div>
+
+  <!-- ===== BRIEF ===== -->
+  <div class="brief">
+    <div class="brief-glow"></div>
+    <div class="brief-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8a4 4 0 0 1 4 4c0 1.2-.5 2.3-1.4 3.1L12 17l-2.6-1.9A4 4 0 0 1 8 12a4 4 0 0 1 4-4z"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M12 2v2"/><path d="M12 20v2"/><circle cx="12" cy="12" r="10"/></svg><span>The Slayers Intelligence</span></div>
+    <div class="brief-time">Updated 3m ago · 25 Jul 2026</div>
+
+    <h4>01 Market Overview</h4>
+    <p>Markets remain cautiously bullish as stronger USD demand continues to pressure Gold while indices trade near weekly highs. Risk appetite is moderate ahead of today's CPI release and FOMC statement.</p>
+
+    <h4>02 Why It's Happening</h4>
+    <p>Stronger-than-expected economic data and hawkish Fed guidance continue to support the US Dollar. Treasury yields rising to session highs reduce demand for Gold and pressure EUR/USD. Equity markets remain resilient on AI sector momentum.</p>
+
+    <h4>03 What To Expect</h4>
+    <p>Expect increased volatility during the New York session. Momentum could accelerate after the FOMC statement at 2:00 PM EST. If USD continues to strengthen, expect further downside in Gold and EURUSD. A dovish surprise could trigger a sharp reversal in USD longs.</p>
+
+    <h4>04 Asset Strength</h4>
+    <div class="brief-grid">
+      <div class="brief-asset"><span class="brief-asset-name">USD</span><span class="brief-asset-dir" style="color:#C7FF38">↑ Bullish</span></div>
+      <div class="brief-asset"><span class="brief-asset-name">Gold</span><span class="brief-asset-dir" style="color:#FF5D5D">↓ Bearish</span></div>
+      <div class="brief-asset"><span class="brief-asset-name">Indices</span><span class="brief-asset-dir" style="color:#C7FF38">↑ Bullish</span></div>
+      <div class="brief-asset"><span class="brief-asset-name">EUR</span><span class="brief-asset-dir" style="color:#FF5D5D">↓ Bearish</span></div>
+      <div class="brief-asset"><span class="brief-asset-name">Bitcoin</span><span class="brief-asset-dir" style="color:#C7FF38">↑ Bullish</span></div>
+      <div class="brief-asset"><span class="brief-asset-name">GBP</span><span class="brief-asset-dir" style="color:#FFC857">→ Neutral</span></div>
+    </div>
+
+    <h4>05 What To Avoid</h4>
+    <div class="brief-avoid"><span class="brief-avoid-x">✕</span> Counter-trend Gold buys while USD momentum is strong</div>
+    <div class="brief-avoid"><span class="brief-avoid-x">✕</span> Low-volume Asian Session breakouts before CPI</div>
+    <div class="brief-avoid"><span class="brief-avoid-x">✕</span> Adding to EURUSD shorts near support levels</div>
+
+    <h4>06 Today's Focus</h4>
+    <div class="brief-focus"><span class="brief-focus-c">✓</span> USD strength continuation into NY session</div>
+    <div class="brief-focus"><span class="brief-focus-c">✓</span> EURUSD sell on rallies if CPI beats expectations</div>
+    <div class="brief-focus"><span class="brief-focus-c">✓</span> NAS100 continuation above weekly VWAP</div>
+    <div class="brief-focus"><span class="brief-focus-c">✓</span> Watch GBP during London — potential breakout setup</div>
+
+    <div class="brief-final">"Don't force trades today. Let the news create the opportunity."</div>
+  </div>
+
+  <!-- NEWS FEED -->
+  <div style="margin-bottom:14px">
+    <div class="sec-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9h4"/><path d="M10 7h6"/><path d="M10 11h6"/><path d="M10 15h4"/></svg> News Feed</div>
+    <div class="tabs">
+      <div class="tab-btn active">All Intel<div class="tab-active-line"></div></div>
+      <div class="tab-btn">Macro</div>
+      <div class="tab-btn">Central Banks</div>
+      <div class="tab-btn">Currencies</div>
+      <div class="tab-btn">Energy</div>
+    </div>
+  </div>
+
+  <!-- News Item 1 -->
+  <div class="news-card">
+    <div class="news-inner">
+      <div class="news-img"><div class="news-img-placeholder"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5F5F5F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9h4"/><path d="M10 7h6"/><path d="M10 11h6"/><path d="M10 15h4"/></svg></div></div>
+      <div style="flex:1;min-width:0">
+        <div class="news-title">USD CPI Beats Expectations, Core Inflation Remains Sticky</div>
+        <div class="news-summary">CPI came in at 3.2% vs 3.1% expected, raising expectations of a hawkish Fed stance in today's meeting.</div>
+        <div class="news-meta">
+          <span class="news-source">FOREX FACTORY</span>
+          <span class="news-time">12m ago</span>
+          <span class="news-cat">MACRO</span>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-top:0.5px solid rgba(255,255,255,0.04)">
+      <span style="font-size:9px;font-weight:600;color:#C7FF38">Read full article</span>
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#C7FF38" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+  </div>
+
+  <!-- News Item 2 -->
+  <div class="news-card">
+    <div class="news-inner">
+      <div class="news-img"><div class="news-img-placeholder"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5F5F5F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9h4"/><path d="M10 7h6"/><path d="M10 11h6"/><path d="M10 15h4"/></svg></div></div>
+      <div style="flex:1;min-width:0">
+        <div class="news-title">Fed Holds Rates Steady, Signals One Cut Before Year-End</div>
+        <div class="news-summary">The Fed maintained its current rate while the dot plot suggested one potential cut in December, depending on data.</div>
+        <div class="news-meta">
+          <span class="news-source">BLOOMBERG</span>
+          <span class="news-time">45m ago</span>
+          <span class="news-cat">CENTRAL BANKS</span>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-top:0.5px solid rgba(255,255,255,0.04)">
+      <span style="font-size:9px;font-weight:600;color:#C7FF38">Read full article</span>
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#C7FF38" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+  </div>
+
+  <div style="height:20px"></div>
+</div>
+
+<!-- NAV -->
+<div class="nav-wrap">
+  <div class="nav-inner">
+    <button class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.65)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg><span class="nav-label" style="color:rgba(255,255,255,0.65)">Dash</span></button>
+    <button class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.65)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span class="nav-label" style="color:rgba(255,255,255,0.65)">Journal</span></button>
+    <button class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.65)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span class="nav-label" style="color:rgba(255,255,255,0.65)">Scalp</span></button>
+    <button class="nav-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="#C7FF38" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg><span class="nav-label" style="color:#C7FF38">Intel</span></button>
+    <button class="nav-btn"><svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.65)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span class="nav-label" style="color:rgba(255,255,255,0.65)">Settings</span></button>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Slayers Intelligence — Prototype</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;background:#090909;color:#FFF;font-family:'Inter',-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+body{display:flex;flex-direction:column;align-items:center;padding:20px 16px 40px;max-width:420px;margin:0 auto}
+
+.section-label{font-size:11px;font-weight:700;color:#FFF;letter-spacing:-0.02em;margin-bottom:3px}
+.section-sub{font-size:9px;color:#5F5F5F;margin-bottom:16px}
+
+/* Main card */
+.brief{background:#151515;border-radius:24px;border:0.5px solid rgba(255,255,255,0.05);padding:20px;position:relative;overflow:hidden;width:100%}
+.brief-glow{position:absolute;top:-60px;right:-60px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(199,255,56,0.03) 0%,transparent 70%);pointer-events:none}
+.brief-icon{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.brief-icon svg{width:16px;height:16px}
+.brief-icon span{font-size:11px;font-weight:700;color:#FFF;letter-spacing:-0.01em}
+.brief-time{font-size:8px;color:#5F5F5F;margin-bottom:14px}
+
+/* Blocks */
+.block{margin-bottom:18px}
+.block:last-child{margin-bottom:0}
+.block-label{font-size:8px;font-weight:700;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.block-label .num{font-size:7px;color:rgba(255,255,255,0.08);font-weight:700}
+.block-text{font-size:12px;color:#CECECE;line-height:1.6;font-weight:400}
+
+/* Asset strength list */
+.asset-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.asset-row{display:flex;align-items:center;justify-content:space-between;padding:5px 10px;border-radius:8px;background:rgba(255,255,255,0.02)}
+.asset-name{font-size:10px;font-weight:700;color:#FFF;letter-spacing:-0.01em}
+.asset-dir{font-size:9px;font-weight:600;display:flex;align-items:center;gap:3px}
+
+/* Avoid list */
+.avoid-item{display:flex;align-items:center;gap:6px;padding:4px 0;font-size:10px;color:#8E8E8E}
+.avoid-x{color:#FF5D5D;font-size:11px;font-weight:700;flex-shrink:0}
+
+/* Focus list */
+.focus-item{display:flex;align-items:center;gap:6px;padding:4px 0;font-size:10px;color:#CECECE}
+.focus-check{color:#C7FF38;font-size:11px;font-weight:700;flex-shrink:0}
+
+/* Bias table */
+.bias-table{width:100%;border-collapse:collapse}
+.bias-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)}
+.bias-row:last-child{border-bottom:none}
+.bias-pair{font-size:10px;font-weight:700;color:#FFF}
+.bias-dir{font-size:9px;font-weight:600;padding:2px 8px;border-radius:99px}
+
+/* Confidence bar */
+.conf-bar{height:3px;border-radius:99px;background:rgba(255,255,255,0.04);overflow:hidden;margin:6px 0 3px}
+.conf-fill{height:100%;border-radius:99px;transition:width 1.2s cubic-bezier(.16,1,.3,1)}
+.conf-label{font-size:9px;font-weight:600;display:flex;justify-content:space-between}
+
+/* Risk meter */
+.risk-row{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;background:rgba(255,255,255,0.02);margin-bottom:6px}
+.risk-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.risk-label{font-size:10px;font-weight:700;color:#FFF;flex:1}
+.risk-reason{font-size:9px;color:#8E8E8E}
+
+/* Session */
+.session-grid{display:flex;gap:6px}
+.session-card{flex:1;padding:8px 6px;border-radius:10px;background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.04);text-align:center}
+.session-name{font-size:8px;font-weight:700;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px}
+.session-desc{font-size:8px;color:#8E8E8E;line-height:1.3}
+.session-dot{width:4px;height:4px;border-radius:50%;margin:0 auto 3px}
+
+/* Psych */
+.psych{font-size:11px;color:#C7FF38;font-style:italic;line-height:1.5;padding-top:14px;border-top:0.5px solid rgba(255,255,255,0.06);margin-top:4px;font-weight:500}
+
+/* Divider */
+.divider{width:100%;height:0.5px;background:rgba(255,255,255,0.04);margin:14px 0}
+
+/* Bouncy entry */
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.brief>*{animation:fadeUp .5s cubic-bezier(.16,1,.3,1) both}
+</style>
+</head>
+<body>
+
+<div class="section-label">Slayers Intelligence</div>
+<div class="section-sub">Live market briefing</div>
+
+<div class="brief" id="brief">
+  <div class="brief-glow"></div>
+
+  <!-- Header -->
+  <div class="brief-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#C7FF38" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8a4 4 0 0 1 4 4c0 1.2-.5 2.3-1.4 3.1L12 17l-2.6-1.9A4 4 0 0 1 8 12a4 4 0 0 1 4-4z"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M12 2v2"/><path d="M12 20v2"/><circle cx="12" cy="12" r="10"/></svg>
+    <span>The Slayers</span>
+  </div>
+  <div class="brief-time">Updated 3m ago · 25 Jul 2026</div>
+
+  <!-- 1. Market Overview -->
+  <div class="block" style="animation-delay:.05s">
+    <div class="block-label"><span class="num">01</span> Market Overview</div>
+    <div class="block-text">Markets remain cautiously bullish as stronger USD demand continues to pressure Gold while indices trade near weekly highs. Risk appetite is moderate ahead of today's CPI release and FOMC statement.</div>
+  </div>
+
+  <!-- 2. Why -->
+  <div class="block" style="animation-delay:.1s">
+    <div class="block-label"><span class="num">02</span> Why It's Happening</div>
+    <div class="block-text">Stronger-than-expected economic data and hawkish Fed guidance continue to support the US Dollar. Treasury yields rising to session highs reduce demand for Gold and pressure EUR/USD. Equity markets remain resilient on AI sector momentum.</div>
+  </div>
+
+  <!-- 3. What To Expect -->
+  <div class="block" style="animation-delay:.15s">
+    <div class="block-label"><span class="num">03</span> What To Expect</div>
+    <div class="block-text">Expect increased volatility during the New York session. Momentum could accelerate after the FOMC statement at 2:00 PM EST. If USD continues to strengthen, expect further downside in Gold and EURUSD. A dovish surprise could trigger a sharp reversal in USD longs.</div>
+  </div>
+
+  <!-- 4. Strongest Assets -->
+  <div class="block" style="animation-delay:.2s">
+    <div class="block-label"><span class="num">04</span> Asset Strength</div>
+    <div class="asset-grid">
+      <div class="asset-row"><span class="asset-name">USD</span><span class="asset-dir" style="color:#C7FF38">↑ Bullish</span></div>
+      <div class="asset-row"><span class="asset-name">Gold</span><span class="asset-dir" style="color:#FF5D5D">↓ Bearish</span></div>
+      <div class="asset-row"><span class="asset-name">Indices</span><span class="asset-dir" style="color:#C7FF38">↑ Bullish</span></div>
+      <div class="asset-row"><span class="asset-name">EUR</span><span class="asset-dir" style="color:#FF5D5D">↓ Bearish</span></div>
+      <div class="asset-row"><span class="asset-name">Bitcoin</span><span class="asset-dir" style="color:#C7FF38">↑ Bullish</span></div>
+      <div class="asset-row"><span class="asset-name">GBP</span><span class="asset-dir" style="color:#FFC857">→ Neutral</span></div>
+    </div>
+  </div>
+
+  <!-- 5. What To Avoid -->
+  <div class="block" style="animation-delay:.25s">
+    <div class="block-label"><span class="num">05</span> What To Avoid</div>
+    <div class="avoid-item"><span class="avoid-x">✕</span> Counter-trend Gold buys while USD momentum is strong</div>
+    <div class="avoid-item"><span class="avoid-x">✕</span> Low-volume Asian Session breakouts before CPI</div>
+    <div class="avoid-item"><span class="avoid-x">✕</span> Adding to EURUSD shorts near support levels</div>
+  </div>
+
+  <!-- 6. Today's Focus -->
+  <div class="block" style="animation-delay:.3s">
+    <div class="block-label"><span class="num">06</span> Today's Focus</div>
+    <div class="focus-item"><span class="focus-check">✓</span> USD strength continuation into NY session</div>
+    <div class="focus-item"><span class="focus-check">✓</span> EURUSD sell on rallies if CPI beats expectations</div>
+    <div class="focus-item"><span class="focus-check">✓</span> NAS100 continuation above weekly VWAP</div>
+    <div class="focus-item"><span class="focus-check">✓</span> Watch GBP during London — potential breakout setup</div>
+  </div>
+
+  <div class="divider" style="animation-delay:.32s"></div>
+
+  <!-- Daily Bias -->
+  <div class="block" style="animation-delay:.35s">
+    <div class="block-label">Today's Bias</div>
+    <div class="bias-row"><span class="bias-pair">EURUSD</span><span class="bias-dir" style="color:#FF5D5D;background:rgba(255,93,93,0.1)">Bearish</span></div>
+    <div class="bias-row"><span class="bias-pair">GBPUSD</span><span class="bias-dir" style="color:#FFC857;background:rgba(255,200,87,0.1)">Neutral</span></div>
+    <div class="bias-row"><span class="bias-pair">XAUUSD</span><span class="bias-dir" style="color:#FF5D5D;background:rgba(255,93,93,0.1)">Bearish</span></div>
+    <div class="bias-row"><span class="bias-pair">BTCUSD</span><span class="bias-dir" style="color:#C7FF38;background:rgba(199,255,56,0.1)">Bullish</span></div>
+    <div class="bias-row"><span class="bias-pair">NAS100</span><span class="bias-dir" style="color:#C7FF38;background:rgba(199,255,56,0.1)">Bullish</span></div>
+  </div>
+
+  <!-- Confidence + Risk side by side -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;animation-delay:.4s" class="block">
+    <div>
+      <div class="block-label">Confidence</div>
+      <div style="font-size:22px;font-weight:800;color:#C7FF38">82%</div>
+      <div class="conf-bar"><div class="conf-fill" style="width:82%;background:#C7FF38;box-shadow:0 0 6px rgba(199,255,56,0.3)"></div></div>
+      <div class="conf-label"><span style="color:#8E8E8E;font-weight:400">High Confidence</span></div>
+    </div>
+    <div>
+      <div class="block-label">Market Risk</div>
+      <div class="risk-row">
+        <div class="risk-dot" style="background:#FF5D5D;box-shadow:0 0 6px rgba(255,93,93,0.4)"></div>
+        <div><div class="risk-label" style="color:#FF5D5D">High</div><div class="risk-reason">CPI + FOMC today</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Session Focus -->
+  <div class="block" style="animation-delay:.45s">
+    <div class="block-label">Session Focus</div>
+    <div class="session-grid">
+      <div class="session-card">
+        <div class="session-dot" style="background:#5F5F5F"></div>
+        <div class="session-name">Asia</div>
+        <div class="session-desc">Low liquidity. Range likely.</div>
+      </div>
+      <div class="session-card" style="background:rgba(199,255,56,0.04);border-color:rgba(199,255,56,0.1)">
+        <div class="session-dot" style="background:#C7FF38;box-shadow:0 0 4px rgba(199,255,56,0.3)"></div>
+        <div class="session-name" style="color:#C7FF38">London</div>
+        <div class="session-desc">Trend continuation likely.</div>
+      </div>
+      <div class="session-card" style="background:rgba(199,255,56,0.04);border-color:rgba(199,255,56,0.1)">
+        <div class="session-dot" style="background:#C7FF38;box-shadow:0 0 4px rgba(199,255,56,0.3)"></div>
+        <div class="session-name" style="color:#C7FF38">New York</div>
+        <div class="session-desc">Volatility after CPI.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Watchlist -->
+  <div class="block" style="animation-delay:.5s">
+    <div class="block-label">Watchlist</div>
+    <div class="asset-row" style="margin-bottom:3px"><span class="asset-name">EURUSD</span><span style="font-size:9px;color:#8E8E8E">Potential sell continuation</span></div>
+    <div class="asset-row" style="margin-bottom:3px"><span class="asset-name">Gold</span><span style="font-size:9px;color:#8E8E8E">Watch for bearish rejection at $2,380</span></div>
+    <div class="asset-row"><span class="asset-name">USDJPY</span><span style="font-size:9px;color:#8E8E8E">Momentum buy if USD strengthens further</span></div>
+  </div>
+
+  <!-- Psychology -->
+  <div class="psych" style="animation-delay:.55s">"Don't force trades today. Let the news create the opportunity."</div>
+
+</div>
+
+</body>
+</html>
