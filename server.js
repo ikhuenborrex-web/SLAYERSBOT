@@ -2154,24 +2154,23 @@ app.post('/api/subscribe',(req,res)=>{
 });
 app.post('/api/test-push',async (req,res)=>{
   const code=req.query.code||req.headers['x-access-code'];
-  const sub=pushSubscriptions.find(s=>s.code===code);
-  if(!sub)return res.json({error:'No push subscription found for your account'});
+  const subs=pushSubscriptions.filter(s=>s.code===code);
+  if(!subs.length)return res.json({error:'No push subscription found for your account. Try re-enabling notifications.'});
   if(!webpush||!VAPID_PUBLIC||!VAPID_PRIVATE)return res.json({error:'Push not configured'});
   const payload=JSON.stringify({title:'\u2705 Push Notifications Active',body:'You will now receive real-time signals, weekly reports, and intel alerts.','url':'/app/'});
-  try{
-    const {code:_,...subData}=sub;
-    await webpush.sendNotification(subData,payload);
-    res.json({ok:true,sent:1});
-  }catch(e){
-    if(e.statusCode===410||e.statusCode===404){
-      pushSubscriptions=pushSubscriptions.filter(s=>s.code!==code);
-      saveState();
-      res.json({error:'Subscription expired. Please re-enable notifications.'});
-    }else{
-      log('Test push error: '+e.message);
-      res.json({error:'Push failed: '+e.message});
+  let sent=0,dead=[];
+  for(const entry of subs){
+    const {code:_,...subData}=entry;
+    try{
+      await webpush.sendNotification(subData,payload);
+      sent++;
+    }catch(e){
+      if(e.statusCode===410||e.statusCode===404)dead.push(entry);
+      else log('Test push error: '+e.message);
     }
   }
+  if(dead.length){pushSubscriptions=pushSubscriptions.filter(s=>!dead.includes(s));saveState();}
+  res.json({ok:true,sent});
 });
 app.post('/api/member/notif-prefs',(req,res)=>{
   const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
