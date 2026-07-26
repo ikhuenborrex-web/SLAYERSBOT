@@ -2303,8 +2303,11 @@ navigator.serviceWorker.addEventListener('message',function(e){
     if(!state.showNotifPanel)render();
   }
 });
-// Fetch any notifications queued while app was closed (SW intercepts /app/__notifs__)
-fetch('/app/__notifs__').then(function(r){return r.json().catch(function(){return[];});}).then(function(notifs){
-  for(var i=0;i<notifs.length;i++){addNotification(notifs[i]);}
-  if(notifs.length)render();
-}).catch(function(){});
+// Fetch notifications from server on startup
+if(getCode()){
+  fetch(withCode('/api/notifications')).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){
+    var notifs=d.notifications||[];
+    for(var i=0;i<notifs.length;i++){addNotification(notifs[i]);}
+    if(notifs.length)render();
+  }).catch(function(){});
+}

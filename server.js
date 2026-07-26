@@ -1758,10 +1758,20 @@ async function checkIntelChangeAndPush(){
 
 // Dashboard
 app.use(express.json());
+// Server-side notification queue for the bell panel in the app
+let serverNotifQueue=[];
+
 async function sendPushToAll(title,body,url){
   if(!webpush||!VAPID_PUBLIC||!VAPID_PRIVATE||!pushSubscriptions.length)return;
   const payload=JSON.stringify({title,body,url:url||'/app/'});
   const dead=[];
+  // Store notification for the bell panel
+  let nType='info',nIcon='\uD83D\uDD14';
+  if(title.toLowerCase().includes('weekly')){nType='trophy';nIcon='\uD83C\uDFC6';}
+  else if(title.toLowerCase().includes('scalp')){nType='scalp';nIcon='\u26A1';}
+  else if(title.toLowerCase().includes('tp')||title.toLowerCase().includes('profit')||title.toLowerCase().includes('hit')){nType='trade';nIcon='\uD83D\uDCC8';}
+  serverNotifQueue.push({id:'srv_'+(Date.now()),type:nType,icon:nIcon,title:title,body:body||'',time:Date.now(),unread:true,url:url||'/app/'});
+  if(serverNotifQueue.length>50)serverNotifQueue=serverNotifQueue.slice(-50);
   for(const entry of pushSubscriptions){
     const {code,...sub}=entry;
     try{await webpush.sendNotification(sub,payload);}
@@ -1859,7 +1869,6 @@ app.use((req,res,next)=>{
 // Apply rate limiting to all /api/ routes
 app.use('/api',rlMiddleware(60,'api')); // 60 req/min general cap
 app.use('/api/member/stats',rlMiddleware(10,'auth')); // tighter on login
-app.get('/app/__notifs__',(req,res)=>{res.json([]);}); // fallback if SW hasn't claimed page yet
 app.use('/app', express.static(path.join(__dirname, 'public_app'),{
   setHeaders: function(res,path){
     if(path.endsWith('.html')||path.endsWith('.js'))res.set('Cache-Control','no-cache, no-store, must-revalidate');
@@ -2377,6 +2386,21 @@ app.get('/api/weekly-report',(req,res)=>{
   const code=req.query.code||req.headers['x-access-code'];
   const ms=memberStats[code]||{};
   res.json({report:weeklySummaryData,myStats:{totalR:ms.totalR||0,total:ms.total||0,wins:ms.wins||0,losses:ms.losses||0,bes:ms.bes||0,winRate:ms.total?(ms.wins+ms.losses)?Math.round((ms.wins/(ms.wins+ms.losses))*100):0:0}});
+});
+app.get('/api/notifications',(req,res)=>{
+  const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:'Invalid or expired access code',reason:codeCheck});
+  const notifs=serverNotifQueue.splice(0,serverNotifQueue.length);
+  // Also add this week's report as a notification if it exists
+  if(weeklySummaryData&&weeklySummaryData.totalR!==undefined){
+    const weekKey=weeklySummaryData.week||new Date().toISOString().slice(0,10);
+    const alreadyInQueue=notifs.some(function(n){return n.id&&n.id.indexOf('week_'+weekKey)>-1;});
+    if(!alreadyInQueue){
+      const wr=weeklySummaryData.wr||weeklySummaryData.winRate||0;
+      const totalR=weeklySummaryData.totalR||0;
+      notifs.unshift({id:'week_'+weekKey,type:'trophy',icon:'\uD83C\uDFC6',title:'Weekly Report Ready',body:'You finished at '+(totalR>=0?'+'+totalR.toFixed(1):totalR.toFixed(1))+'R \u00B7 '+wr+'% WR. Tap to view.',time:Date.now(),unread:true,url:'/app/#weekly-report'});
+    }
+  }
+  res.json({notifications:notifs});
 });
 app.get('/api/member/stats',(req,res)=>{
   const codeCheck=checkMemberCode(req);
