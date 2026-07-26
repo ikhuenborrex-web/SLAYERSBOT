@@ -1214,6 +1214,10 @@ function addNotification(n){
   if(!n.id)n.id='notif_'+(Date.now())+'_'+Math.random().toString(36).slice(2,6);
   // Dedup by id
   for(var di=0;di<state.notifications.length;di++){if(state.notifications[di].id===n.id)return;}
+  // Remove stale weekly report notifications when a fresh one arrives
+  if(n.title&&n.title.indexOf('Weekly Report')>-1){
+    state.notifications=state.notifications.filter(function(e){return!(e.title&&e.title.indexOf('Weekly Report')>-1);});
+  }
   n.time=n.time||Date.now();
   n.unread=n.unread!==false;
   state.notifications.unshift(n);
