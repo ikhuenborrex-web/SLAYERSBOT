@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Slayers Bot — Ad Video</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#000;overflow:hidden;width:100vw;height:100vh}
+  .stage{width:100%;max-width:400px;height:100vh;margin:0 auto;position:relative;overflow:hidden;background:#090909}
+  .slide{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;opacity:0;pointer-events:none;transition:opacity 1.2s ease}
+  .slide.active{opacity:1;pointer-events:auto;z-index:2}
+  .slide.exit{opacity:0;transition:opacity 1s ease;z-index:1}
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+  @keyframes pulseGlow{0%,100%{box-shadow:0 0 20px rgba(183,255,42,0.2)}50%{box-shadow:0 0 40px rgba(183,255,42,0.4)}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes barGrow{from{width:0}to{width:var(--w)}}
+  @keyframes dotPulse{0%,100%{opacity:0.3}50%{opacity:1}}
+  @keyframes slideIn{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:translateX(0)}}
+  @keyframes countUp{from{opacity:0;transform:scale(0.8)}to{opacity:1;transform:scale(1)}}
+  .elem{opacity:0;transform:translateY(12px)}
+  .slide.active .elem{opacity:1;transform:translateY(0);transition:all 0.6s ease}
+  .slide.active .e1{transition-delay:0.1s}
+  .slide.active .e2{transition-delay:0.35s}
+  .slide.active .e3{transition-delay:0.6s}
+  .slide.active .e4{transition-delay:0.85s}
+  .slide.active .e5{transition-delay:1.1s}
+  .bg-glow{position:absolute;width:300px;height:300px;border-radius:50%;pointer-events:none;opacity:0.08;z-index:0}
+  .float{animation:float 3s ease-in-out infinite}
+  .glow-box{animation:pulseGlow 2s ease-in-out infinite;border-radius:16px}
+  .signal-card{background:linear-gradient(135deg,#1A1A1A,#121212);border-radius:16px;padding:20px;border:1px solid rgba(255,255,255,0.06);width:100%;margin-bottom:10px}
+  .signal-line{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)}
+  .signal-line:last-child{border-bottom:none}
+  .chip{border-radius:99px;padding:4px 10px;font-size:10px;font-weight:600}
+  .report-card{background:linear-gradient(135deg,#1A1A1A,#121212);border-radius:20px;padding:28px;border:1px solid rgba(255,255,255,0.06);width:100%;text-align:center;position:relative;overflow:hidden}
+  .big-number{font-size:52px;font-weight:800;color:#B7FF2A;line-height:1}
+  .phone-frame{background:#121212;border-radius:32px;padding:16px;border:1px solid rgba(255,255,255,0.06);width:240px}
+  .notif-banner{background:linear-gradient(135deg,#1A1A1A,#0E0E0E);border-radius:12px;padding:12px;display:flex;gap:10px;align-items:center;border:0.5px solid rgba(183,255,42,0.15);margin-top:10px}
+  .live-dot{width:6px;height:6px;border-radius:50%;background:#B7FF2A;display:inline-block;animation:dotPulse 1.5s ease-in-out infinite}
+  .progress-bar{position:fixed;bottom:0;left:0;right:0;height:3px;background:rgba(255,255,255,0.05);z-index:99}
+  .progress-fill{height:100%;background:#B7FF2A;width:0%;transition:width 0.1s linear}
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <div class="bg-glow" style="background:radial-gradient(circle,#B7FF2A,transparent 70%);top:-80px;right:-80px;z-index:0;position:absolute"></div>
+
+  <!-- SLIDE 1: HERO -->
+  <div class="slide active" data-dur="5">
+    <div class="bg-glow" style="background:radial-gradient(circle,#B7FF2A,transparent 70%);top:-60px;right:-40px"></div>
+    <div class="elem e1"><img src="mascot.png" style="width:72px;height:72px;border-radius:50%;border:2px solid rgba(183,255,42,0.3);object-fit:cover" onerror="this.style.display='none'" class="float"></div>
+    <div class="elem e2" style="font-size:11px;color:#B7FF2A;font-weight:600;letter-spacing:0.1em;margin-top:16px">THE SLAYERS MODEL</div>
+    <div class="elem e3" style="font-size:34px;font-weight:800;color:#FFF;text-align:center;line-height:1.1;letter-spacing:-0.03em;margin-top:8px">Trade Smarter.<br>Not Harder.</div>
+    <div class="elem e4" style="font-size:14px;color:#8E8E8E;text-align:center;margin-top:10px;max-width:260px;line-height:1.4">Real-time QMR signals \u00B7 Scalp alerts \u00B7 Weekly reports \u00B7 AI coach</div>
+    <div class="elem e5" style="margin-top:20px;display:flex;gap:8px;align-items:center;font-size:11px;color:#5F5F5F"><span class="live-dot"></span> Live market scanning \u00B7 24/7</div>
+  </div>
+
+  <!-- SLIDE 2: SIGNALS -->
+  <div class="slide" data-dur="6">
+    <div class="elem e1" style="font-size:11px;color:#B7FF2A;font-weight:600;letter-spacing:0.08em;align-self:flex-start;margin-left:0;margin-bottom:8px">REAL-TIME SIGNALS</div>
+    <div class="signal-card elem e2">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:17px;font-weight:700;color:#FFF">GBPUSD</span>
+        <span class="chip" style="background:rgba(183,255,42,0.12);color:#B7FF2A;border:0.5px solid rgba(183,255,42,0.2)">\uD83D\uDCC8 BULLISH</span>
+      </div>
+      <div class="signal-line"><span style="font-size:11px;color:#5F5F5F">Entry</span><span style="font-size:13px;font-weight:600;color:#FFF">1.2876</span></div>
+      <div class="signal-line"><span style="font-size:11px;color:#5F5F5F">TP1 \u2192 TP2</span><span style="font-size:13px;font-weight:600;color:#B7FF2A">1.2910 \u2192 1.2945</span></div>
+    </div>
+    <div class="signal-card elem e3">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:17px;font-weight:700;color:#FFF">EURUSD</span>
+        <span class="chip" style="background:rgba(255,82,82,0.12);color:#FF5252;border:0.5px solid rgba(255,82,82,0.2)">\uD83D\uDCC9 BEARISH</span>
+      </div>
+      <div class="signal-line"><span style="font-size:11px;color:#5F5F5F">Entry</span><span style="font-size:13px;font-weight:600;color:#FFF">1.0832</span></div>
+      <div class="signal-line"><span style="font-size:11px;color:#5F5F5F">TP1 \u2192 TP2</span><span style="font-size:13px;font-weight:600;color:#FF5252">1.0805 \u2192 1.0778</span></div>
+    </div>
+    <div class="elem e4" style="font-size:11px;color:#5F5F5F;text-align:center;margin-top:4px">ELITE grade \u00B7 4/4 criteria confirmed</div>
+  </div>
+
+  <!-- SLIDE 3: STATS -->
+  <div class="slide" data-dur="6">
+    <div class="elem e1" style="font-size:11px;color:#B7FF2A;font-weight:600;letter-spacing:0.08em;align-self:flex-start;margin-bottom:16px">YOUR PERFORMANCE</div>
+    <div class="elem e2" style="text-align:center;margin-bottom:16px">
+      <div style="width:90px;height:90px;border-radius:50%;border:3px solid rgba(183,255,42,0.15);display:flex;align-items:center;justify-content:center;margin:0 auto 8px;position:relative">
+        <div style="position:absolute;inset:-3px;border-radius:50%;border:3px solid #B7FF2A;border-color:#B7FF2A transparent transparent transparent;animation:spin 2s linear infinite"></div>
+        <span style="font-size:26px;font-weight:800;color:#FFF">86<span style="font-size:14px;color:#B7FF2A">%</span></span>
+      </div>
+      <div style="font-size:12px;color:#8E8E8E">Win Rate</div>
+    </div>
+    <div style="display:flex;gap:10px;width:100%" class="elem e3">
+      <div style="flex:1;background:#121212;border-radius:14px;padding:16px;border:1px solid rgba(255,255,255,0.06);text-align:center">
+        <div style="font-size:28px;font-weight:800;color:#B7FF2A">+12.4</div>
+        <div style="font-size:10px;color:#5F5F5F;margin-top:2px">Total R</div>
+      </div>
+      <div style="flex:1;background:#121212;border-radius:14px;padding:16px;border:1px solid rgba(255,255,255,0.06);text-align:center">
+        <div style="font-size:28px;font-weight:800;color:#FFF">3.8</div>
+        <div style="font-size:10px;color:#5F5F5F;margin-top:2px">Best R</div>
+      </div>
+    </div>
+    <div class="elem e4" style="width:100%;margin-top:10px;background:#121212;border-radius:14px;padding:14px;border:1px solid rgba(255,255,255,0.06)">
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:#5F5F5F;margin-bottom:6px"><span>Equity Curve</span><span style="color:#B7FF2A">+8.4R</span></div>
+      <svg viewBox="0 0 300 40" style="width:100%;height:32px;display:block">
+        <defs><linearGradient id="eg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#B7FF2A" stop-opacity="0.15"/><stop offset="100%" stop-color="#B7FF2A" stop-opacity="0"/></linearGradient></defs>
+        <path d="M5 28 L25 26 L45 22 L65 24 L85 20 L105 16 L125 18 L145 14 L165 10 L185 12 L205 8 L225 6 L245 4 L265 3 L285 5 L295 3" fill="none" stroke="#B7FF2A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M5 28 L25 26 L45 22 L65 24 L85 20 L105 16 L125 18 L145 14 L165 10 L185 12 L205 8 L225 6 L245 4 L265 3 L285 5 L295 3 L295 40 L5 40Z" fill="url(#eg)"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: WEEKLY REPORT -->
+  <div class="slide" data-dur="6">
+    <div class="elem e1" style="font-size:11px;color:#B7FF2A;font-weight:600;letter-spacing:0.08em;align-self:flex-start;margin-bottom:12px">WEEKLY REPORT</div>
+    <div class="report-card glow-box elem e2">
+      <div style="position:absolute;width:150px;height:150px;border-radius:50%;background:radial-gradient(circle,rgba(183,255,42,0.1),transparent 70%);top:-40px;right:-40px;pointer-events:none"></div>
+      <img src="mascot.png" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid rgba(183,255,42,0.3);margin-bottom:10px" onerror="this.style.display='none'">
+      <div style="font-size:11px;color:#8E8E8E;margin-bottom:2px">Week Ending 26 Jul</div>
+      <div style="font-size:13px;color:#8E8E8E;margin-bottom:12px">Total Return</div>
+      <div class="big-number" style="animation:countUp 0.6s ease forwards">+12.4<span style="font-size:18px;color:#8E8E8E;font-weight:600">R</span></div>
+      <div style="display:flex;gap:14px;margin-top:16px;justify-content:center">
+        <div><div style="font-size:18px;font-weight:700;color:#FFF">6</div><div style="font-size:9px;color:#5F5F5F">WINS</div></div>
+        <div><div style="font-size:18px;font-weight:700;color:#FF5252">1</div><div style="font-size:9px;color:#5F5F5F">LOSS</div></div>
+        <div><div style="font-size:18px;font-weight:700;color:#8E8E8E">1</div><div style="font-size:9px;color:#5F5F5F">BE</div></div>
+      </div>
+    </div>
+    <div class="elem e3" style="margin-top:10px;display:flex;align-items:center;gap:8px;justify-content:center">
+      <span style="font-size:22px;font-weight:700;color:#B7FF2A">A</span>
+      <span style="font-size:11px;color:#5F5F5F">AI Coach Grade \u2014 Excellent discipline</span>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: NOTIFICATIONS -->
+  <div class="slide" data-dur="6">
+    <div class="elem e1" style="font-size:11px;color:#B7FF2A;font-weight:600;letter-spacing:0.08em;align-self:flex-start;margin-bottom:12px">PUSH NOTIFICATIONS</div>
+    <div class="phone-frame elem e2">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:12px;font-weight:600;color:#FFF">Journal</span>
+        <div style="width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.04);border:0.5px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;position:relative">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8E8E8E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+          <span style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:#FF5252;color:#FFF;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #121212">2</span>
+        </div>
+      </div>
+      <div class="notif-banner" style="animation:slideIn 0.4s ease 0.3s forwards;opacity:0">
+        <div style="width:32px;height:32px;border-radius:50%;background:rgba(183,255,42,0.12);display:flex;align-items:center;justify-content:center;font-size:14px">\uD83C\uDFC6</div>
+        <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:#B7FF2A">Weekly Report Ready</div><div style="font-size:10px;color:#8E8E8E;margin-top:1px">+12.4R \u00B7 86% WR</div></div>
+      </div>
+      <div class="notif-banner" style="animation:slideIn 0.4s ease 0.6s forwards;opacity:0">
+        <div style="width:32px;height:32px;border-radius:50%;background:rgba(255,82,82,0.12);display:flex;align-items:center;justify-content:center;font-size:14px">\uD83D\uDCC8</div>
+        <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:#FFF">TP1 Hit \u2014 GBPUSD</div><div style="font-size:10px;color:#8E8E8E;margin-top:1px">Moved to breakeven</div></div>
+      </div>
+      <div class="notif-banner" style="animation:slideIn 0.4s ease 0.9s forwards;opacity:0">
+        <div style="width:32px;height:32px;border-radius:50%;background:rgba(249,115,22,0.12);display:flex;align-items:center;justify-content:center;font-size:14px">\u26A1</div>
+        <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:#FFF">Scalp Signal \u2014 EURUSD</div><div style="font-size:10px;color:#8E8E8E;margin-top:1px">Score 5/5</div></div>
+      </div>
+    </div>
+    <div class="elem e3" style="font-size:11px;color:#5F5F5F;text-align:center;margin-top:10px">Never miss a trade. Push + Bell history.</div>
+  </div>
+
+  <!-- SLIDE 6: CTA -->
+  <div class="slide" data-dur="5">
+    <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,rgba(183,255,42,0.04),transparent 70%);pointer-events:none"></div>
+    <div class="elem e1"><img src="mascot.png" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:2px solid rgba(183,255,42,0.3)" onerror="this.style.display='none'" class="float"></div>
+    <div class="elem e2" style="font-size:28px;font-weight:800;color:#FFF;text-align:center;line-height:1.2;letter-spacing:-0.03em;margin-top:12px">Ready to<br>Level Up?</div>
+    <div class="elem e3" style="font-size:14px;color:#8E8E8E;text-align:center;margin-top:10px;max-width:260px">Join the Slayers. Trade the model that delivers.</div>
+    <div class="elem e4" style="margin-top:20px;padding:14px 48px;border-radius:99px;background:#B7FF2A;color:#090909;font-size:14px;font-weight:700;border:none;box-shadow:0 0 30px rgba(183,255,42,0.3);animation:pulseGlow 2s ease-in-out infinite">Get Access</div>
+    <div class="elem e5" style="margin-top:10px;display:flex;gap:4px;font-size:10px;color:#5F5F5F"><span>\u00B7</span><span>QMR Signals</span><span>\u00B7</span><span>Scalp</span><span>\u00B7</span><span>AI Coach</span></div>
+  </div>
+</div>
+
+<div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+
+<script>
+var slides = document.querySelectorAll('.slide');
+var current = 0;
+var timer = null;
+var progressEl = document.getElementById('progressFill');
+
+function showSlide(idx){
+  slides.forEach(function(s){ s.classList.remove('active'); s.classList.remove('exit'); });
+  slides[idx].classList.add('active');
+  var dur = parseFloat(slides[idx].getAttribute('data-dur')) || 5;
+  startProgress(dur);
+  clearTimeout(timer);
+  timer = setTimeout(function(){
+    slides[idx].classList.add('exit');
+    setTimeout(function(){
+      var next = (idx + 1) % slides.length;
+      showSlide(next);
+    }, 800);
+  }, dur * 1000);
+}
+
+function startProgress(sec){
+  progressEl.style.width = '0%';
+  progressEl.style.transition = 'none';
+  requestAnimationFrame(function(){
+    progressEl.style.transition = 'width ' + sec + 's linear';
+    progressEl.style.width = '100%';
+  });
+}
+
+showSlide(0);
+</script>
+</body>
+</html>
