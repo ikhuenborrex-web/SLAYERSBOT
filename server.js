@@ -1744,7 +1744,7 @@ async function checkIntelChangeAndPush(){
 app.use(express.json());
 async function sendPushToAll(title,body,url){
   if(!webpush||!VAPID_PUBLIC||!VAPID_PRIVATE||!pushSubscriptions.length)return;
-  const payload=JSON.stringify({title,body,url:url||'/'});
+  const payload=JSON.stringify({title,body,url:url||'/app/'});
   const dead=[];
   for(const entry of pushSubscriptions){
     const {code,...sub}=entry;
@@ -1762,7 +1762,7 @@ async function sendPushToTrackers(signalId,title,body,level){
   if(!webpush||!VAPID_PUBLIC||!VAPID_PRIVATE||!signalId)return;
   const codes=trackedTrades[signalId];
   if(!codes||!codes.length)return;
-  const payload=JSON.stringify({title,body,url:'/'});
+  const payload=JSON.stringify({title,body,url:'/app/'});
   const dead=[];
   for(const entry of pushSubscriptions){
     const {code,...sub}=entry;
@@ -1782,7 +1782,7 @@ async function sendPushToTrackers(signalId,title,body,level){
 }
 async function sendScalpPushToAll(title,body,url){
   if(!webpush||!VAPID_PUBLIC||!VAPID_PRIVATE||!pushSubscriptions.length)return;
-  const payload=JSON.stringify({title,body,url:url||'/'});
+  const payload=JSON.stringify({title,body,url:url||'/app/'});
   const dead=[];
   for(const entry of pushSubscriptions){
     const {code,...sub}=entry;
