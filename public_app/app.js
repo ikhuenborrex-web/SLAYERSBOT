@@ -1605,7 +1605,7 @@ window.testPush=async function(){
   try{
     var r=await fetch(withCode('/api/test-push'),{method:'POST'});
     var d=await r.json();
-    if(d.error){alert(d.error);}else{showToast('Test push sent');}
+    if(d.error){alert(d.error);}else if(d.sent){showToast('✅ Push active — delivered to '+d.sent+' device'+(d.sent>1?'s':''));}else{showToast('No devices received the test. Re-enable notifications.');}
   }catch(e){alert('Could not send test.');}
 };
 function urlBase64ToUint8Array(b){
