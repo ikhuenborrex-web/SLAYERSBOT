@@ -229,7 +229,7 @@ function saveState(){
       weeklyCache,prevWeeklyCache,recentQMRFires,qmr4HCache,suppressedPairs:[...suppressedPairs],
       lastBriefing,lastEOD,lastWeeklySummary,lastMonthlyRecap,pairPerformance,
       dailyAlertLog,dailyOutcomeLog,
-      qmrSeen:[...qmrSeen],scalpSeen:[...scalpSeen],earlyEntryCache,appSignalFeed,lastBriefingSnapshot,lastBriefingTime,lastIntelHash,lastIntelPushTime,lastIntelBriefing,lastIntelBriefingTime,      pushSubscriptions,memberCodes,trackedTrades,memberStats,weeklySummaryData,scalpSignals,activeScalpTrades,scalpTradeHistory,
+      qmrSeen:[...qmrSeen],scalpSeen:[...scalpSeen],earlyEntryCache,appSignalFeed,lastBriefingSnapshot,lastBriefingTime,lastIntelHash,lastIntelPushTime,lastIntelBriefing,lastIntelBriefingTime,      pushSubscriptions,memberCodes,trackedTrades,memberStats,weeklySummaryData,scalpSignals,activeScalpTrades,scalpTradeHistory,scanCount,lastScanTime,
       savedAt:Date.now()
     };
     const json=JSON.stringify(state);
@@ -354,7 +354,6 @@ async function loadState(){
     dailyOutcomeLog=(dailyOutcomeLog||[]).filter(t=>t.id!=='EURGBP');
     appSignalFeed=(appSignalFeed||[]).filter(s=>s.pair!=='EURGBP');
     if(tradeHistory.length!==st?.tradeHistory?.length||appSignalFeed.length!==st?.appSignalFeed?.length)saveState();
-    if(tradeHistory.length!==st?.tradeHistory?.length)saveState();
   }catch(e){log('loadState error (starting fresh): '+e.message);}
 }
 let dailyCache={};
@@ -773,7 +772,7 @@ async function genScalpChart(instId,interval,lines,saveKey){
 }
 async function tgQMRPreAlert(id,tf,qmr,htfBias,earlyEntry,wickRatio,aggSL,aggTP1,aggTP2){const bear=qmr.type==='BEARISH',p=qmr.qmLevel>10?2:5,zone=bear?'PREMIUM - Sell Zone':'DISCOUNT - Buy Zone',slDist=Math.abs(earlyEntry-aggSL),rr1=slDist>0?(Math.abs(aggTP1-earlyEntry)/slDist).toFixed(1):'--',rr2=slDist>0?(Math.abs(aggTP2-earlyEntry)/slDist).toFixed(1):'2.5',slLabel=bear?'above protected high':'below protected low';let htfLine='';if(htfBias&&htfBias!=='NEUTRAL'){const agrees=(bear&&htfBias==='BEARISH')||((!bear)&&htfBias==='BULLISH');htfLine='\n'+(agrees?'\uD83D\uDD25 HTF Aligned: Weekly '+htfBias+' - HIGH PROBABILITY':'\u26A0\uFE0F Counter-trend: Weekly '+htfBias);}const tier=qmr.criteria.score>=4?'\uD83D\uDC8E ELITE SETUP':'\uD83D\uDFE1 VALID SETUP';await tgSend('\u26A1 EARLY QMR ENTRY \u2014 '+tier+'\n'+'='.repeat(28)+'\n\uD83D\uDCCA '+id+' \u00B7 '+tf+' \u00B7 '+zone+'\n'+(bear?'\uD83D\uDD34 BEARISH QM (AGGRESSIVE)':'\uD83D\uDFE2 BULLISH QM (AGGRESSIVE)')+htfLine+'\n\n\u26A1 Aggressive Entry: '+earlyEntry.toFixed(p)+' (sweep close)\n\uD83D\uDEAB SL:    '+aggSL.toFixed(p)+' ('+slLabel+') \u2014 '+slDist.toFixed(p)+'pts\n\uD83C\uDFAF TP1:    '+aggTP1.toFixed(p)+' (1:'+rr1+'R)\n\uD83C\uDFAF Full TP2: '+aggTP2.toFixed(p)+' (1:'+rr2+'R)\n\n\uD83C\uDFD4\uFE0F Head: '+qmr.head.toFixed(p)+'\n\uD83D\uDD04 Wick rejection: '+(wickRatio*100).toFixed(0)+'% \u2014 genuine sweep\n\n\uD83D\uDD25 Criteria: '+qmr.criteria.score+'/4\n'+qmr.criteria.factors.map(f=>'\u2705 '+f).join('\n')+(qmr.dailyPOI?'\n\uD83C\uDFDB\uFE0F '+qmr.dailyPOI+' \u2014 HTF confluence':'')+(qmr.rsiDivergence?'\n\uD83D\uDD25 '+qmr.rsiDivergence+' on 4H':'')+'\n\n\u23F3 Standard QMR confirmation pending at QM level: '+qmr.qmLevel.toFixed(p)+'\n'+'='.repeat(28)+'\n\u2014 The Slayers Model by Rexroz');}
 async function tgQMR(id,tf,qmr,htfBias,sessWarn,adrWarn){const bear=qmr.type==='BEARISH',p=qmr.qmLevel>10?2:5,zone=bear?'PREMIUM - Sell Zone':'DISCOUNT - Buy Zone',entry=qmr.qmLevel,sl=qmr.retestSL!=null?qmr.retestSL:(bear?qmr.head+qmr.atr*0.1:qmr.head-qmr.atr*0.1),slDist=Math.abs(entry-sl),dol=qmr.drawOnLiquidity,tp1=dol?dol.price:(bear?entry-slDist*3:entry+slDist*3),rr1=slDist>0?(Math.abs(tp1-entry)/slDist).toFixed(1):'--',td=qmr.structuralTP2,tp2=td?td.price:(bear?entry-slDist*2.5:entry+slDist*2.5),rr2=td?td.rr:(slDist>0?(Math.abs(tp2-entry)/slDist).toFixed(1):'2.5'),dolLabel=dol?dol.label:'Draw on Liquidity',slLabel=bear?'above protected high':'below protected low';let htfLine='';if(htfBias&&htfBias!=='NEUTRAL'){const agrees=(bear&&htfBias==='BEARISH')||((!bear)&&htfBias==='BULLISH');htfLine='\n'+(agrees?'\uD83D\uDD25 HTF Aligned: Weekly '+htfBias+' - HIGH PROBABILITY':'\u26A0\uFE0F Counter-trend: Weekly '+htfBias);}const tier=qmr.criteria.score>=4?'\uD83D\uDC8E ELITE SETUP':'\uD83D\uDFE1 VALID SETUP';let msg='\uD83D\uDD04 QMR SIGNAL \u2014 '+tier+'\n'+'='.repeat(28)+'\n\uD83D\uDCCA '+id+' \u00B7 '+tf+' \u00B7 '+zone+'\n'+(bear?'\uD83D\uDD34 BEARISH QM':'\uD83D\uDFE2 BULLISH QM')+htfLine+'\n\n\uD83D\uDCCD '+(qmr.refinedEntry?'4H Zone: ':'Entry: ')+entry.toFixed(p)+' (QM Level)\n'+(qmr.refinedEntry?'\uD83C\uDFAF Refined Entry: '+qmr.refinedEntry.price.toFixed(p)+' ('+qmr.refinedEntry.source+')\n\u2192 Enter at refined level for better R\n':'')+'\uD83D\uDEAB SL:    '+sl.toFixed(p)+' ('+slLabel+')\n\uD83C\uDFAF '+dolLabel+': '+tp1.toFixed(p)+' (1:'+rr1+'R)\n\uD83C\uDFAF Next Structure: '+tp2.toFixed(p)+' (1:'+rr2+'R)\n\n\uD83C\uDFD4\uFE0F Head: '+qmr.head.toFixed(p)+'\n\n\uD83D\uDD25 Criteria: '+qmr.criteria.score+'/4\n'+qmr.criteria.factors.map(f=>'\u2705 '+f).join('\n')+(qmr.dailyPOI?'\n\uD83C\uDFDB\uFE0F '+qmr.dailyPOI+' \u2014 HTF confluence':'')+(qmr.rsiDivergence?'\n\uD83D\uDD25 '+qmr.rsiDivergence+' on 4H':'')+'\n\n';if(qmr.counterTrend)msg+='\u26A0\uFE0F COUNTER-TREND \u2014 potential trend reversal. Reduce size.\n\n';const riskRec=qmr.criteria.score>=4?'1% (ELITE)':'0.5% (VALID)';msg+='\uD83D\uDCB0 Recommended risk: '+riskRec+'\n\n';if(sessWarn)msg+='\u23F0 Outside prime session hours\n\n';if(adrWarn)msg+='\u26A0\uFE0F '+adrWarn+'% of avg daily range already used \u2014 TP may need 1-2 sessions\n\n';msg+='\uD83D\uDCB0 Calc position size: https://slayerbotcalculator.netlify.app/#'+id+','+entry.toFixed(p)+','+sl.toFixed(p)+'\n\n\u26A1 Price at QM level. Look for confirmation candle before entering.\n\u2014 The Slayers Model by Rexroz';await tgSend(msg);}
-async function tgMultiTFConfluence(id,qmr1H,qmr4H){const bear=qmr1H.type==='BEARISH',p=qmr1H.qmLevel>10?2:5,zone=bear?'PREMIUM - Sell Zone':'DISCOUNT - Buy Zone',entry=qmr1H.qmLevel,sl=qmr1H.retestSL!=null?qmr1H.retestSL:(bear?qmr1H.head+qmr1H.atr*0.1:qmr1H.head-qmr1H.atr*0.1),slDist=Math.abs(entry-sl),dol=qmr1H.drawOnLiquidity,tp1=dol?dol.price:(bear?entry-slDist*3:entry+slDist*3),tp2=qmr1H.structuralTP2?qmr1H.structuralTP2.price:(bear?entry-slDist*2.5:entry+slDist*2.5),rr1=slDist>0?(Math.abs(tp1-entry)/slDist).toFixed(1):'--',rr2=slDist>0?(Math.abs(tp2-entry)/slDist).toFixed(1):'2.5',dolLabel=dol?dol.label:'Draw on Liquidity',slLabel=bear?'above protected high':'below protected low';await tgSend('\uD83D\uDD25\uD83D\uDD04 MULTI-TF CONFLUENCE - HIGHEST PROBABILITY\n'+'='.repeat(28)+'\n\uD83D\uDCCA '+id+' \u00B7 1H + 4H \u00B7 '+zone+'\n'+(bear?'\uD83D\uDD34 BEARISH QM':'\uD83D\uDFE2 BULLISH QM')+'\n\n\u2705 1H QMR level: '+qmr1H.qmLevel.toFixed(p)+'\n\u2705 4H QMR level: '+qmr4H.qmLevel.toFixed(p)+'\n\u2705 Both timeframes aligned\n\n\uD83D\uDCCD '+(qmr.refinedEntry?'4H Zone: ':'Entry: ')+entry.toFixed(p)+' (QM Level)\n'+(qmr.refinedEntry?'\uD83C\uDFAF Refined Entry: '+qmr.refinedEntry.price.toFixed(p)+' ('+qmr.refinedEntry.source+')\n\u2192 Enter at refined level for better R\n':'')+'\uD83D\uDEAB SL:    '+sl.toFixed(p)+' ('+slLabel+')\n\uD83C\uDFAF '+dolLabel+': '+tp1.toFixed(p)+' (1:'+rr1+'R)\n\uD83C\uDFAF Next Structure: '+tp2.toFixed(p)+' (1:'+rr2+'R)\n\n\uD83D\uDD25 1H Score: '+qmr1H.criteria.score+'/4 | 4H Score: '+qmr4H.criteria.score+'/4\n\n'+(qmr1H.dailyPOI?'\uD83C\uDFDB\uFE0F '+qmr1H.dailyPOI+' \u2014 HTF confluence\n\n':'')+(qmr1H.rsiDivergence?'\uD83D\uDD25 '+qmr1H.rsiDivergence+' on 4H\n\n':'')+(qmr1H.counterTrend?'\u26A0\uFE0F COUNTER-TREND \u2014 potential trend reversal. Reduce size.\n\n':'')+'\uD83D\uDCB0 Calc position size: https://slayerbotcalculator.netlify.app/#'+id+','+entry.toFixed(p)+','+sl.toFixed(p)+'\n\n\u26A1 BOTH TIMEFRAMES CONFIRMED. Highest conviction setup.\n\u2014 The Slayers Model by Rexroz');}
+async function tgMultiTFConfluence(id,qmr1H,qmr4H){const bear=qmr1H.type==='BEARISH',p=qmr1H.qmLevel>10?2:5,zone=bear?'PREMIUM - Sell Zone':'DISCOUNT - Buy Zone',entry=qmr1H.qmLevel,sl=qmr1H.retestSL!=null?qmr1H.retestSL:(bear?qmr1H.head+qmr1H.atr*0.1:qmr1H.head-qmr1H.atr*0.1),slDist=Math.abs(entry-sl),dol=qmr1H.drawOnLiquidity,tp1=dol?dol.price:(bear?entry-slDist*3:entry+slDist*3),tp2=qmr1H.structuralTP2?qmr1H.structuralTP2.price:(bear?entry-slDist*2.5:entry+slDist*2.5),rr1=slDist>0?(Math.abs(tp1-entry)/slDist).toFixed(1):'--',rr2=slDist>0?(Math.abs(tp2-entry)/slDist).toFixed(1):'2.5',dolLabel=dol?dol.label:'Draw on Liquidity',slLabel=bear?'above protected high':'below protected low';await tgSend('\uD83D\uDD25\uD83D\uDD04 MULTI-TF CONFLUENCE - HIGHEST PROBABILITY\n'+'='.repeat(28)+'\n\uD83D\uDCCA '+id+' \u00B7 1H + 4H \u00B7 '+zone+'\n'+(bear?'\uD83D\uDD34 BEARISH QM':'\uD83D\uDFE2 BULLISH QM')+'\n\n\u2705 1H QMR level: '+qmr1H.qmLevel.toFixed(p)+'\n\u2705 4H QMR level: '+qmr4H.qmLevel.toFixed(p)+'\n\u2705 Both timeframes aligned\n\n\uD83D\uDCCD '+(qmr1H.refinedEntry?'4H Zone: ':'Entry: ')+entry.toFixed(p)+' (QM Level)\n'+(qmr1H.refinedEntry?'\uD83C\uDFAF Refined Entry: '+qmr1H.refinedEntry.price.toFixed(p)+' ('+qmr1H.refinedEntry.source+')\n\u2192 Enter at refined level for better R\n':'')+'\uD83D\uDEAB SL:    '+sl.toFixed(p)+' ('+slLabel+')\n\uD83C\uDFAF '+dolLabel+': '+tp1.toFixed(p)+' (1:'+rr1+'R)\n\uD83C\uDFAF Next Structure: '+tp2.toFixed(p)+' (1:'+rr2+'R)\n\n\uD83D\uDD25 1H Score: '+qmr1H.criteria.score+'/4 | 4H Score: '+qmr4H.criteria.score+'/4\n\n'+(qmr1H.dailyPOI?'\uD83C\uDFDB\uFE0F '+qmr1H.dailyPOI+' \u2014 HTF confluence\n\n':'')+(qmr1H.rsiDivergence?'\uD83D\uDD25 '+qmr1H.rsiDivergence+' on 4H\n\n':'')+(qmr1H.counterTrend?'\u26A0\uFE0F COUNTER-TREND \u2014 potential trend reversal. Reduce size.\n\n':'')+'\uD83D\uDCB0 Calc position size: https://slayerbotcalculator.netlify.app/#'+id+','+entry.toFixed(p)+','+sl.toFixed(p)+'\n\n\u26A1 BOTH TIMEFRAMES CONFIRMED. Highest conviction setup.\n\u2014 The Slayers Model by Rexroz');}
 async function tgQMRUpdate(trade,level){const isB=trade.type==='BULLISH',p=trade.dec;const icons={be:'\u26A1 MOVE TO BREAKEVEN',tp1:'\u2705 TP1 HIT!',tp2:'\uD83D\uDCB0 FULL TARGET HIT!',sl:'\uD83D\uDEAB STOP LOSS HIT',be_close:'\u2705 TRADE CLOSED - TP1 SECURED',be_sl:'\u2696\uFE0F CLOSED AT BREAKEVEN',trail:'\uD83D\uDD39 TRAILING STOP ACTIVE'};const msgs={be:'Trade moved 1:1 in your favour.\nMove SL to entry: '+trade.qmLevel.toFixed(p)+'\nTrade is now risk-free.',tp1:'\uD83C\uDFAF Draw on Liquidity: '+trade.tp1.toFixed(p)+' reached.\nClose 50% of your position now.\nSL moved to entry zone (buffer) \u2014 partial profit locked.\nLet the rest run to TP2.',tp2:'\uD83C\uDFAF Next Structure: '+trade.tp2.toFixed(p)+' reached.\nClose trade - full profit taken!',sl:'SL: '+trade.sl.toFixed(p)+' triggered.\nTrade closed. Stay disciplined, next setup coming.',be_close:'TP1 was secured. Remainder hit the buffer stop.\nPartial profit locked \u2014 TP1 + buffer gain banked.\u2705',be_sl:'Price returned to entry after the breakeven move.\nTrade closed flat \u2014 no loss taken.\nCapital protected. Wait for the next setup.',trail:'Trailing stop is now active.\nSL will follow price as it moves in your favour.\nLocking in gains beyond TP1.'};await tgSend(icons[level]+'\n'+'='.repeat(28)+'\n\uD83D\uDCCA '+trade.instName+' \u00B7 '+trade.tf+' | '+(isB?'BUY':'SELL')+' QMR\n\n'+msgs[level]+'\n\n\u2014 The Slayers Model by Rexroz');}
 async function tgBiasFlip(id,oldBias,newBias){await tgSend('\uD83D\uDD04 WEEKLY BIAS FLIPPED - '+id+'\n'+'='.repeat(28)+'\n\n\uD83D\uDCCA '+id+'\n'+(oldBias==='BULLISH'?'\uD83D\uDFE2':'\uD83D\uDD34')+' Previous: '+oldBias+'\n'+(newBias==='BULLISH'?'\uD83D\uDFE2':'\uD83D\uDD34')+' New Bias: '+newBias+'\n\n\u26A0\uFE0F HTF direction shifted. This affects NEW trades.\nExisting trades remain valid — let price structure confirm the flip.\n'+(newBias==='BEARISH'?'Look for sell setups in premium only.':'Look for buy setups in discount only.')+'\n\n\u2014 The Slayers Model by Rexroz');}
 
@@ -964,6 +963,7 @@ async function checkQMRTrades(instId,price,cHigh,cLow){
       var buffer=slDist*0.3;
       if(isB){t.sl=t.qmLevel-buffer;}else{t.sl=t.qmLevel+buffer;}
       t.beFired=true;
+      t.beTime=Date.now();
       await tgQMRUpdate(t,'tp1');try{const[pt,pb]=pushTextFor('tp1',t);sendPushToTrackers(t.sigId,pt,pb,'tp1');}catch(e){}
       // Same-candle check: if this candle also touches buffer SL, close remainder immediately
       if(isB?lo<=t.sl:hi>=t.sl){
@@ -1091,7 +1091,7 @@ function checkScalpTrades(instId,cHigh,cLow){
       t.sl=t.beLevel;
       const tp1R=slDist>0?Math.abs(t.tp1-t.entry)/slDist:1;
       const durMin=t.openTime?Math.round((Date.now()-t.openTime)/60000):null;
-      scalpTradeHistory.push({pair:t.pair,type:t.type,outcome:'TP1',r:tp1R,entry:t.entry,sl:t.origSL,tp2:t.tp1,session:t.session,openTime:t.openTime,closeTime:Date.now()});
+      scalpTradeHistory.push({pair:t.pair,type:t.type,outcome:'TP1',r:tp1R,entry:t.entry,sl:t.origSL,tp2:t.tp2,session:t.session,openTime:t.openTime,closeTime:Date.now()});
       saveState();
       log('Scalp TP1: '+t.pair+' '+t.type+' +'+tp1R.toFixed(2)+'R booked, SL moved to BE');
       try{scalpJournalEntry(t,'TP1',tp1R,durMin,[t.session,'Score '+t.score+'/5','TP1 booked']);}catch(e){}
@@ -1155,14 +1155,14 @@ function checkScalpTrades(instId,cHigh,cLow){
 }
 function getScalpStats(){
   const hist=scalpTradeHistory||[];
-  const wins=hist.filter(t=>t.outcome==='WIN'||t.outcome==='TP1').length;
+  const wins=hist.filter(t=>t.outcome==='WIN').length;
   const losses=hist.filter(t=>t.outcome==='LOSS').length;
   const bes=hist.filter(t=>t.outcome==='BE').length;
   const totalR=hist.reduce((s,t)=>s+(t.r||0),0);
   const byPair={};
   for(const t of hist){
     if(!byPair[t.pair])byPair[t.pair]={wins:0,losses:0,bes:0,totalR:0};
-    if(t.outcome==='WIN'||t.outcome==='TP1')byPair[t.pair].wins++;
+    if(t.outcome==='WIN')byPair[t.pair].wins++;
     else if(t.outcome==='LOSS')byPair[t.pair].losses++;
     else if(t.outcome==='BE')byPair[t.pair].bes++;
     byPair[t.pair].totalR+=t.r||0;
@@ -1370,7 +1370,7 @@ async function runScan(manual=false){
             if(tf==='4h'&&!isPairInSession(inst.id)){log('QMR 4H suppressed (pair not in session): '+inst.id+' '+qmr.type);continue;}
             if(isLevelAlreadySeen(inst.id,qmr.type,qmr.qmLevel,'CONSERVATIVE'))continue;
             if(isNewsBlocked(inst.id)){log(`QMR BLOCKED (news): ${inst.id} ${tf}`);continue;}
-            const key=inst.id+'-'+qmr.type+'-CONSERVATIVE-'+Date.now()+'-'+qmr.qmLevel.toFixed(3);
+            const key=inst.id+'-'+qmr.type+'-CONSERVATIVE-'+ (tf || '1h') +'-'+Date.now()+'-'+qmr.qmLevel.toFixed(3);
             if(!qmrSeen.has(key)){
               // Auto-suppressed pairs due to poor performance
               if(suppressedPairs.has(inst.id)){
@@ -1567,9 +1567,9 @@ async function runScan(manual=false){
   for(const k in recentQMRFires)if(Date.now()-recentQMRFires[k]>24*60*60*1000)delete recentQMRFires[k];
   // Scalp scan — session momentum + FVG 5M, London/NY only
   if(!isWeekend()){
-    const sh=new Date().getUTCHours();
-    const inLondon=(sh===7)||(sh>7&&sh<10)||(sh===10);
-    const inNY=(sh===13)||(sh>13&&sh<16)||(sh===16);
+      const sh=new Date().getUTCHours();
+      const inLondon=sh>=7&&sh<11;
+      const inNY=sh>=13&&sh<17;
     if(inLondon||inNY){
       for(const inst of SCALP_INSTS){
         try{
@@ -1623,9 +1623,10 @@ async function runScan(manual=false){
     const arr=[...scalpSeen];
     scalpSeen=new Set(arr.slice(-100));
   }
-  scanCount++;lastScanTime=new Date().toISOString();saveState();
-  checkIntelChangeAndPush().catch(function(){});
-  log(`Scan complete #${scanCount}`);
+      scanCount++;lastScanTime=new Date().toISOString();saveState();
+      if(scalpTradeHistory.length>500)scalpTradeHistory=scalpTradeHistory.slice(-250);
+      checkIntelChangeAndPush().catch(function(){});
+      log(`Scan complete #${scanCount}`);
 }
 
 // ====== SLAYERS INTELLIGENCE ======
@@ -1652,11 +1653,18 @@ function generateIntelBriefing(){
   }
   var totBias=bullCount+bearCount;
   var mktSent=totBias?(bullCount/totBias>0.55?'bullish':bearCount/totBias>0.55?'bearish':'mixed'):'neutral';
-  var usdStrong=false;
+  var usdStrong=null;
   for(var k in weeklyCache){
-    if(k.indexOf('USD')>-1&&weeklyCache[k].bias==='BULLISH'){usdStrong=true;break;}
-    if(k.indexOf('USD')>-1&&weeklyCache[k].bias==='BEARISH'){usdStrong=false;break;}
+    var b=weeklyCache[k].bias;
+    if(!b||b==='NEUTRAL')continue;
+    var cc=PAIR_CURRENCIES[k];
+    if(!cc||!cc.length)continue;
+    var usdIdx=cc.indexOf('USD'),usdIsBase=usdIdx===0;
+    if(usdIdx===-1)continue;
+    if(b==='BULLISH'){usdStrong=usdIsBase;break;}
+    if(b==='BEARISH'){usdStrong=!usdIsBase;break;}
   }
+  if(usdStrong===null)usdStrong=false;
 
   var overview='Markets are trading in a '+mktSent+' bias as '+(usdStrong?'the USD holds firm':'USD faces selling pressure')+
     (acCount?' with '+acCount+' active trade'+(acCount>1?'s':'')+'':'')+'. '+

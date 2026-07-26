@@ -7,6 +7,7 @@ var lastRefreshTime=Date.now();
 var _mascotData='';
 var IMG_MASCOT='/app/mascot.png';
 function getMascotSrc(){return _mascotData||IMG_MASCOT;}
+var _flagN=0;
 function flagSVG(code,size){
   var id='fg'+(++_flagN),cx=size/2,cy=size/2,r=size/2-0.5;
   function rect(x,y,w,h,c){return '<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" fill="'+c+'"/>';}
