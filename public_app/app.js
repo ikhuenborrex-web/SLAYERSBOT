@@ -1135,7 +1135,7 @@ function weeklyReportScreen(){
   if(!wd)return '<div class="sc" style="padding:16px"><div class="loading-spinner" style="margin:40% auto"></div></div>';
   var weekEnd=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
   var r=wd.report||{},ms=wd.myStats||{};
-  var totalR=ms.totalR||0,wr=ms.winRate||0,total=ms.total||0;
+  var totalR=r.totalR||ms.totalR||0,wr=r.wr||ms.winRate||0,total=r.total||ms.total||0;
   var rLabel=totalR>=0?'+'+totalR.toFixed(1)+'':'';
   var wrBar='<div style="height:6px;border-radius:3px;background:rgba(255,255,255,0.06);overflow:hidden;margin:12px 0 6px"><div style="height:100%;width:'+wr+'%;border-radius:3px;background:linear-gradient(90deg,#B7FF2A,#7FFF00);transition:width 1s"></div></div>';
   var grade=wr>=80?'A':wr>=60?'B':wr>=40?'C':wr>=20?'D':'F';
@@ -1172,7 +1172,7 @@ function weeklyReportScreen(){
           '<span style="font-size:24px;font-weight:700;color:#FFF">'+wr+'%</span>'+
         '</div>'+wrBar+
         '<div style="display:flex;justify-content:space-between;font-size:12px;color:#5F5F5F">'+
-          '<span>'+ (ms.wins||0) + 'W</span><span>' + (ms.losses||0) + 'L</span><span>' + (ms.bes||0) + 'BE</span>'+
+          '<span>'+(r.winners||r.tp||ms.wins||0)+'W</span><span>'+(r.losers||r.sl||ms.losses||0)+'L</span><span>'+(r.be||ms.bes||0)+'BE</span>'+
         '</div>'+
       '</div>'+
 
