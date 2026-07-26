@@ -2171,7 +2171,6 @@ app.post('/api/test-push',async (req,res)=>{
   res.json({ok:true,sent:pushSubscriptions.length-dead.length});
 });
 app.post('/api/member/notif-prefs',(req,res)=>{
-app.post('/api/member/notif-prefs',(req,res)=>{
   const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
   const code=req.query.code||req.headers['x-access-code'];
   const prefs=req.body&&req.body.notifPrefs;
