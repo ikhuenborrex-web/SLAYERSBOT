@@ -2303,7 +2303,8 @@ navigator.serviceWorker.addEventListener('message',function(e){
     if(!state.showNotifPanel)render();
   }
 });
-// On startup, ask service worker for any notifications queued while app was closed
-navigator.serviceWorker.ready.then(function(reg){
-  if(reg.active)reg.active.postMessage({type:'get-notifs'});
-});
+// Fetch any notifications queued while app was closed (SW intercepts /app/__notifs__)
+fetch('/app/__notifs__').then(function(r){return r.json().catch(function(){return[];});}).then(function(notifs){
+  for(var i=0;i<notifs.length;i++){addNotification(notifs[i]);}
+  if(notifs.length)render();
+}).catch(function(){});

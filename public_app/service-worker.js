@@ -1,8 +1,7 @@
-// Version bumped intentionally — this forces every browser to detect this as a NEW worker,
-// triggering install/activate and wiping out any old cached files automatically.
-const CACHE = 'slayers-v3';
+const CACHE = 'slayers-v4';
 const SHELL = ['/app/icon-192.png', '/app/icon-512.png'];
 const NOTIF_CACHE = 'slayers-notifs';
+const NOTIF_KEY = '/__notif_queue__';
 
 self.addEventListener('install', e => {
   e.waitUntil(Promise.all([
@@ -20,46 +19,35 @@ self.addEventListener('activate', e => {
   );
 });
 
+// ===== FETCH: intercept notification retrieval =====
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
+  // Intercept special path used by the app to read queued notifications
+  if (url.pathname === '/app/__notifs__') {
+    e.respondWith(
+      caches.open(NOTIF_CACHE).then(cache =>
+        cache.match(NOTIF_KEY).then(resp => {
+          var queue = resp ? resp.json().catch(() => []) : Promise.resolve([]);
+          return queue.then(q => {
+            cache.delete(NOTIF_KEY);
+            return new Response(JSON.stringify(q), {
+              headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }
+            });
+          });
+        })
+      )
+    );
+    return;
+  }
+  // Normal fetch: network-first, fallback to cache for png
   if (url.pathname.endsWith('.png')) {
     e.respondWith(caches.match(e.request).then(cached => cached || fetch(e.request)));
     return;
   }
-  e.respondWith(
-    fetch(e.request).catch(() => caches.match(e.request))
-  );
+  e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
 });
 
-// ===== PERSISTENT NOTIFICATION QUEUE (Cache API) =====
-const NOTIF_KEY = '/__notif_queue__';
-
-function getNotifsFromCache() {
-  return caches.open(NOTIF_CACHE).then(cache =>
-    cache.match(NOTIF_KEY).then(resp => {
-      if (!resp) return [];
-      return resp.json().catch(() => []);
-    })
-  );
-}
-
-function addNotifToCache(payload) {
-  return getNotifsFromCache().then(queue => {
-    queue.push(payload);
-    if (queue.length > 20) queue = queue.slice(-20);
-    return caches.open(NOTIF_CACHE).then(cache =>
-      cache.put(NOTIF_KEY, new Response(JSON.stringify(queue), {
-        headers: { 'Content-Type': 'application/json' }
-      }))
-    );
-  });
-}
-
-function clearNotifCache() {
-  return caches.open(NOTIF_CACHE).then(cache => cache.delete(NOTIF_KEY));
-}
-
-// ===== PUSH EVENT =====
+// ===== PUSH =====
 self.addEventListener('push', e => {
   let data = {};
   try { data = e.data ? e.data.json() : {}; } catch (err) { data = { title: 'Slayers Bot', body: e.data ? e.data.text() : 'New signal' }; }
@@ -75,36 +63,33 @@ self.addEventListener('push', e => {
     body: data.body || 'A new setup just fired.',
     icon: appUrl + 'icon-192.png',
     badge: appUrl + 'icon-192.png',
-    data: { url: data.url || appUrl, notifId: notifId, notifPayload: notifPayload }
+    data: { url: data.url || appUrl, notifId: notifId }
   };
   e.waitUntil(Promise.all([
     self.registration.showNotification(title, options),
-    addNotifToCache(notifPayload),
+    caches.open(NOTIF_CACHE).then(cache =>
+      cache.match(NOTIF_KEY).then(resp =>
+        (resp ? resp.json().catch(() => []) : Promise.resolve([]))
+      ).then(queue => {
+        queue.push(notifPayload);
+        if (queue.length > 20) queue = queue.slice(-20);
+        return cache.put(NOTIF_KEY, new Response(JSON.stringify(queue), {
+          headers: { 'Content-Type': 'application/json' }
+        }));
+      })
+    ),
     self.clients.matchAll({ type: 'window' }).then(clients => {
       clients.forEach(c => c.postMessage({ type: 'push-notification', notification: notifPayload }));
     })
   ]));
 });
 
-// ===== MESSAGE FROM APP =====
-self.addEventListener('message', e => {
-  if (e.data && e.data.type === 'get-notifs') {
-    e.waitUntil(
-      getNotifsFromCache().then(queue => {
-        queue.forEach(n => {
-          try { e.source.postMessage({ type: 'push-notification', notification: n }); } catch(ex) {}
-        });
-        return clearNotifCache();
-      })
-    );
-  }
-});
-
 // ===== NOTIFICATION CLICK =====
 self.addEventListener('notificationclick', e => {
   e.notification.close();
-  const nd = e.notification.data || {};
-  const url = nd.url || self.location.origin + '/app/';
+  const url = e.notification.data && e.notification.data.url
+    ? e.notification.data.url
+    : self.location.origin + '/app/';
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
       for (const client of clientList) {
