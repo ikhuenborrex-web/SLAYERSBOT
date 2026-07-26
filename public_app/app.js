@@ -1825,13 +1825,16 @@ function startOnboarding(){
   if(state.tab!=='dash')setTab('dash');
   var ov=document.getElementById('wtOverlay');
   if(!ov)return;
+  ov.style.display='';
   document.getElementById('wtFinal').classList.remove('open');
   ov.classList.add('open');
   _wtGoTo(0);
 }
 
 function endOnboarding(completed){
-  document.getElementById('wtOverlay').classList.remove('open');
+  var ov=document.getElementById('wtOverlay');
+  ov.classList.remove('open');
+  ov.style.display='none';
   document.getElementById('wtFinal').classList.remove('open');
   state.showOnboarding=false;
   state.onboardingStep=-1;
@@ -2005,9 +2008,9 @@ function _wtDots(){
 }
 
 function _wtShowFinal(){
+  _wtRemoveTap();
   document.getElementById('wtOverlay').classList.remove('open');
   document.getElementById('wtFinal').classList.add('open');
-  endOnboarding(true);
 }
 
 // Walkthrough event listeners
@@ -2020,6 +2023,7 @@ document.getElementById('wtNext').addEventListener('click',function(){
 document.getElementById('wtSkip').addEventListener('click',function(){_wtShowFinal();});
 document.getElementById('wtFinalBtn').addEventListener('click',function(){
   document.getElementById('wtFinal').classList.remove('open');
+  endOnboarding(true);
 });
 
 // Auto-start on first launch
