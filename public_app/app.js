@@ -297,7 +297,7 @@ function miniChart(entries){
   var lastV=pts[n-1],col=lastV>=0?'#C7FF38':'#FF5252';
   var lx=px(n-1),ly=py(lastV);
   var eqVal=(lastV>0?'+':'')+lastV.toFixed(2)+'R';
-  return '<div style="background:#111111;border-radius:20px;padding:16px 20px 14px;border:1px solid rgba(255,255,255,0.04);position:relative;overflow:hidden;margin-top:12px">'+
+  return '<div id="wt-equity" style="background:#111111;border-radius:20px;padding:16px 20px 14px;border:1px solid rgba(255,255,255,0.04);position:relative;overflow:hidden;margin-top:12px">'+
     '<div style="position:absolute;top:-60px;right:-40px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(199,255,56,0.05) 0%,transparent 70%);pointer-events:none"></div>'+
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;position:relative;z-index:1">'+
       '<div style="font-size:9px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.06em">Equity Curve <span style="color:rgba(255,255,255,0.12);font-weight:400;text-transform:none">· '+(eqPts?entries.length+' trades':'')+'</span></div>'+
@@ -354,7 +354,7 @@ function overviewScreen(){
   var st=state.stats||{},ws=state.weeklyStats||{},m=state.myStats||state.stats||{};
   var wr=st.winRate||0,tr=st.totalR||0;
   var rVal=(ws.totalR>0?'+':'')+(ws.totalR||'0')+'R';
-  var hero='<div style="background:#111111;border-radius:28px;padding:24px;border:1px solid rgba(255,255,255,0.05);position:relative;overflow:hidden">'+
+  var hero='<div id="wt-hero" style="background:#111111;border-radius:28px;padding:24px;border:1px solid rgba(255,255,255,0.05);position:relative;overflow:hidden">'+
     '<div style="position:absolute;top:-100px;right:-80px;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(199,255,56,0.07) 0%,transparent 70%);pointer-events:none"></div>'+
     '<div style="position:absolute;top:0;left:12%;right:12%;height:1px;background:linear-gradient(90deg,transparent,rgba(199,255,56,0.15),transparent)"></div>'+
     '<div style="font-size:12px;font-weight:500;color:#7E7E7E;letter-spacing:-0.01em;margin-bottom:2px;position:relative;z-index:1">'+greeting()+'</div>'+
@@ -376,7 +376,7 @@ function overviewScreen(){
       var p=confl[ci],c=p.signalDir!=='NONE'?(p.signalDir==='BULLISH'?C.lime:C.red):p.weeklyBias==='BULLISH'?C.lime:p.weeklyBias==='BEARISH'?C.red:C.text2;
       mp+='<span class="pill-chip" style="background:'+C.surface+';border:0.5px solid '+C.border+';color:'+C.text2+'"><span style="width:5px;height:5px;border-radius:50%;background:'+c+';flex-shrink:0"></span>'+(p.name||p.id)+' <span style="font-size:8px;opacity:0.5">'+(p.signalDir!=='NONE'?'4H':'W')+'</span></span>';
     }
-    mp='<div style="display:flex;align-items:center;justify-content:space-between;margin:24px 0 12px">'+
+    mp='<div id="wt-pulse" style="display:flex;align-items:center;justify-content:space-between;margin:24px 0 12px">'+
       '<span style="font-size:12px;font-weight:600;color:#8E8E8E;letter-spacing:0.04em;text-transform:uppercase">Market Pulse</span>'+
       '<span style="font-size:10px;color:'+C.lime+';opacity:0.6;font-weight:600">'+confl.length+' pairs</span></div>'+
       '<div class="h-scroll">'+mp+'</div>';
@@ -401,14 +401,14 @@ function overviewScreen(){
         '<div style="height:2px;border-radius:1px;background:rgba(255,255,255,0.06);margin:6px 0;overflow:hidden"><div style="height:100%;background:'+col+';width:'+pct+'%;animation:fillBar 0.8s cubic-bezier(.16,1,.3,1)"></div></div>'+
         '<div style="display:flex;justify-content:space-between;font-size:8px;color:rgba(255,255,255,0.3)"><span>'+timeAgo(t.entryTime)+'</span><span style="color:'+col+';font-weight:600">'+(t.tp1Fired?'TP1 \u2713':t.beFired?'BE':t.slFired?'Stopped':'Active')+'</span></div></div>';
     }
-    if(myAct.length)actCards='<div style="display:flex;align-items:center;justify-content:space-between;margin:24px 0 12px">'+
+    if(myAct.length)actCards='<div id="wt-active" style="display:flex;align-items:center;justify-content:space-between;margin:24px 0 12px">'+
       '<span style="font-size:12px;font-weight:600;color:#8E8E8E;letter-spacing:0.04em;text-transform:uppercase">Active Trades</span>'+
       '<span style="font-size:10px;color:'+C.lime+';opacity:0.6;font-weight:600">'+myAct.length+' active</span></div>'+
       '<div class="h-scroll">'+actCards+'</div>';
   }
 
   var filterIcon=state.showFilters?'\u25B2':'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="'+C.text2+'" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="20" y2="12"/><line x1="12" y1="18" x2="20" y2="18"/></svg>';
-  var sigHeader='<div style="display:flex;align-items:center;justify-content:space-between;margin:24px 0 12px">'+
+  var sigHeader='<div id="wt-signals" style="display:flex;align-items:center;justify-content:space-between;margin:24px 0 12px">'+
     '<span style="font-size:12px;font-weight:600;color:#8E8E8E;letter-spacing:0.04em;text-transform:uppercase">Recent Signals</span>'+
     '<span onclick="state.showFilters=!state.showFilters;render()" style="font-size:10px;color:'+C.lime+';opacity:0.6;font-weight:600;cursor:pointer">'+filterIcon+' Filter</span></div>';
 
@@ -468,7 +468,7 @@ function overviewScreen(){
   if(!sigCount&&!state.signals.length)sigsHtml=emptyState('Waiting for market data...');
 
   return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+';position:relative">'+
-    '<div class="sc" style="flex:1;overflow-y:auto;padding:calc(30px + env(safe-area-inset-top)) 16px calc(100px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch">'+
+    '<div id="wt-scroll" class="sc" style="flex:1;overflow-y:auto;padding:calc(30px + env(safe-area-inset-top)) 16px calc(100px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch">'+
       hero+mc+mp+actCards+sigHeader+filterHtml+sigsHtml+
     '</div>'+navBar()+'</div>';
 }
@@ -1014,6 +1014,8 @@ function settingsScreen(){
     tp('newsAlerts','News Alerts','Daily news digest')+'</div>'+pushBtns+'</div>'+
     '<div style="margin-bottom:16px"><div style="font-size:10px;font-weight:600;color:#5F5F5F;text-transform:uppercase;margin-bottom:8px;padding:0 4px;letter-spacing:0.04em">Account</div>'+
     '<div style="background:#151515;border-radius:22px;overflow:hidden;border:0.5px solid rgba(255,255,255,0.04)">'+
+    '<button onclick="startOnboarding()" style="width:100%;background:transparent;border:none;padding:16px 16px;color:#C7FF38;font-size:13px;font-weight:500;cursor:pointer;text-align:left;font-family:inherit">Restart Tour</button>'+
+    '<div style="height:0.5px;background:rgba(255,255,255,0.04)"></div>'+
     '<button onclick="logout()" style="width:100%;background:transparent;border:none;padding:16px 16px;color:#FF5252;font-size:13px;font-weight:500;cursor:pointer;text-align:left;font-family:inherit">Disconnect / Logout</button></div></div>'+
     '<div style="text-align:center;padding:24px;color:#5F5F5F;font-size:9px">Made by REXROZ \u00b7 QMR</div>'+
     '</div>'+navBar()+'</div>';
@@ -1746,5 +1748,280 @@ document.addEventListener('touchend',function(e){
   }
   ptr.startY=0;ptr.dy=0;
 },{passive:true});
-if(getCode()){preloadMascot();var _localP=JSON.parse(localStorage.getItem('notifPrefs')||'{}');state.notifPrefs=Object.assign({},state.notifPrefs,_localP);render();fetchAll();}else{renderLogin();}
+
+// ===== WALKTHROUGH / ONBOARDING =====
+var _wtSteps=[
+  {
+    id:'welcome',
+    title:'Welcome to THE SLAYERS',
+    body:"Let's show you around. This takes less than a minute.",
+    skipable:true,
+    label:'Start Tour',
+    centered:true
+  },
+  {
+    id:'dashboard',
+    sel:'#wt-hero',
+    title:'Dashboard',
+    body:'This is your <strong>Dashboard</strong>.<br>It gives you an instant overview of:<br>\u2022 Weekly Performance<br>\u2022 Win Rate<br>\u2022 Active Trades<br><br>Everything important is here.',
+    tip:'Tap the Dashboard card to continue'
+  },
+  {
+    id:'equity',
+    sel:'#wt-equity',
+    title:'Equity Curve',
+    body:'Your <strong>Equity Curve</strong> shows your consistency.<br><br>The goal isn\'t to win every trade.<br>The goal is <strong>steady growth</strong>.',
+    tip:'Tap the chart to continue',
+    onEnter:function(){
+      var bars=document.querySelectorAll('#wt-equity svg path');
+      if(bars.length)bars[bars.length-1].style.transition='opacity 1.5s, stroke 1.5s';
+    }
+  },
+  {
+    id:'pulse',
+    sel:'#wt-pulse',
+    title:'Market Pulse',
+    body:'<strong>Market Pulse</strong> tells you what pairs are currently being monitored.<br><br>Green = bullish<br>Red = bearish<br><br>Tap any pair to view details.',
+    tip:'Tap the Market Pulse section to continue'
+  },
+  {
+    id:'active',
+    sel:'#wt-active',
+    title:'Active Trades',
+    body:'Whenever a trade is active, it appears here.<br><br>You\'ll see:<br>\u2022 Entry<br>\u2022 SL<br>\u2022 TP<br>\u2022 Status<br><br>Live updates happen automatically.',
+    tip:'Tap the Active Trades to continue'
+  },
+  {
+    id:'signals',
+    sel:'#wt-signals',
+    title:'Recent Signals',
+    body:'Every signal generated by <strong>The Slayers</strong> appears here.<br><br>Tap a signal to see the full analysis.',
+    tip:'Tap Recent Signals to continue'
+  },
+  {
+    id:'nav',
+    sel:'.nav-inner',
+    title:'Bottom Navigation',
+    body:'',
+    isNav:true,
+    items:[
+      {tab:'dash',label:'Dashboard',desc:'Your trading home.'},
+      {tab:'journal',label:'Journal',desc:'Track every trade.'},
+      {tab:'scalp',label:'Scalp',desc:'Fast opportunities.'},
+      {tab:'intel',label:'Intel',desc:'Market news and analysis.'},
+      {tab:'settings',label:'Settings',desc:'Customize your experience.'}
+    ]
+  }
+];
+
+var _wtIdx=-1;
+var _wtNavSub=0;
+var _wtTapEl=null;
+
+function startOnboarding(){
+  state.showOnboarding=true;
+  state.onboardingStep=-1;
+  try{localStorage.removeItem('wt_done');}catch(e){}
+  if(state.tab!=='dash')setTab('dash');
+  var ov=document.getElementById('wtOverlay');
+  if(!ov)return;
+  document.getElementById('wtFinal').classList.remove('open');
+  ov.classList.add('open');
+  _wtGoTo(0);
+}
+
+function endOnboarding(completed){
+  document.getElementById('wtOverlay').classList.remove('open');
+  document.getElementById('wtFinal').classList.remove('open');
+  state.showOnboarding=false;
+  state.onboardingStep=-1;
+  _wtNavSub=0;
+  _wtRemoveTap();
+  if(completed)try{localStorage.setItem('wt_done','1');}catch(e){}
+}
+
+function _wtGoTo(idx){
+  if(idx>=_wtSteps.length){_wtShowFinal();return;}
+  _wtRemoveTap();
+  _wtIdx=idx;
+  state.onboardingStep=idx;
+  var s=_wtSteps[idx];
+  var ov=document.getElementById('wtOverlay');
+  var hl=document.getElementById('wtHighlight');
+  var bubble=document.getElementById('wtBubble');
+
+  if(s.centered){
+    hl.style.display='none';
+    bubble.style.position='fixed';
+    bubble.style.top='50%';
+    bubble.style.left='50%';
+    bubble.style.transform='translate(-50%,-50%)';
+    bubble.style.maxWidth='300px';
+    document.getElementById('wtSkip').style.display=s.skipable?'block':'none';
+    document.getElementById('wtTitle').style.fontSize='18px';
+    document.getElementById('wtTitle').textContent=s.title;
+    document.getElementById('wtBody').innerHTML=s.body;
+    document.getElementById('wtTapHint').textContent='';
+    document.getElementById('wtNext').textContent=s.label||'Next';
+    _wtDots();
+    return;
+  }
+
+  document.getElementById('wtTitle').style.fontSize='13px';
+  document.getElementById('wtSkip').style.display='block';
+  bubble.style.position='absolute';
+  bubble.style.transform='none';
+  bubble.style.maxWidth='280px';
+
+  if(s.isNav){
+    _wtNavSub=0;
+    _wtNavStep(0);
+    return;
+  }
+
+  var target=s.sel?document.querySelector(s.sel):null;
+  if(!target){
+    _wtGoTo(idx+1);
+    return;
+  }
+
+  // Scroll into view
+  var sc=document.getElementById('wt-scroll');
+  if(sc){
+    var tRect=target.getBoundingClientRect();
+    var sRect=sc.getBoundingClientRect();
+    if(tRect.top<sRect.top+20||tRect.bottom>sRect.bottom-20){
+      sc.scrollTo({top:sc.scrollTop+(tRect.top-sRect.top-60),behavior:'smooth'});
+    }
+  }
+
+  // Position highlight
+  hl.style.display='block';
+  hl.className='wt-highlight glow';
+  _wtPosEl(hl,target,6);
+
+  // Position bubble
+  _wtPosBubble(bubble,target);
+
+  document.getElementById('wtTitle').textContent=s.title;
+  document.getElementById('wtBody').innerHTML=s.body;
+  document.getElementById('wtTapHint').textContent=s.tip||'';
+  document.getElementById('wtNext').textContent='Next';
+
+  // Tap target
+  if(s.sel){
+    var tapEl=document.querySelector(s.sel);
+    if(tapEl){
+      _wtTapEl=tapEl;
+      _wtTapEl.style.cursor='pointer';
+      _wtTapEl._wtNext=function(){_wtGoTo(_wtIdx+1);};
+      _wtTapEl.addEventListener('click',_wtTapEl._wtNext);
+    }
+  }
+
+  _wtDots();
+  if(s.onEnter)s.onEnter();
+}
+
+function _wtNavStep(sub){
+  var s=_wtSteps[_wtIdx];
+  if(sub>=s.items.length){_wtGoTo(_wtIdx+1);return;}
+  _wtNavSub=sub;
+  var item=s.items[sub];
+  var navEl=document.querySelector('.nav-btn[data-tab="'+item.tab+'"]');
+  var hl=document.getElementById('wtHighlight');
+  var bubble=document.getElementById('wtBubble');
+
+  if(!navEl){_wtNavStep(sub+1);return;}
+
+  hl.style.display='block';
+  hl.className='wt-highlight glow';
+  _wtPosEl(hl,navEl,6);
+  _wtPosBubble(bubble,navEl);
+
+  document.getElementById('wtTitle').textContent=item.label;
+  document.getElementById('wtBody').innerHTML=item.desc;
+  document.getElementById('wtTapHint').textContent='Tap the icon or press Next';
+  document.getElementById('wtNext').textContent=sub<s.items.length-1?'Next':'Done';
+  document.getElementById('wtSkip').style.display='block';
+
+  // Highlight this nav item
+  var allBtns=document.querySelectorAll('.nav-btn');
+  for(var ni=0;ni<allBtns.length;ni++)allBtns[ni].classList.toggle('active',allBtns[ni].dataset.tab===item.tab);
+
+  // Tap nav item to proceed
+  _wtRemoveTap();
+  _wtTapEl=navEl;
+  _wtTapEl.style.cursor='pointer';
+  _wtTapEl._wtNext=function(){_wtNavStep(sub+1);};
+  _wtTapEl.addEventListener('click',_wtTapEl._wtNext);
+
+  _wtDots();
+}
+
+function _wtPosEl(hl,target,pad){
+  pad=pad||4;
+  var r=target.getBoundingClientRect();
+  hl.style.left=(r.left-pad)+'px';
+  hl.style.top=(r.top-pad)+'px';
+  hl.style.width=(r.width+pad*2)+'px';
+  hl.style.height=(r.height+pad*2)+'px';
+}
+
+function _wtPosBubble(bubble,target){
+  var tRect=target.getBoundingClientRect();
+  var top=tRect.bottom+12;
+  var left=Math.max(16,Math.min(window.innerWidth-296,tRect.left+tRect.width/2-140));
+  bubble.style.top=top+'px';
+  bubble.style.left=left+'px';
+  bubble.className='wt-bubble arrow-b';
+
+  // If off bottom, place above
+  if(top+200>window.innerHeight-20){
+    var alt=tRect.top-220;
+    if(alt<10)alt=10;
+    bubble.style.top=alt+'px';
+    bubble.className='wt-bubble arrow-t';
+  }
+}
+
+function _wtRemoveTap(){
+  if(_wtTapEl){
+    _wtTapEl.style.cursor='';
+    if(_wtTapEl._wtNext)_wtTapEl.removeEventListener('click',_wtTapEl._wtNext);
+    _wtTapEl._wtNext=null;
+    _wtTapEl=null;
+  }
+}
+
+function _wtDots(){
+  var el=document.getElementById('wtDots');
+  el.innerHTML='';
+  for(var di=0;di<_wtSteps.length;di++){
+    var d=document.createElement('span');
+    d.className='wt-dot'+(di===_wtIdx?' active':'');
+    el.appendChild(d);
+  }
+}
+
+function _wtShowFinal(){
+  document.getElementById('wtOverlay').classList.remove('open');
+  document.getElementById('wtFinal').classList.add('open');
+  endOnboarding(true);
+}
+
+// Walkthrough event listeners
+document.getElementById('wtNext').addEventListener('click',function(){
+  var s=_wtSteps[_wtIdx];
+  if(!s)return;
+  if(s.isNav){_wtNavStep(_wtNavSub+1);}
+  else{_wtGoTo(_wtIdx+1);}
+});
+document.getElementById('wtSkip').addEventListener('click',function(){_wtShowFinal();});
+document.getElementById('wtFinalBtn').addEventListener('click',function(){
+  document.getElementById('wtFinal').classList.remove('open');
+});
+
+// Auto-start on first launch
+if(getCode()){preloadMascot();var _localP=JSON.parse(localStorage.getItem('notifPrefs')||'{}');state.notifPrefs=Object.assign({},state.notifPrefs,_localP);render();fetchAll();setTimeout(function(){if(!localStorage.getItem('wt_done'))startOnboarding();},1500);}else{renderLogin();}
 setInterval(function(){if(getCode())fetchAll(true);},120000);

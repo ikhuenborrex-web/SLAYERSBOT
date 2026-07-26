@@ -122,6 +122,38 @@
   @keyframes shareFadeIn{from{opacity:0}to{opacity:1}}
   @keyframes shareSlideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
   @keyframes shareCardFade{from{opacity:0;transform:translateY(10px) scale(0.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+  /* ===== WALKTHROUGH ===== */
+  .wt-overlay{position:fixed;inset:0;z-index:80;pointer-events:none;opacity:0;transition:opacity .5s ease}
+  .wt-overlay.open{opacity:1;pointer-events:auto}
+  .wt-dimmer{position:absolute;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+  .wt-highlight{position:absolute;border-radius:16px;transition:all 0.7s cubic-bezier(.22,1,.36,1);pointer-events:auto;box-shadow:0 0 0 4px rgba(199,255,56,0.08),0 0 30px rgba(199,255,56,0.04);z-index:2}
+  .wt-highlight.glow{animation:wtPulse 2.5s ease-in-out infinite}
+  @keyframes wtPulse{0%,100%{box-shadow:0 0 0 4px rgba(199,255,56,0.08),0 0 30px rgba(199,255,56,0.04)}50%{box-shadow:0 0 0 6px rgba(199,255,56,0.12),0 0 40px rgba(199,255,56,0.06)}}
+  .wt-bubble{position:absolute;z-index:3;pointer-events:auto;max-width:280px;animation:wtFadeIn 0.5s cubic-bezier(.16,1,.3,1);padding:20px;background:#1A1A1A;border:0.5px solid rgba(199,255,56,0.08);border-radius:16px;box-shadow:0 12px 60px rgba(0,0,0,0.5)}
+  .wt-bubble.arrow-b::before{content:'';position:absolute;top:-6px;left:50%;transform:translateX(-50%) rotate(45deg);width:12px;height:12px;background:#1A1A1A;border-top:0.5px solid rgba(199,255,56,0.08);border-left:0.5px solid rgba(199,255,56,0.08);border-radius:2px}
+  .wt-bubble.arrow-t::before{content:'';position:absolute;bottom:-6px;left:50%;transform:translateX(-50%) rotate(45deg);width:12px;height:12px;background:#1A1A1A;border-bottom:0.5px solid rgba(199,255,56,0.08);border-right:0.5px solid rgba(199,255,56,0.08);border-radius:2px}
+  .wt-title{font-size:13px;font-weight:800;color:#FFF;letter-spacing:-0.02em;margin-bottom:8px}
+  .wt-body{font-size:10px;color:#8E8E8E;line-height:1.6;margin-bottom:14px}
+  .wt-body strong{color:#C7FF38;font-weight:700}
+  .wt-actions{display:flex;justify-content:space-between;align-items:center}
+  .wt-next{background:#C7FF38;color:#090909;border:none;padding:9px 20px;border-radius:99px;font-size:9px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .2s;box-shadow:0 0 16px rgba(199,255,56,0.08)}
+  .wt-next:active{transform:scale(0.96)}
+  .wt-skip{background:none;border:none;font-size:8px;color:#5F5F5F;font-family:inherit;cursor:pointer;padding:4px 0;transition:color .2s}
+  .wt-skip:hover{color:#FFF}
+  .wt-dots{display:flex;gap:4px;align-items:center}
+  .wt-dot{width:5px;height:5px;border-radius:99px;background:rgba(255,255,255,0.08);transition:all .3s}
+  .wt-dot.active{width:18px;background:#C7FF38;border-radius:99px}
+  .wt-tap-hint{font-size:7px;color:#5F5F5F;margin-top:8px;font-style:italic}
+  .wt-final{position:fixed;inset:0;z-index:85;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center}
+  .wt-final.open{display:flex}
+  .wt-final-inner{text-align:center;padding:32px}
+  .wt-final-check{width:56px;height:56px;border-radius:99px;background:rgba(199,255,56,0.1);border:0.5px solid rgba(199,255,56,0.12);display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
+  .wt-final-title{font-size:22px;font-weight:800;color:#FFF;letter-spacing:-0.03em;margin-bottom:6px}
+  .wt-final-sub{font-size:11px;color:#8E8E8E;line-height:1.5;margin-bottom:20px}
+  .wt-final-btn{background:#C7FF38;color:#090909;border:none;padding:13px 36px;border-radius:99px;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .2s;box-shadow:0 0 24px rgba(199,255,56,0.08)}
+  .wt-final-btn:active{transform:scale(0.96)}
+  @keyframes wtFadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 </style>
 </head>
 <body>
@@ -154,6 +186,33 @@
     </div>
   </div>
 </div>
+
+<!-- WALKTHROUGH OVERLAY -->
+<div class="wt-overlay" id="wtOverlay">
+  <div class="wt-dimmer" id="wtDimmer"></div>
+  <div class="wt-highlight" id="wtHighlight"></div>
+  <div class="wt-bubble" id="wtBubble">
+    <div class="wt-title" id="wtTitle"></div>
+    <div class="wt-body" id="wtBody"></div>
+    <div class="wt-actions">
+      <button class="wt-skip" id="wtSkip">Skip</button>
+      <div class="wt-dots" id="wtDots"></div>
+      <button class="wt-next" id="wtNext">Next</button>
+    </div>
+    <div class="wt-tap-hint" id="wtTapHint"></div>
+  </div>
+</div>
+
+<!-- WALKTHROUGH FINAL -->
+<div class="wt-final" id="wtFinal">
+  <div class="wt-final-inner">
+    <div class="wt-final-check"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C7FF38" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+    <div class="wt-final-title">You're Ready</div>
+    <div class="wt-final-sub">Enjoy using<br><strong style="color:#C7FF38;font-weight:800">The Slayers.</strong><br>Trade with discipline.</div>
+    <button class="wt-final-btn" id="wtFinalBtn">Start Trading</button>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="/app/app.js?v=20260725"></script>
 </body>
