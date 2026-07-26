@@ -2304,8 +2304,6 @@ navigator.serviceWorker.addEventListener('message',function(e){
   }
 });
 // On startup, ask service worker for any notifications queued while app was closed
-if(navigator.serviceWorker.controller){
-  navigator.serviceWorker.controller.postMessage({type:'get-notifs'});
-}else{
-  navigator.serviceWorker.ready.then(function(r){r.active.postMessage({type:'get-notifs'});});
-}
+navigator.serviceWorker.ready.then(function(reg){
+  if(reg.active)reg.active.postMessage({type:'get-notifs'});
+});
