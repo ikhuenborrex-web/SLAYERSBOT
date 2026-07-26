@@ -69,7 +69,7 @@ const SCALP_INSTS=[
   {id:'USDJPY',sym:'USD/JPY',name:'USD/JPY',dec:3},
   {id:'NAS100',sym:'NASDAQ100',name:'NAS100',dec:2},
 ];
-const CHECK_MS=30*60*1000,DELAY_MS=12000,PROX=0.007,IMPULSE=0.0015,MIN_FVG=0.0003;
+const CHECK_MS=60*60*1000,DELAY_MS=12000,PROX=0.007,IMPULSE=0.0015,MIN_FVG=0.0003;
 const QMR_MIN=3,WEEKLY_EVERY=24,LON_S=7,LON_E=16,NY_S=13,NY_E=22;
 
 // Correlation groups — pairs that move together; opposite-direction signals on correlated pairs flag a warning
@@ -1319,8 +1319,8 @@ async function runScan(manual=false){
     await tgBiasFlipBundle(biasFlips);
   }
 
-  // QMR scan — per-pair session aware
-  if(manual||scanCount%2===0){
+  // QMR scan — per-pair session aware (runs every scan, 60-min interval)
+  {
     for(const inst of QMR_INSTS){
       const dce=dailyCache[inst.id];
       if(!dce||Date.now()-dce.ts>26*60*60*1000){
