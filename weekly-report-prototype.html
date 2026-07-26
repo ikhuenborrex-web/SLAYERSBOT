@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Slayers Weekly Report — Prototype</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0A0A0A;color:#E8E8E8;font-family:'Inter',-apple-system,sans-serif;min-height:100vh;overflow-x:hidden}
+::selection{background:rgba(199,255,56,0.2);color:#C7FF38}
+
+/* scrollbar */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(199,255,56,0.15);border-radius:2px}
+
+/* header */
+.header{position:sticky;top:0;z-index:10;padding:16px 20px 12px;background:linear-gradient(180deg,#0A0A0A 60%,transparent);display:flex;align-items:center;justify-content:space-between}
+.header-left{display:flex;align-items:center;gap:10px}
+.header-icon{width:28px;height:28px;border-radius:8px;background:rgba(199,255,56,0.1);display:flex;align-items:center;justify-content:center}
+.header-icon svg{width:16px;height:16px;stroke:#C7FF38;fill:none;stroke-width:2}
+.header h1{font-size:16px;font-weight:700;color:#FFF;letter-spacing:-0.3px}
+.header-badge{font-size:10px;font-weight:600;color:#0A0A0A;background:#C7FF38;padding:2px 8px;border-radius:99px}
+.header-right{display:flex;gap:8px}
+.header-btn{width:32px;height:32px;border-radius:50%;border:0.5px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;color:#5F5F5F}
+.header-btn:hover{border-color:rgba(199,255,56,0.2);color:#C7FF38}
+.header-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* container */
+.container{max-width:420px;margin:0 auto;padding:0 16px 100px}
+
+/* report card */
+.report-card{position:relative;border-radius:24px;overflow:hidden;margin-bottom:20px;animation:fadeUp .6s ease-out}
+.report-card-inner{position:relative;padding:32px 24px 28px;background:linear-gradient(135deg,#111112 0%,#1A1A1E 100%);border:0.5px solid rgba(199,255,56,0.08)}
+.report-card::before{content:'';position:absolute;inset:0;border-radius:24px;padding:1px;background:linear-gradient(135deg,rgba(199,255,56,0.12),transparent 60%,rgba(199,255,56,0.04));-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:exclude;mask-composite:exclude;pointer-events:none}
+
+/* glow effect */
+.report-glow{position:absolute;top:-80px;right:-80px;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,rgba(199,255,56,0.04),transparent 70%);pointer-events:none}
+.report-glow2{position:absolute;bottom:-60px;left:-60px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(199,255,56,0.03),transparent 70%);pointer-events:none}
+
+/* card header */
+.card-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px}
+.card-brand{display:flex;align-items:center;gap:10px}
+.card-logo{width:32px;height:32px;border-radius:10px;background:#C7FF38;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#0A0A0A}
+.card-brand-text{font-size:11px;font-weight:600;color:#5F5F5F;letter-spacing:0.03em;text-transform:uppercase}
+.card-brand-text span{display:block;font-size:13px;font-weight:700;color:#FFF;letter-spacing:-0.2px;margin-top:1px;text-transform:none}
+.card-week{text-align:right}
+.card-week-num{font-size:22px;font-weight:800;color:#C7FF38;line-height:1}
+.card-week-label{font-size:9px;font-weight:500;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.05em;margin-top:2px}
+
+/* perf number */
+.perf-number{margin:16px 0 20px;text-align:center}
+.perf-r{font-size:52px;font-weight:900;color:#C7FF38;letter-spacing:-2px;line-height:1;animation:countUp .8s ease-out}
+.perf-r .r-suffix{font-size:24px;font-weight:600;opacity:0.7}
+.perf-label{font-size:11px;font-weight:500;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.06em;margin-top:4px}
+
+/* stat grid */
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:24px 0 20px}
+.stat-item{text-align:center;padding:12px 8px;border-radius:14px;background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.04)}
+.stat-value{font-size:18px;font-weight:800;color:#FFF;line-height:1}
+.stat-value.green{color:#C7FF38}
+.stat-value.red{color:#FF5D5D}
+.stat-value.yellow{color:#FFC857}
+.stat-label{font-size:9px;font-weight:500;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.04em;margin-top:4px}
+
+/* best/worst row */
+.best-worst{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+.bw-item{padding:12px 14px;border-radius:12px;border:0.5px solid rgba(255,255,255,0.04);background:rgba(255,255,255,0.01)}
+.bw-label{font-size:8px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px}
+.bw-value{font-size:14px;font-weight:700}
+.bw-value.green{color:#C7FF38}
+.bw-value.sub{color:#5F5F5F;font-size:10px;font-weight:400;margin-top:1px}
+
+/* consistency bar */
+.consistency{margin-bottom:20px}
+.cons-label{display:flex;justify-content:space-between;font-size:10px;font-weight:500;color:#5F5F5F;margin-bottom:4px}
+.cons-bar{height:4px;border-radius:2px;background:rgba(255,255,255,0.06);overflow:hidden}
+.cons-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,#C7FF38,#8FFF00);transition:width 1s ease-out}
+
+/* ai section */
+.ai-section{margin:28px 0 24px;padding:20px;border-radius:16px;background:linear-gradient(135deg,rgba(199,255,56,0.03),rgba(199,255,56,0.01));border:0.5px solid rgba(199,255,56,0.06)}
+.ai-header{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.ai-icon{width:20px;height:20px;border-radius:6px;background:rgba(199,255,56,0.12);display:flex;align-items:center;justify-content:center;font-size:10px}
+.ai-title{font-size:11px;font-weight:700;color:#C7FF38;letter-spacing:0.02em;text-transform:uppercase}
+.ai-review{font-size:13px;line-height:1.6;color:rgba(255,255,255,0.7);margin-bottom:14px}
+.ai-review strong{color:#FFF;font-weight:600}
+.ai-grade{display:flex;align-items:center;justify-content:space-between;padding-top:14px;border-top:0.5px solid rgba(199,255,56,0.06)}
+.ai-grade-label{font-size:10px;font-weight:500;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.04em}
+.ai-grade-value{font-size:20px;font-weight:800;color:#C7FF38}
+.ai-detail{font-size:11px;color:#5F5F5F;margin-top:12px;line-height:1.5}
+.ai-detail span{color:rgba(255,255,255,0.5)}
+
+/* share button */
+.share-section{margin:24px 0}
+.share-main{width:100%;padding:16px;border-radius:14px;border:none;background:#C7FF38;color:#0A0A0A;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s}
+.share-main:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(199,255,56,0.15)}
+.share-main:active{transform:translateY(0)}
+.share-options{display:flex;gap:8px;margin-top:10px;justify-content:center}
+.share-opt{width:44px;height:44px;border-radius:50%;border:0.5px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;font-size:16px}
+.share-opt:hover{border-color:rgba(199,255,56,0.2);background:rgba(199,255,56,0.05);transform:translateY(-2px)}
+
+/* divider */
+.divider{height:0.5px;background:rgba(255,255,255,0.06);margin:28px 0}
+
+/* section */
+.section{margin-bottom:24px}
+.section-label{font-size:11px;font-weight:700;color:#FFF;letter-spacing:0.02em;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.section-label .count{font-size:9px;font-weight:500;color:#5F5F5F;background:rgba(255,255,255,0.04);padding:1px 7px;border-radius:99px}
+
+/* detail grid */
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.detail-item{padding:12px 14px;border-radius:12px;background:rgba(255,255,255,0.01);border:0.5px solid rgba(255,255,255,0.04)}
+.detail-item.full{grid-column:1/-1}
+.detail-label{font-size:8px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px}
+.detail-value{font-size:13px;font-weight:700;color:#FFF}
+.detail-value.green{color:#C7FF38}
+.detail-value.small{font-size:11px}
+
+/* session bars */
+.session-grid{display:flex;gap:8px;margin-top:10px}
+.session-card{flex:1;padding:10px 6px;border-radius:10px;background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.04);text-align:center}
+.session-name{font-size:8px;font-weight:700;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px}
+.session-bar{height:32px;border-radius:4px;margin:0 auto 4px;width:16px;background:rgba(199,255,56,0.06);position:relative;overflow:hidden}
+.session-fill{position:absolute;bottom:0;left:0;right:0;border-radius:4px;background:linear-gradient(to top,#C7FF38,rgba(199,255,56,0.3));transition:height 1s ease-out}
+.session-r{font-size:10px;font-weight:700;color:#FFF}
+.session-pct{font-size:8px;color:#5F5F5F}
+
+/* history */
+.history-list{margin-top:8px}
+.history-item{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,0.01);border:0.5px solid rgba(255,255,255,0.04);margin-bottom:6px;cursor:pointer;transition:all .2s}
+.history-item:hover{background:rgba(255,255,255,0.03);border-color:rgba(199,255,56,0.08)}
+.history-item.active{border-color:rgba(199,255,56,0.15);background:rgba(199,255,56,0.03)}
+.history-week{font-size:12px;font-weight:600;color:#FFF}
+.history-week span{font-size:9px;font-weight:400;color:#5F5F5F;margin-left:4px}
+.history-r{font-size:12px;font-weight:700}
+.history-r.pos{color:#C7FF38}
+.history-r.neg{color:#FF5D5D}
+.history-grade{font-size:9px;font-weight:600;padding:2px 7px;border-radius:99px;background:rgba(199,255,56,0.08);color:#C7FF38;margin-left:8px}
+.history-arrow{color:#5F5F5F;font-size:10px;margin-left:8px}
+
+/* tab bar */
+.tab-bar{display:flex;gap:0;margin-bottom:16px;border-bottom:0.5px solid rgba(255,255,255,0.06)}
+.tab{flex:1;padding:10px 0;text-align:center;font-size:11px;font-weight:500;color:#5F5F5F;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;font-family:inherit;background:none;border-top:none;border-left:none;border-right:none}
+.tab.active{color:#C7FF38;border-bottom-color:#C7FF38;font-weight:600}
+
+/* footer */
+.footer-text{text-align:center;font-size:10px;color:#5F5F5F;padding:20px 0 40px;line-height:1.6}
+.footer-text strong{color:rgba(255,255,255,0.3);font-weight:600}
+
+/* mascot */
+.mascot{position:fixed;bottom:20px;right:16px;width:48px;height:48px;border-radius:50%;background:rgba(199,255,56,0.06);border:0.5px solid rgba(199,255,56,0.1);display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;transition:all .2s;z-index:20;backdrop-filter:blur(8px)}
+.mascot:hover{transform:scale(1.1);background:rgba(199,255,56,0.1)}
+
+/* modal overlay */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);z-index:100;display:none;align-items:center;justify-content:center;padding:20px;animation:fadeIn .2s}
+.modal-overlay.open{display:flex}
+.modal-card{background:#111112;border-radius:20px;border:0.5px solid rgba(199,255,56,0.08);padding:28px 24px;max-width:360px;width:100%;animation:scaleIn .3s ease-out}
+.modal-title{font-size:16px;font-weight:700;color:#FFF;margin-bottom:8px;text-align:center}
+.modal-sub{font-size:12px;color:#5F5F5F;text-align:center;margin-bottom:20px;line-height:1.5}
+.modal-options{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.modal-opt{text-align:center;cursor:pointer;transition:all .2s}
+.modal-opt:hover{transform:translateY(-2px)}
+.modal-opt-icon{width:52px;height:52px;border-radius:14px;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;font-size:20px;border:0.5px solid rgba(255,255,255,0.06)}
+.modal-opt-label{font-size:9px;font-weight:500;color:#5F5F5F}
+.modal-close{width:100%;padding:14px;border-radius:12px;border:0.5px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:#5F5F5F;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .2s}
+.modal-close:hover{background:rgba(255,255,255,0.04);color:#FFF}
+
+/* share preview for export */
+#sharePreview{position:fixed;left:-9999px;top:0;width:420px;background:#0A0A0A;padding:0;z-index:-1}
+
+/* animations */
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes scaleIn{from{opacity:0;transform:scale(0.92)}to{opacity:1;transform:scale(1)}}
+@keyframes countUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* responsive */
+@media(max-width:420px){.container{padding:0 12px 80px}.report-card-inner{padding:24px 16px 20px}.perf-r{font-size:42px}}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-left">
+    <div class="header-icon">
+      <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+    </div>
+    <h1>Weekly Report</h1>
+    <span class="header-badge">Week 31</span>
+  </div>
+  <div class="header-right">
+    <button class="header-btn" onclick="showHistory()" title="History">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    </button>
+    <button class="header-btn" onclick="showShareModal()" title="Share">
+      <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+    </button>
+  </div>
+</div>
+
+<div class="container" id="mainContainer">
+
+  <!-- Report Card -->
+  <div class="report-card" id="reportCard">
+    <div class="report-glow"></div>
+    <div class="report-glow2"></div>
+    <div class="report-card-inner">
+
+      <!-- Brand -->
+      <div class="card-header">
+        <div class="card-brand">
+          <div class="card-logo">S</div>
+          <div class="card-brand-text">
+            The Slayers
+            <span>Weekly Performance</span>
+          </div>
+        </div>
+        <div class="card-week">
+          <div class="card-week-num">31</div>
+          <div class="card-week-label">Week</div>
+        </div>
+      </div>
+
+      <!-- Performance Number -->
+      <div class="perf-number">
+        <div class="perf-r" id="perfR">+12.4<span class="r-suffix">R</span></div>
+        <div class="perf-label">Net Return</div>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="stat-grid">
+        <div class="stat-item">
+          <div class="stat-value green" id="winRate">100%</div>
+          <div class="stat-label">Win Rate</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="totalTrades">5</div>
+          <div class="stat-label">Trades</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value green" id="totalWins">5</div>
+          <div class="stat-label">Wins</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value red" id="totalLosses">0</div>
+          <div class="stat-label">Losses</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value yellow" id="totalBEs">2</div>
+          <div class="stat-label">BE</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="avgRR">2.8</div>
+          <div class="stat-label">Avg RR</div>
+        </div>
+      </div>
+
+      <!-- Best / Worst -->
+      <div class="best-worst">
+        <div class="bw-item">
+          <div class="bw-label">Best Trade</div>
+          <div class="bw-value green" id="bestTrade">+3.8R</div>
+          <div class="bw-value sub">GBPUSD · BUY</div>
+        </div>
+        <div class="bw-item">
+          <div class="bw-label">Worst Trade</div>
+          <div class="bw-value" id="worstTrade">0R</div>
+          <div class="bw-value sub">Capital Protected</div>
+        </div>
+      </div>
+
+      <!-- Consistency -->
+      <div class="consistency">
+        <div class="cons-label">
+          <span>Consistency Score</span>
+          <span id="consScore">96%</span>
+        </div>
+        <div class="cons-bar">
+          <div class="cons-fill" id="consFill" style="width:0%"></div>
+        </div>
+      </div>
+
+      <!-- Trade Quality -->
+      <div style="display:flex;gap:10px;margin-bottom:4px">
+        <div style="flex:1;padding:10px 14px;border-radius:12px;background:rgba(199,255,56,0.04);border:0.5px solid rgba(199,255,56,0.08)">
+          <div style="font-size:8px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px">Trade Quality</div>
+          <div style="font-size:14px;font-weight:700;color:#C7FF38">Elite</div>
+        </div>
+        <div style="flex:1;padding:10px 14px;border-radius:12px;background:rgba(255,255,255,0.01);border:0.5px solid rgba(255,255,255,0.04)">
+          <div style="font-size:8px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px">Avg Hold</div>
+          <div style="font-size:14px;font-weight:700;color:#FFF" id="avgHold">4h 32m</div>
+        </div>
+      </div>
+
+      <!-- Mascot + Footer -->
+      <div style="text-align:center;margin-top:24px;padding-top:20px;border-top:0.5px solid rgba(255,255,255,0.04)">
+        <div style="font-size:9px;color:#5F5F5F;line-height:1.5;font-style:italic">
+          Trade With Structure.<br>
+          <strong style="color:rgba(199,255,56,0.5);font-weight:600">Win With Discipline.</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Coach -->
+  <div class="section">
+    <div class="section-label">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C7FF38" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.7"><path d="M12 2a4 4 0 0 1 4 4c0 1.2-.5 2.3-1.4 3.1L12 17l-2.6-1.9A4 4 0 0 1 8 12a4 4 0 0 1 4-4z"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M12 2v2"/><path d="M12 20v2"/><circle cx="12" cy="12" r="10"/></svg>
+      AI Coach Review
+    </div>
+    <div class="ai-section">
+      <div class="ai-header">
+        <div class="ai-icon">✦</div>
+        <div class="ai-title">Weekly Analysis</div>
+      </div>
+      <div class="ai-review" id="aiReview">
+        <strong>Excellent discipline this week.</strong> You followed your trading plan consistently and avoided overtrading. Your strongest performance came during <strong>London sessions</strong>.
+      </div>
+      <div class="ai-detail">
+        <span>Most profitable pair:</span> <strong style="color:#FFF;font-weight:600">GBPUSD</strong><br>
+        <span>Weakest area:</span> Holding winners too conservatively after TP1.<br>
+        <span>Recommendation:</span> Focus on allowing runners to reach TP2 whenever market structure remains intact.
+      </div>
+      <div class="ai-grade">
+        <span class="ai-grade-label">Overall Grade</span>
+        <span class="ai-grade-value" id="aiGrade">A</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Weekly Detail -->
+  <div class="section">
+    <div class="section-label">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      Weekly Summary
+    </div>
+    <div class="detail-grid">
+      <div class="detail-item">
+        <div class="detail-label">Total R</div>
+        <div class="detail-value green">+12.4R</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-label">Win Rate</div>
+        <div class="detail-value">100%</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-label">Best Pair</div>
+        <div class="detail-value" style="font-size:11px">GBPUSD</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-label">Worst Pair</div>
+        <div class="detail-value" style="font-size:11px;color:#5F5F5F">—</div>
+      </div>
+    </div>
+
+    <!-- Sessions -->
+    <div style="margin-top:16px">
+      <div class="detail-label" style="margin-bottom:8px">Most Profitable Session</div>
+      <div class="session-grid">
+        <div class="session-card">
+          <div class="session-name">London</div>
+          <div class="session-bar">
+            <div class="session-fill" style="height:85%"></div>
+          </div>
+          <div class="session-r">+8.2R</div>
+          <div class="session-pct">66%</div>
+        </div>
+        <div class="session-card">
+          <div class="session-name">New York</div>
+          <div class="session-bar">
+            <div class="session-fill" style="height:45%"></div>
+          </div>
+          <div class="session-r">+4.2R</div>
+          <div class="session-pct">34%</div>
+        </div>
+        <div class="session-card">
+          <div class="session-name">Asia</div>
+          <div class="session-bar">
+            <div class="session-fill" style="height:5%"></div>
+          </div>
+          <div class="session-r" style="color:#5F5F5F">0R</div>
+          <div class="session-pct">0%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scores -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:16px">
+      <div class="detail-item" style="text-align:center">
+        <div class="detail-label">Psychology</div>
+        <div class="detail-value" style="font-size:16px;color:#C7FF38">92</div>
+      </div>
+      <div class="detail-item" style="text-align:center">
+        <div class="detail-label">Execution</div>
+        <div class="detail-value" style="font-size:16px;color:#C7FF38">88</div>
+      </div>
+      <div class="detail-item" style="text-align:center">
+        <div class="detail-label">Consistency</div>
+        <div class="detail-value" style="font-size:16px;color:#C7FF38">96</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Share Button -->
+  <div class="share-section">
+    <button class="share-main" onclick="showShareModal()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+      Share Results
+    </button>
+    <div class="share-options">
+      <button class="share-opt" onclick="shareTo('instagram')" title="Instagram">📸</button>
+      <button class="share-opt" onclick="shareTo('twitter')" title="X (Twitter)">𝕏</button>
+      <button class="share-opt" onclick="shareTo('telegram')" title="Telegram">✈️</button>
+      <button class="share-opt" onclick="shareTo('whatsapp')" title="WhatsApp">💬</button>
+      <button class="share-opt" onclick="saveImage()" title="Save Image">💾</button>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- History -->
+  <div class="section">
+    <div class="section-label">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Performance History
+      <span class="count">8 weeks</span>
+    </div>
+    <div class="history-list" id="historyList"></div>
+  </div>
+
+  <div class="footer-text">
+    <strong>✦ The Slayers ✦</strong><br>
+    Trade With Structure. Win With Discipline.
+  </div>
+</div>
+
+<!-- Mascot -->
+<div class="mascot" onclick="scrollToTop()">🐉</div>
+
+<!-- Share Modal -->
+<div class="modal-overlay" id="shareModal">
+  <div class="modal-card">
+    <div class="modal-title">Share Your Report</div>
+    <div class="modal-sub">Show the world your weekly performance</div>
+    <div class="modal-options">
+      <div class="modal-opt" onclick="shareTo('instagram')">
+        <div class="modal-opt-icon" style="background:linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)">📸</div>
+        <div class="modal-opt-label">Story</div>
+      </div>
+      <div class="modal-opt" onclick="shareTo('twitter')">
+        <div class="modal-opt-icon" style="background:rgba(255,255,255,0.04)">𝕏</div>
+        <div class="modal-opt-label">X</div>
+      </div>
+      <div class="modal-opt" onclick="shareTo('telegram')">
+        <div class="modal-opt-icon" style="background:rgba(0,136,204,0.1)">✈️</div>
+        <div class="modal-opt-label">Telegram</div>
+      </div>
+      <div class="modal-opt" onclick="saveImage()">
+        <div class="modal-opt-icon" style="background:rgba(199,255,56,0.06)">💾</div>
+        <div class="modal-opt-label">Save</div>
+      </div>
+    </div>
+    <button class="modal-close" onclick="closeShareModal()">Cancel</button>
+  </div>
+</div>
+
+<script>
+// ====== SAMPLE DATA ======
+var weeklyData={
+  week:31,
+  perfR:12.4,
+  winRate:100,
+  totalTrades:5,
+  wins:5,
+  losses:0,
+  bes:2,
+  avgRR:2.8,
+  bestTrade:3.8,
+  bestPair:'GBPUSD',
+  bestDir:'BUY',
+  worstTrade:0,
+  consScore:96,
+  avgHold:'4h 32m',
+  aiGrade:'A',
+  aiReview:'Excellent discipline this week. You followed your trading plan consistently and avoided overtrading. Your strongest performance came during <strong>London sessions</strong>.',
+  aiBestPair:'GBPUSD',
+  aiWeakness:'Holding winners too conservatively after TP1.',
+  aiRec:'Focus on allowing runners to reach TP2 whenever market structure remains intact.',
+  sessions:{london:8.2,ny:4.2,asia:0},
+  psychScore:92,
+  execScore:88,
+  consScore2:96
+};
+
+var historyData=[
+  {week:31,r:12.4,grade:'A',winRate:100,trades:5},
+  {week:30,r:8.2,grade:'A',winRate:80,trades:5},
+  {week:29,r:-2.1,grade:'C',winRate:40,trades:5},
+  {week:28,r:15.6,grade:'A+',winRate:86,trades:7},
+  {week:27,r:6.8,grade:'B+',winRate:75,trades:4},
+  {week:26,r:3.2,grade:'B',winRate:67,trades:3},
+  {week:25,r:11.4,grade:'A',winRate:83,trades:6},
+  {week:24,r:5.0,grade:'B+',winRate:71,trades:7}
+];
+
+// ====== RENDER ======
+function renderReport(){
+  var d=weeklyData;
+  document.getElementById('perfR').innerHTML=(d.perfR>=0?'+':'')+d.perfR.toFixed(1)+'<span class="r-suffix">R</span>';
+  document.getElementById('winRate').textContent=d.winRate+'%';
+  document.getElementById('totalTrades').textContent=d.totalTrades;
+  document.getElementById('totalWins').textContent=d.wins;
+  document.getElementById('totalLosses').textContent=d.losses;
+  document.getElementById('totalBEs').textContent=d.bes;
+  document.getElementById('avgRR').textContent=d.avgRR;
+  document.getElementById('bestTrade').textContent='+'+d.bestTrade+'R';
+  document.getElementById('worstTrade').textContent=d.worstTrade>0?'-'+d.worstTrade+'R':'0R';
+  document.getElementById('consScore').textContent=d.consScore+'%';
+  document.getElementById('avgHold').textContent=d.avgHold;
+  document.getElementById('aiGrade').textContent=d.aiGrade;
+  document.getElementById('aiReview').innerHTML=d.aiReview;
+
+  // consistency bar animation
+  setTimeout(function(){
+    document.getElementById('consFill').style.width=d.consScore+'%';
+  },300);
+}
+
+function renderHistory(){
+  var html='';
+  for(var i=0;i<historyData.length;i++){
+    var h=historyData[i];
+    var isPos=h.r>=0;
+    var active=i===0;
+    html+='<div class="history-item'+(active?' active':'')+'" onclick="viewWeek('+i+')">'+
+      '<div><div class="history-week">Week '+h.week+' <span>'+h.trades+' trades · '+h.winRate+'% WR</span></div></div>'+
+      '<div style="display:flex;align-items:center">'+
+        '<span class="history-grade">'+h.grade+'</span>'+
+        '<span class="history-r '+(isPos?'pos':'neg')+'" style="margin-left:8px">'+(isPos?'+':'')+h.r+'R</span>'+
+        '<span class="history-arrow">→</span>'+
+      '</div></div>';
+  }
+  document.getElementById('historyList').innerHTML=html;
+}
+
+function viewWeek(idx){
+  var h=historyData[idx];
+  // animate stats to that week's data
+  animateTo(h);
+  // highlight
+  var items=document.querySelectorAll('.history-item');
+  for(var i=0;i<items.length;i++)items[i].classList.toggle('active',i===idx);
+}
+
+function animateTo(data){
+  weeklyData.perfR=data.r;
+  weeklyData.winRate=data.winRate;
+  weeklyData.totalTrades=data.trades;
+  weeklyData.week=data.week;
+  document.querySelector('.card-week-num').textContent=data.week;
+  document.getElementById('perfR').innerHTML=(data.r>=0?'+':'')+data.r.toFixed(1)+'<span class="r-suffix">R</span>';
+  document.getElementById('winRate').textContent=data.winRate+'%';
+  document.getElementById('totalTrades').textContent=data.trades;
+  document.getElementById('consScore').textContent=Math.min(100,50+data.winRate*0.5)+'%';
+  document.getElementById('consFill').style.width=Math.min(100,50+data.winRate*0.5)+'%';
+  document.getElementById('aiGrade').textContent=data.grade.replace('+','');
+}
+
+// ====== SHARE ======
+function showShareModal(){
+  document.getElementById('shareModal').classList.add('open');
+}
+
+function closeShareModal(){
+  document.getElementById('shareModal').classList.remove('open');
+}
+
+function shareTo(platform){
+  closeShareModal();
+  var text='🏆 Slayers Weekly Report — Week '+weeklyData.week+'\n'+
+    (weeklyData.perfR>=0?'+':'')+weeklyData.perfR+'R · '+weeklyData.winRate+'% Win Rate · Grade '+weeklyData.aiGrade+'\n\n'+
+    'Trade With Structure. Win With Discipline.';
+  var url='https://slayersbot.onrender.com/app/';
+  switch(platform){
+    case 'twitter':window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent(text)+'&url='+encodeURIComponent(url),'_blank');break;
+    case 'telegram':window.open('https://t.me/share/url?url='+encodeURIComponent(url)+'&text='+encodeURIComponent(text),'_blank');break;
+    case 'whatsapp':window.open('https://wa.me/?text='+encodeURIComponent(text+' '+url),'_blank');break;
+    case 'instagram':
+      showToast('📸 Save the image first, then upload to Instagram Story');
+      break;
+  }
+}
+
+function saveImage(){
+  closeShareModal();
+  if(typeof html2canvas==='undefined'){
+    showToast('💾 Save feature requires html2canvas (loading...)');
+    var s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+    s.onload=function(){showToast('✅ Ready! Tap Save again.');};
+    document.head.appendChild(s);
+    return;
+  }
+  html2canvas(document.getElementById('reportCard'),{
+    backgroundColor:'#0A0A0A',
+    scale:2,
+    useCORS:true,
+    logging:false
+  }).then(function(canvas){
+    var link=document.createElement('a');
+    link.download='Slayers_Week'+weeklyData.week+'_Report.png';
+    link.href=canvas.toDataURL('image/png');
+    link.click();
+    showToast('✅ Report saved!');
+  }).catch(function(){
+    showToast('⚠️ Could not generate image. Try again.');
+  });
+}
+
+// ====== TOAST ======
+function showToast(msg){
+  var existing=document.querySelector('.toast');
+  if(existing)existing.remove();
+  var t=document.createElement('div');
+  t.className='toast';
+  t.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#111112;border:0.5px solid rgba(199,255,56,0.12);color:#FFF;padding:10px 18px;border-radius:10px;font-size:12px;font-weight:500;z-index:200;box-shadow:0 8px 32px rgba(0,0,0,0.5);animation:fadeIn .2s;max-width:320px;text-align:center';
+  t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(function(){t.style.opacity='0';t.style.transition='opacity .3s';setTimeout(function(){t.remove();},300);},2500);
+}
+
+// ====== SCROLL TO TOP ======
+function scrollToTop(){
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ====== INIT ======
+renderReport();
+renderHistory();
+
+// Load html2canvas in background
+var s=document.createElement('script');
+s.src='https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+document.head.appendChild(s);
+</script>
+</body>
+</html>
