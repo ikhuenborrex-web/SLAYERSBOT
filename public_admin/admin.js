@@ -28,6 +28,7 @@ const I = {
   arrowDown:'<svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>',
   trendingUp:'<svg viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
   dollar:'<svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
+  creditCard:'<svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>',
 };
 
 // ===== UTILITIES =====
@@ -133,7 +134,8 @@ function renderShell(content,title='Dashboard'){
     {id:'trades',icon:I.trades,label:'Trade Management'},
     {id:'scalp',icon:I.scalp,label:'Scalp Trades'},
     {id:'logs',icon:I.logs,label:'System Logs'},
-    {id:'members',icon:I.members,label:'Users'}
+    {id:'members',icon:I.members,label:'Users'},
+    {id:'subscribers',icon:I.creditCard,label:'Subscribers'}
   ];
   const g1=nav.slice(0,3),g2=nav.slice(3);
   document.getElementById('app').innerHTML=`
@@ -436,10 +438,113 @@ async function renderMembers(){
   </div>`;
 }
 
+// ===== SUBSCRIBERS =====
+const PLANS={monthly:{label:'Monthly',days:30,color:'#4ADE80'},quarterly:{label:'Quarterly',days:90,color:'#FFA726'},lifetime:{label:'Lifetime',days:36500,color:'#B8FF2C'},discord:{label:'Discord ($15)',days:30,color:'#42A5F5'}};
+let _subs=[],_subFilter='all',_subEdit=null;
+function subDays(d){return Math.ceil((new Date(d)-new Date())/86400000)}
+function subFmt(d){return new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}
+function subExp(pd,plan){const d=new Date(pd);d.setDate(d.getDate()+PLANS[plan].days);return d.toISOString().slice(0,10)}
+function subStatus(m){
+  if(m.plan==='lifetime')return{label:'Lifetime',color:'#B8FF2C',bg:'rgba(184,255,44,.12)'};
+  const d=subDays(m.exp);
+  if(d<0)return{label:'Expired',color:'#FF4444',bg:'rgba(255,68,68,.12)'};
+  if(d<=5)return{label:d+'d left',color:'#FF4444',bg:'rgba(255,68,68,.12)'};
+  if(d<=10)return{label:d+'d left',color:'#FFA726',bg:'rgba(255,167,38,.12)'};
+  return{label:'Active',color:'#4ADE80',bg:'rgba(74,222,128,.1)'};
+}
+function subLoad(){try{_subs=JSON.parse(localStorage.getItem('slayers-subs')||'[]')}catch{_subs=[]}}
+function subSave(){localStorage.setItem('slayers-subs',JSON.stringify(_subs));const f=document.getElementById('subFlash');if(f){f.classList.add('show');setTimeout(()=>f.classList.remove('show'),2000)}}
+function subRender(){
+  const q=(document.getElementById('subSearch')?.value||'').toLowerCase();
+  const exp=_subs.filter(m=>m.plan!=='lifetime'&&subDays(m.exp)>=0&&subDays(m.exp)<=7);
+  const expd=_subs.filter(m=>m.plan!=='lifetime'&&subDays(m.exp)<0);
+  const act=_subs.filter(m=>m.plan==='lifetime'||subDays(m.exp)>7);
+  document.getElementById('subTotal').textContent=_subs.length;
+  document.getElementById('subActive').textContent=act.length;
+  document.getElementById('subExpiring').textContent=exp.length;
+  document.getElementById('subExpired').textContent=expd.length;
+  const bw=document.getElementById('subBannerW'),be=document.getElementById('subBannerE');
+  if(bw){bw.className='sub-banner sub-banner-warn'+(exp.length?' show':'');bw.innerHTML=exp.length?'⚠️ '+exp.length+' member'+(exp.length>1?'s':'')+' expiring within 7 days':''}
+  if(be){be.className='sub-banner sub-banner-err'+(expd.length?' show':'');be.innerHTML=expd.length?'🚫 '+expd.length+' member'+(expd.length>1?'s':'')+' expired':''}
+  let fl=_subs.filter(m=>{
+    if(!(m.name.toLowerCase().includes(q)||m.tg.toLowerCase().includes(q)||m.name.toLowerCase().includes(q.replace('@',''))))return false;
+    if(_subFilter==='expiring'){const d=subDays(m.exp);return m.plan!=='lifetime'&&d>=0&&d<=7}
+    if(_subFilter==='expired')return m.plan!=='lifetime'&&subDays(m.exp)<0;
+    if(_subFilter==='active')return m.plan==='lifetime'||subDays(m.exp)>7;
+    return true
+  }).sort((a,b)=>{if(a.plan==='lifetime')return 1;if(b.plan==='lifetime')return -1;return new Date(a.exp)-new Date(b.exp)});
+  const list=document.getElementById('subList');
+  if(!list)return;
+  if(!fl.length){list.innerHTML='<div class="empty-state">'+(q?'No members match.':'No subscribers yet. Add your first above.')+'</div>';}else{
+    list.innerHTML=fl.map(m=>{
+      const p=PLANS[m.plan]||PLANS.monthly,st=subStatus(m),init=m.name.charAt(0).toUpperCase();
+      return'<div class="sub-card">'+
+        '<div class="sub-avatar" style="background:'+p.color+'18;border:1px solid '+p.color+'40;color:'+p.color+'">'+init+'</div>'+
+        '<div class="sub-info"><div class="name">'+m.name+'</div><div class="tg">@'+m.tg.replace('@','')+'</div>'+(m.notes?'<div class="note">'+m.notes+'</div>':'')+'</div>'+
+        '<span class="sub-plan" style="background:'+p.color+'18;border:1px solid '+p.color+'30;color:'+p.color+'">'+p.label+'</span>'+
+        '<div class="sub-dates"><div class="paid">Paid: '+subFmt(m.pd)+'</div><div class="exp" style="color:'+(m.plan==='lifetime'?'#B8FF2C':'var(--text2)')+'">'+(m.plan==='lifetime'?'Never':'Exp: '+subFmt(m.exp))+'</div></div>'+
+        '<span class="badge" style="background:'+st.bg+';color:'+st.color+';padding:4px 10px;font-size:10px;font-weight:700">'+st.label+'</span>'+
+        '<div class="sub-actions">'+(m.plan!=='lifetime'?'<button class="btn-sm btn-primary" onclick="S.subRenew(\''+m.id+'\')">Renew</button>':'')+'<button class="btn-sm btn-secondary" onclick="S.subEdit(\''+m.id+'\')">Edit</button><button class="btn-sm" style="background:rgba(255,68,68,.12);color:var(--red)" onclick="S.subDel(\''+m.id+'\')">✕</button></div>'+
+        '</div>'
+    }).join('')
+  }
+  // Reminders
+  const rb=document.getElementById('subReminderBox'),rl=document.getElementById('subReminderList');
+  if(rb&&rl){
+    if(exp.length){rb.classList.add('show');rl.innerHTML=exp.map(m=>'<div class="sub-reminder-msg" onclick="S.subCopyMsg(\''+m.id+'\',this)"><span class="rname">@'+m.tg.replace('@','')+':</span><br>Hey! Your Slayers Bot access expires '+(subDays(m.exp)===0?'today':'in '+subDays(m.exp)+' day'+(subDays(m.exp)>1?'s':''))+'. Renew here: flutterwave.com/pay/nhmzh8msem0x<div class="text-xs text-muted" style="margin-top:4px">Tap to copy</div></div>').join('')}
+    else rb.classList.remove('show')
+  }
+}
+async function renderSubscribers(){
+  subLoad();
+  renderShell('','Subscriber Tracker');
+  const cont=document.getElementById('pageContent');
+  const m=_subs;
+  const exp=m.filter(x=>x.plan!=='lifetime'&&subDays(x.exp)>=0&&subDays(x.exp)<=7);
+  const expd=m.filter(x=>x.plan!=='lifetime'&&subDays(x.exp)<0);
+  const act=m.filter(x=>x.plan==='lifetime'||subDays(x.exp)>7);
+  cont.innerHTML=`
+  <div class="section-header"><h2>Subscriber Tracker</h2><div class="flex gap-2 items-center"><span class="sub-save-flash" id="subFlash">✓ Saved</span><button class="btn-primary btn-sm" onclick="S.subOpen()">+ Add Subscriber</button></div></div>
+  <div class="sub-stats">
+    <div class="sub-stat"><div class="num" id="subTotal" style="color:var(--accent)">${m.length}</div><div class="lbl">Total Members</div></div>
+    <div class="sub-stat"><div class="num" id="subActive" style="color:var(--green)">${act.length}</div><div class="lbl">Active</div></div>
+    <div class="sub-stat"><div class="num" id="subExpiring" style="color:var(--orange)">${exp.length}</div><div class="lbl">Expiring (7d)</div></div>
+    <div class="sub-stat"><div class="num" id="subExpired" style="color:var(--red)">${expd.length}</div><div class="lbl">Expired</div></div>
+  </div>
+  <div class="sub-banner sub-banner-warn" id="subBannerW">${exp.length?'⚠️ '+exp.length+' member'+(exp.length>1?'s':'')+' expiring within 7 days':''}</div>
+  <div class="sub-banner sub-banner-err" id="subBannerE">${expd.length?'🚫 '+expd.length+' member'+(expd.length>1?'s':'')+' expired':''}</div>
+  <div class="sub-controls">
+    <input class="sub-search" id="subSearch" placeholder="Search name or @username..." oninput="subRender()">
+    <div class="sub-filters">
+      <button class="sub-fbtn active" onclick="S.subFilter('all',this)">All</button>
+      <button class="sub-fbtn" onclick="S.subFilter('active',this)">Active</button>
+      <button class="sub-fbtn" onclick="S.subFilter('expiring',this)">Expiring</button>
+      <button class="sub-fbtn" onclick="S.subFilter('expired',this)">Expired</button>
+    </div>
+  </div>
+  <div id="subList">${m.length?'<div class="empty-state">Rendering...</div>':'<div class="empty-state">No subscribers yet. Add your first above.</div>'}</div>
+  <div class="sub-reminder-box" id="subReminderBox">
+    <div class="sub-reminder-title">📩 Renewal reminders — click to copy:</div>
+    <div id="subReminderList"></div>
+  </div>
+  <div class="modal-overlay" id="subModal" style="display:none" onclick="if(event.target===this)S.subClose()">
+    <div class="modal"><h3 id="subModalTitle">Add Subscriber</h3>
+      <div style="margin-bottom:12px"><label class="text-xs text-muted" style="display:block;margin-bottom:4px;font-weight:600">Full Name</label><input id="subFName" placeholder="e.g. John Smith"></div>
+      <div style="margin-bottom:12px"><label class="text-xs text-muted" style="display:block;margin-bottom:4px;font-weight:600">Telegram</label><input id="subFTg" placeholder="@johnsmith"></div>
+      <div style="margin-bottom:12px"><label class="text-xs text-muted" style="display:block;margin-bottom:4px;font-weight:600">Plan</label>
+        <select id="subFPlan" onchange="S.subPrev()"><option value="monthly">Monthly — $30/mo</option><option value="quarterly">Quarterly — $75</option><option value="lifetime">Lifetime — $180</option><option value="discord">Discord Loyalty — $15/mo</option></select></div>
+      <div style="margin-bottom:12px"><label class="text-xs text-muted" style="display:block;margin-bottom:4px;font-weight:600">Payment Date</label><input type="date" id="subFDate" oninput="S.subPrev()"><div class="sub-expiry-preview" id="subPrev"></div></div>
+      <div style="margin-bottom:12px"><label class="text-xs text-muted" style="display:block;margin-bottom:4px;font-weight:600">Notes (optional)</label><input id="subFNotes" placeholder="e.g. Discord member"></div>
+      <div class="sub-modal-btns"><button class="btn-primary" onclick="S.subSave()">Save</button><button class="btn-secondary" onclick="S.subClose()">Cancel</button></div>
+    </div>
+  </div>`;
+  subRender();
+}
+
 // ===== GLOBAL ACTIONS =====
 const S={
   nav(h){window.location.hash='#'+h},
-  refresh(){const r=route();if(r==='trades'){if(window._tradeUpdater)clearInterval(window._tradeUpdater);renderTrades()}else if(r==='dashboard')renderDashboard();else if(r==='scalp')renderScalp();else if(r==='logs')renderLogs();else if(r==='members')renderMembers()},
+  refresh(){const r=route();if(window._tradeUpdater){clearInterval(window._tradeUpdater);window._tradeUpdater=null}if(r==='trades')renderTrades();else if(r==='dashboard')renderDashboard();else if(r==='scalp')renderScalp();else if(r==='logs')renderLogs();else if(r==='members')renderMembers();else if(r==='subscribers')renderSubscribers()},
   async triggerScan(){
     const btn=document.getElementById('scanBtn');
     const qbtn=document.querySelector('.quick-btn');
@@ -490,7 +595,17 @@ const S={
     const res=await api('/api/admin/members/'+encodeURIComponent(code)+'/reset-device',{method:'POST'});
     if(res)toast('Device reset for '+code,'success');renderMembers()
   },
-  copyCode(code){navigator.clipboard.writeText(code).then(()=>toast('Copied: '+code,'success'))}
+  copyCode(code){navigator.clipboard.writeText(code).then(()=>toast('Copied: '+code,'success'))},
+  // Subscriber methods
+  subFilter(f,btn){_subFilter=f;document.querySelectorAll('.sub-fbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');subRender()},
+  subOpen(){_subEdit=null;document.getElementById('subModalTitle').textContent='Add Subscriber';document.getElementById('subFName').value='';document.getElementById('subFTg').value='';document.getElementById('subFPlan').value='monthly';document.getElementById('subFDate').value=new Date().toISOString().slice(0,10);document.getElementById('subFNotes').value='';S.subPrev();document.getElementById('subModal').style.display='flex'},
+  subClose(){document.getElementById('subModal').style.display='none'},
+  subPrev(){const plan=document.getElementById('subFPlan').value,date=document.getElementById('subFDate').value,prev=document.getElementById('subPrev');if(plan==='lifetime'){prev.textContent='Never expires';return}if(date)prev.textContent='Expires: '+subFmt(subExp(date,plan))},
+  subSave(){const name=document.getElementById('subFName').value.trim(),tg=document.getElementById('subFTg').value.trim(),plan=document.getElementById('subFPlan').value,date=document.getElementById('subFDate').value,notes=document.getElementById('subFNotes').value.trim();if(!name||!tg||!date){toast('Fill in name, Telegram and date','error');return}const exp=subExp(date,plan);const obj={id:_subEdit||Date.now().toString(),name,tg,plan,pd:date,exp,notes};if(!_subEdit)obj.addedOn=new Date().toISOString().slice(0,10);if(_subEdit){_subs=_subs.map(m=>m.id===_subEdit?{...obj,id:m.id}:m)}else{_subs.push(obj)}subSave();S.subClose();subRender()},
+  subEdit(id){_subEdit=id;const m=_subs.find(x=>x.id===id);if(!m)return;document.getElementById('subModalTitle').textContent='Edit Subscriber';document.getElementById('subFName').value=m.name;document.getElementById('subFTg').value=m.tg||m.telegram;document.getElementById('subFPlan').value=m.plan;document.getElementById('subFDate').value=m.pd||m.paidDate;document.getElementById('subFNotes').value=m.notes||'';S.subPrev();document.getElementById('subModal').style.display='flex'},
+  subRenew(id){const today=new Date().toISOString().slice(0,10);const m=_subs.find(x=>x.id===id);if(!m)return;_subs=_subs.map(x=>x.id===id?{...x,paidDate:today,pd:today,expiry:subExp(today,x.plan),exp:subExp(today,x.plan)}:x);subSave();subRender();toast('Renewed','success')},
+  subDel(id){if(!confirm('Remove this member from tracker?'))return;_subs=_subs.filter(m=>m.id!==id);subSave();subRender()},
+  subCopyMsg(id,el){const m=_subs.find(x=>x.id===id);if(!m)return;const days=subDays(m.exp);const text='Hey! Your Slayers Bot access expires '+(days===0?'today':'in '+days+' day'+(days>1?'s':''))+'. Renew here to keep your signals running 👉 flutterwave.com/pay/nhmzh8msem0x';navigator.clipboard.writeText(text).catch(()=>{});el.style.borderColor='var(--green)';const hint=el.querySelector('.text-xs');if(hint)hint.textContent='✓ Copied!';setTimeout(()=>{el.style.borderColor='';if(hint)hint.textContent='Tap to copy'},2000)}
 };
 window.S=S;
 
@@ -502,6 +617,7 @@ function initApp(){
   else if(r==='scalp')renderScalp();
   else if(r==='logs')renderLogs();
   else if(r==='members')renderMembers();
+  else if(r==='subscribers')renderSubscribers();
   else renderDashboard()
 }
 window.onhashchange=initApp;
