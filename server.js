@@ -1047,7 +1047,7 @@ async function checkQMRTrades(instId,price,cHigh,cLow){
       t.slFired=true;
       if(t.tp1Fired){
         // TP1 was already banked — remainder hit buffer, record as TP1 achievement
-        await tgQMRUpdate(t,'be_close');
+        await tgQMRUpdate(t,'be_close');try{const[pt,pb]=pushTextFor('be_close',t);sendPushToTrackers(t.sigId,pt,pb,'be_close');}catch(e){}
         const winR=computeR(t,t.tp1);
         tradeHistory.push({instId:t.instId,type:t.type,tf:t.tf,outcome:'WIN',rMultiple:winR,time:new Date().toISOString(),duration});
         updateMemberStats(t.sigId,'WIN',winR);
