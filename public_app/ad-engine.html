@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>The Engine — Slayers</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#000;overflow:hidden;width:100vw;height:100vh}
+.stage{width:100%;height:100%;position:relative;overflow:hidden;background:#090909}
+canvas{position:absolute;inset:0;z-index:0;pointer-events:none}
+
+/* ===== SLIDES ===== */
+.slide{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;opacity:0;pointer-events:none;transition:opacity 1.8s cubic-bezier(.25,.46,.45,.94);z-index:1}
+.slide.active{opacity:1;pointer-events:auto;z-index:2}
+.slide.exit{opacity:0;transition:opacity 1.2s cubic-bezier(.55,.085,.68,.53);z-index:3}
+
+.elem{opacity:0;transform:translateY(12px)}
+.slide.active .elem{animation:fadeUp .7s cubic-bezier(.25,.46,.45,.94) forwards}
+.slide.active .e0{animation-delay:0s}
+.slide.active .e1{animation-delay:.2s}
+.slide.active .e2{animation-delay:.4s}
+.slide.active .e3{animation-delay:.6s}
+.slide.active .e4{animation-delay:.8s}
+.slide.active .e5{animation-delay:1s}
+.slide.active .e6{animation-delay:1.2s}
+.slide.active .e7{animation-delay:1.4s}
+.slide.active .e8{animation-delay:1.6s}
+.slide.active .e9{animation-delay:1.8s}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+/* ===== COMMON ===== */
+.text-accent{color:#B8FF2C}
+.text-muted{color:rgba(255,255,255,.35)}
+.text-white{color:#fff}
+.text-xs{font-size:10px;letter-spacing:1.5px;text-transform:uppercase}
+.text-sm{font-size:12px}
+.text-lg{font-size:18px;font-weight:700}
+.text-xl{font-size:28px;font-weight:800;letter-spacing:-.5px}
+.text-huge{font-size:64px;font-weight:900;line-height:1;letter-spacing:-2px}
+.mono{font-family:'SF Mono','Fira Code','Courier New',monospace}
+.glow{text-shadow:0 0 40px rgba(184,255,44,.15)}
+
+/* ===== SCENE 1 — DARKNESS ===== */
+.pulse-dot{width:6px;height:6px;border-radius:50%;background:#B8FF2C;box-shadow:0 0 30px rgba(184,255,44,.4),0 0 60px rgba(184,255,44,.15);animation:enginePulse 2.5s ease-in-out infinite}
+@keyframes enginePulse{0%,100%{opacity:.3;transform:scale(1)}50%{opacity:1;transform:scale(1.4)}}
+
+/* ===== SCENE 2 — CORE ===== */
+.core-ring{width:100px;height:100px;border-radius:50%;position:relative;display:flex;align-items:center;justify-content:center}
+.core-ring svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.core-ring .track{fill:none;stroke:rgba(184,255,44,.08);stroke-width:2}
+.core-ring .arc{fill:none;stroke:#B8FF2C;stroke-width:2;stroke-dasharray:283;stroke-dashoffset:0;stroke-linecap:round;animation:coreSpin 6s linear infinite}
+@keyframes coreSpin{to{stroke-dashoffset:-283}}
+.core-ring .glow{width:40px;height:40px;border-radius:50%;background:rgba(184,255,44,.06);box-shadow:0 0 60px rgba(184,255,44,.12)}@keyframes coreGlow{0%,100%{opacity:.15}50%{opacity:.3}}
+.modules{display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:280px;margin-top:20px}
+.modules span{font-size:9px;color:rgba(255,255,255,.3);letter-spacing:1px;text-transform:uppercase;text-align:center;padding:6px;border:1px solid rgba(255,255,255,.04);border-radius:4px;font-weight:500}
+.modules span.lit{color:#B8FF2C;border-color:rgba(184,255,44,.2);transition:all .8s}
+
+/* ===== SCENE 3 — CONNECTIONS ===== */
+.neural-text{position:absolute;bottom:60px;text-align:center;width:100%;left:0}
+
+/* ===== SCENE 4 — SCANNER ===== */
+.scanner-card{background:linear-gradient(135deg,rgba(20,20,20,.9),rgba(10,10,10,.9));border:1px solid rgba(255,255,255,.04);border-radius:16px;padding:24px;width:100%;max-width:320px;backdrop-filter:blur(20px)}
+.scanner-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.03)}
+.scanner-row:last-child{border-bottom:none}
+.scanner-row .pair{font-weight:600;font-size:14px;color:#fff}
+.scanner-row .progress-bar{width:60px;height:3px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden}
+.scanner-row .progress-bar .fill{height:100%;background:#B8FF2C;border-radius:2px;width:0%;transition:width 1.5s cubic-bezier(.25,.46,.45,.94)}
+.scanner-row .progress-bar .fill.complete{width:100%!important}
+.scanner-status{font-size:10px;color:rgba(184,255,44,.6);letter-spacing:1.5px;text-transform:uppercase;text-align:center;margin-top:16px;animation:scanPulse 1.5s ease-in-out infinite}
+@keyframes scanPulse{0%,100%{opacity:.4}50%{opacity:1}}
+
+/* ===== SCENE 5 — INTELLIGENCE ===== */
+.intel-card{background:linear-gradient(135deg,rgba(20,20,20,.9),rgba(10,10,10,.9));border:1px solid rgba(255,255,255,.04);border-radius:16px;padding:24px;width:100%;max-width:320px}
+.intel-line{height:8px;border-radius:4px;background:rgba(255,255,255,.04);margin-bottom:8px;overflow:hidden;position:relative}
+.intel-line::after{content:'';position:absolute;top:0;left:0;height:100%;border-radius:4px;background:linear-gradient(90deg,rgba(184,255,44,.6),rgba(184,255,44,.2));width:0%;transition:width 2s cubic-bezier(.25,.46,.45,.94)}
+.intel-line.fill100::after{width:100%}
+.intel-line.fill75::after{width:75%}
+.intel-line.fill60::after{width:60%}
+.intel-line.fill40::after{width:40%}
+.intel-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.intel-chip{padding:5px 10px;border-radius:99px;font-size:10px;font-weight:600;border:1px solid rgba(255,255,255,.06);opacity:0;transition:all .5s}
+.intel-chip.show{opacity:1}
+.intel-chip.bull{background:rgba(184,255,44,.08);border-color:rgba(184,255,44,.2);color:#B8FF2C}
+.intel-chip.bear{background:rgba(255,68,68,.08);border-color:rgba(255,68,68,.2);color:#FF4444}
+.intel-chip.neutral{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.06);color:rgba(255,255,255,.5)}
+
+/* ===== SCENE 6 — SIGNAL ===== */
+.signal-card{border-radius:16px;padding:24px;width:100%;max-width:320px;position:relative;overflow:hidden}
+.signal-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(20,20,20,.95),rgba(10,10,10,.95));border-radius:16px;z-index:0}
+.signal-card>*{position:relative;z-index:1}
+.signal-card .glow-line{position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#B8FF2C,transparent);z-index:2;animation:scanLine 2s ease-in-out infinite;opacity:.6}
+@keyframes scanLine{0%,100%{transform:translateX(-100%)}50%{transform:translateX(100%)}}
+.signal-divider{border:none;height:1px;background:linear-gradient(90deg,transparent,rgba(184,255,44,.15),transparent);margin:12px 0}
+.signal-badge{padding:3px 8px;border-radius:4px;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+.signal-badge.buy{background:rgba(184,255,44,.12);color:#B8FF2C}
+.signal-check{color:#B8FF2C;font-size:11px;font-weight:600}
+
+/* ===== SCENE 7 — AUTOMATION ===== */
+.data-flow{position:relative;width:100%;max-width:300px;height:60px}
+.data-node{display:flex;align-items:center;gap:10px;padding:6px 12px;border-radius:6px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.03);margin-bottom:5px;opacity:0;transform:translateX(-10px);font-size:11px;color:rgba(255,255,255,.3)}
+.data-node.lit{opacity:1;transform:translateX(0);color:rgba(255,255,255,.7);border-color:rgba(184,255,44,.1);transition:all .5s}
+.data-node .d-dot{width:4px;height:4px;border-radius:50%;background:rgba(184,255,44,.3);flex-shrink:0}
+.data-node.lit .d-dot{background:#B8FF2C;box-shadow:0 0 8px rgba(184,255,44,.4)}
+.data-arrow{position:absolute;right:-16px;top:50%;transform:translateY(-50%);color:rgba(184,255,44,.15);font-size:10px}
+.data-flow-multi{width:100%;max-width:280px}
+.data-stream{display:flex;align-items:center;gap:8px;padding:7px 12px;opacity:0;transform:translateX(-8px);font-size:11px;color:rgba(255,255,255,.2);border-left:1px solid transparent;transition:all .6s}
+.data-stream.lit{opacity:1;transform:translateX(0);color:rgba(255,255,255,.6);border-left-color:rgba(184,255,44,.2)}
+.data-stream .s-dot{width:5px;height:5px;border-radius:50%;background:rgba(184,255,44,.2);flex-shrink:0;transition:all .4s}
+.data-stream.lit .s-dot{background:#B8FF2C;box-shadow:0 0 10px rgba(184,255,44,.5)}
+.data-stream .s-arrow{color:rgba(184,255,44,.15);font-size:8px;margin-left:auto}
+
+/* ===== SCENE 8 — DASHBOARD ===== */
+.dash-assembly{width:100%;max-width:340px;position:relative;min-height:260px}
+.dash-piece{position:absolute;border-radius:10px;padding:12px;background:rgba(18,18,18,.9);border:1px solid rgba(255,255,255,.04);overflow:hidden;transition:all 1.2s cubic-bezier(.25,.46,.45,.94);opacity:0}
+.dash-piece.in{opacity:1}
+.dash-p1{width:120px;height:60px;top:0;left:0}
+.dash-p2{width:140px;height:70px;top:0;right:0}
+.dash-p3{width:100%;height:50px;top:80px;left:0}
+.dash-p4{width:80px;height:70px;top:150px;left:0}
+.dash-p5{width:120px;height:70px;top:150px;right:0}
+.dash-p6{width:100%;height:30px;top:240px;left:0}
+.dash-piece .dp-label{font-size:7px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.2);margin-bottom:4px}
+.dash-piece .dp-value{font-size:14px;font-weight:800;color:#fff;font-family:'SF Mono',monospace}
+.dash-piece .dp-value small{font-size:9px;color:rgba(255,255,255,.3);font-weight:400}
+.dash-piece .dp-bar{height:3px;background:rgba(255,255,255,.04);border-radius:2px;margin-top:6px;overflow:hidden}
+.dash-piece .dp-bar .fill{height:100%;border-radius:2px;width:0;transition:width 1s}
+.dash-piece .dp-bar .fill.win{background:#4ADE80}
+.dash-piece .dp-bar .fill.accent{background:#B8FF2C}
+
+/* ===== SCENE 9 — WEEKLY REPORT ===== */
+.report-card{border-radius:20px;padding:32px;width:100%;max-width:320px;position:relative;overflow:hidden}
+.report-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(18,18,18,.95),rgba(10,10,10,.95));border-radius:20px;border:1px solid rgba(255,255,255,.04);z-index:0}
+.report-card>*{position:relative;z-index:1}
+.report-card .bg-glow{position:absolute;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(184,255,44,.04),transparent 70%);top:-60px;right:-60px;z-index:0;pointer-events:none}
+.report-number{font-size:52px;font-weight:900;color:#B8FF2C;line-height:1;letter-spacing:-2px}
+.report-roi{font-size:14px;color:rgba(184,255,44,.5);margin-top:4px}
+.report-stat{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.03);font-size:12px}
+.report-stat:last-child{border-bottom:none}
+.report-stat .label{color:rgba(255,255,255,.3)}
+.report-stat .value{color:#fff;font-weight:600;font-family:'SF Mono',monospace}
+
+/* ===== SCENE 10 — ORBIT ===== */
+.orbit-view{width:100%;max-width:340px;height:340px;position:relative}
+.orbit-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:40px;height:40px;border-radius:50%;background:rgba(184,255,44,.06);box-shadow:0 0 60px rgba(184,255,44,.1);display:flex;align-items:center;justify-content:center}
+.orbit-center .inner{width:12px;height:12px;border-radius:50%;background:#B8FF2C;box-shadow:0 0 20px rgba(184,255,44,.3);animation:enginePulse 2s ease-in-out infinite}
+.orbit-ring{position:absolute;top:50%;left:50%;border-radius:50%;border:1px solid rgba(184,255,44,.06);transform:translate(-50%,-50%);pointer-events:none}
+.orbit-r1{width:140px;height:140px}
+.orbit-r2{width:220px;height:220px}
+.orbit-r3{width:300px;height:300px}
+.orbit-label{position:absolute;font-size:7px;color:rgba(255,255,255,.15);text-transform:uppercase;letter-spacing:1px;pointer-events:none;transition:all .5s}
+.orbit-label.lit{color:rgba(184,255,44,.4)}
+
+/* ===== SCENE 11 — LOGO ===== */
+.logo-final{width:80px;height:80px;border-radius:50%;border:2px solid rgba(184,255,44,.2);display:flex;align-items:center;justify-content:center;margin-bottom:16px;animation:logoReveal 1.5s cubic-bezier(.25,.46,.45,.94) forwards}
+.logo-final .inner{font-size:28px;font-weight:900;color:#B8FF2C;letter-spacing:2px}
+@keyframes logoReveal{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
+.final-line{font-size:11px;color:rgba(255,255,255,.2);letter-spacing:4px;text-transform:uppercase;opacity:0;transition:all 1s}
+.final-line.show{opacity:1}
+
+/* ===== PROGRESS ===== */
+.progress-bar-bottom{position:fixed;bottom:0;left:0;right:0;height:2px;background:rgba(255,255,255,.03);z-index:99}
+.progress-bar-bottom .fill{height:100%;background:#B8FF2C;width:0%;transition:width 3s linear}
+.progress-bar-bottom .fill.paused{transition:none}
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <canvas id="neuralCanvas"></canvas>
+
+  <!-- SCENE 1: DARKNESS -->
+  <div class="slide active" data-scene="1">
+    <div class="pulse-dot elem e0"></div>
+    <div class="elem e1" style="margin-top:32px;text-align:center">
+      <div class="text-xs text-muted" style="letter-spacing:4px;margin-bottom:8px">WHILE THE MARKET SLEEPS</div>
+      <div class="text-xs text-muted" style="letter-spacing:3px;opacity:.5">...</div>
+    </div>
+  </div>
+
+  <!-- SCENE 2: THE ENGINE STARTS -->
+  <div class="slide" data-scene="2">
+    <div class="elem e0 core-ring">
+      <svg viewBox="0 0 100 100"><circle class="track" cx="50" cy="50" r="45"/><circle class="arc" cx="50" cy="50" r="45"/></svg>
+      <div class="glow"></div>
+    </div>
+    <div class="elem e1 glow text-lg text-white" style="margin-top:20px;font-weight:700">The Engine</div>
+    <div class="modules" id="modules">
+      <span class="e2">AI Engine</span>
+      <span class="e2">Market Scanner</span>
+      <span class="e3">Telegram</span>
+      <span class="e3">Notifications</span>
+      <span class="e4">Trade Manager</span>
+      <span class="e4">Weekly Reports</span>
+      <span class="e5">Market Intel</span>
+      <span class="e5">Journal</span>
+    </div>
+  </div>
+
+  <!-- SCENE 3: CONNECTIONS -->
+  <div class="slide" data-scene="3">
+    <div class="elem e0 text-xs text-muted glow" style="letter-spacing:3px">INITIALIZING CONNECTIONS</div>
+    <div class="elem e1 text-white text-lg glow" style="margin-top:12px;font-weight:600">Everything is connected.</div>
+    <div class="elem e2" style="margin-top:40px;width:100%;max-width:300px">
+      <div class="data-stream lit" style="opacity:1;border-left-color:rgba(184,255,44,.3)">
+        <span class="s-dot"></span> Data links established
+        <span class="s-arrow">→</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCENE 4: SCANNER -->
+  <div class="slide" data-scene="4">
+    <div class="elem e0 scanner-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <span style="font-size:11px;font-weight:700;color:#fff">Market Scanner</span>
+        <span class="text-xs text-muted">LIVE</span>
+      </div>
+      <div class="scanner-row"><span class="pair">EURUSD</span><div class="progress-bar"><div class="fill" data-w="100"></div></div></div>
+      <div class="scanner-row"><span class="pair">NAS100</span><div class="progress-bar"><div class="fill" data-w="100"></div></div></div>
+      <div class="scanner-row"><span class="pair">XAUUSD</span><div class="progress-bar"><div class="fill" data-w="64"></div></div></div>
+      <div class="scanner-row"><span class="pair">GBPJPY</span><div class="progress-bar"><div class="fill" data-w="31"></div></div></div>
+      <div class="scanner-status elem e1">Scan Complete</div>
+    </div>
+  </div>
+
+  <!-- SCENE 5: INTELLIGENCE -->
+  <div class="slide" data-scene="5">
+    <div class="elem e0 intel-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <span style="font-size:11px;font-weight:700;color:#fff">Market Intelligence</span>
+        <span class="text-xs" style="color:rgba(184,255,44,.5)">AI</span>
+      </div>
+      <div style="margin-bottom:12px">
+        <div style="font-size:11px;color:rgba(255,255,255,.5);margin-bottom:8px">Market Pulse</div>
+        <div class="intel-line fill100" style="width:100%"></div>
+        <div class="intel-line fill75" style="width:85%"></div>
+        <div class="intel-line fill60" style="width:70%"></div>
+        <div class="intel-line fill40" style="width:55%"></div>
+      </div>
+      <div style="font-size:11px;color:rgba(255,255,255,.5);margin-bottom:6px">Sentiment</div>
+      <div class="intel-chips">
+        <span class="intel-chip bull e1">USD Bullish</span>
+        <span class="intel-chip neutral e2">Gold Neutral</span>
+        <span class="intel-chip bear e3">Indices Bearish</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCENE 6: SIGNAL -->
+  <div class="slide" data-scene="6">
+    <div class="elem e0 signal-card">
+      <div class="glow-line"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:11px;font-weight:700;color:#fff">QMR Setup</span>
+        <span class="signal-badge buy">ACTIVE</span>
+      </div>
+      <hr class="signal-divider">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+        <div><div class="text-xs text-muted" style="margin-bottom:2px">LIQUIDITY SWEEP</div><div class="signal-check">✓ Confirmed</div></div>
+        <div><div class="text-xs text-muted" style="margin-bottom:2px">MSS</div><div class="signal-check">✓ Confirmed</div></div>
+        <div><div class="text-xs text-muted" style="margin-bottom:2px">RISK</div><div style="font-size:13px;font-weight:700;color:#fff">0.5%</div></div>
+        <div><div class="text-xs text-muted" style="margin-bottom:2px">DIRECTION</div><div style="font-size:13px;font-weight:700;color:#B8FF2C">BUY</div></div>
+      </div>
+      <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(184,255,44,.1),transparent);margin-bottom:8px"></div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(255,255,255,.3)">
+        <span>Entry: 1.08342</span>
+        <span>TP: 1.08750</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCENE 7: AUTOMATION -->
+  <div class="slide" data-scene="7">
+    <div class="elem e0 text-xs text-muted" style="letter-spacing:3px;margin-bottom:20px">AUTOMATION CHAIN</div>
+    <div class="data-flow-multi elem e1">
+      <div class="data-stream lit"><span class="s-dot"></span> Signal Published <span class="s-arrow">✓</span></div>
+      <div class="data-stream lit"><span class="s-dot"></span> Telegram Sent <span class="s-arrow">✓</span></div>
+      <div class="data-stream lit"><span class="s-dot"></span> Push Notification <span class="s-arrow">✓</span></div>
+      <div class="data-stream lit"><span class="s-dot"></span> Journal Updated <span class="s-arrow">✓</span></div>
+      <div class="data-stream lit"><span class="s-dot"></span> Weekly Report Queued <span class="s-arrow">✓</span></div>
+    </div>
+  </div>
+
+  <!-- SCENE 8: DASHBOARD -->
+  <div class="slide" data-scene="8">
+    <div class="elem e0 dash-assembly" id="dashAssembly">
+      <div class="dash-piece dash-p1"><div class="dp-label">Active Trades</div><div class="dp-value">4 <small>QMR</small></div><div class="dp-bar"><div class="fill win" style="width:75%"></div></div></div>
+      <div class="dash-piece dash-p2"><div class="dp-label">Total R</div><div class="dp-value" style="color:#B8FF2C">+12.4<span style="font-size:10px;color:rgba(184,255,44,.3)">R</span></div><div class="dp-bar"><div class="fill accent" style="width:62%"></div></div></div>
+      <div class="dash-piece dash-p3"><div class="dp-label">Win Rate</div><div class="dp-value">78<span style="font-size:10px;color:rgba(255,255,255,.3)">%</span></div><div class="dp-bar"><div class="fill win" style="width:78%"></div></div></div>
+      <div class="dash-piece dash-p4"><div class="dp-label">Scanner</div><div class="dp-value" style="font-size:11px;color:rgba(255,255,255,.5)">12 pairs</div></div>
+      <div class="dash-piece dash-p5"><div class="dp-label">Signals</div><div class="dp-value" style="font-size:11px;color:#B8FF2C">2 pending</div></div>
+      <div class="dash-piece dash-p6"><div class="dp-label">System Status</div><div class="dp-value" style="font-size:10px;color:rgba(74,222,128,.7)">● All systems running</div></div>
+    </div>
+  </div>
+
+  <!-- SCENE 9: WEEKLY REPORT -->
+  <div class="slide" data-scene="9">
+    <div class="elem e0 report-card">
+      <div class="bg-glow"></div>
+      <div style="margin-bottom:16px">
+        <div class="text-xs text-muted" style="letter-spacing:2px">WEEKLY REPORT</div>
+        <div class="text-sm" style="color:rgba(255,255,255,.15);margin-top:2px">Jun 14 — Jun 20</div>
+      </div>
+      <div class="report-number">+8.4<span style="font-size:20px;font-weight:700">R</span></div>
+      <div class="report-roi">+12.7% ROI</div>
+      <div style="margin-top:16px">
+        <div class="report-stat"><span class="label">Total Trades</span><span class="value">14</span></div>
+        <div class="report-stat"><span class="label">Win Rate</span><span class="value" style="color:#B8FF2C">78.5%</span></div>
+        <div class="report-stat"><span class="label">Avg Win</span><span class="value" style="color:#4ADE80">+2.1R</span></div>
+        <div class="report-stat"><span class="label">Avg Loss</span><span class="value" style="color:#FF4444">-1.0R</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCENE 10: ORBIT -->
+  <div class="slide" data-scene="10">
+    <div class="elem e0 text-xs text-muted" style="letter-spacing:3px;margin-bottom:20px">THE ECOSYSTEM</div>
+    <div class="orbit-view elem e1" id="orbitView">
+      <div class="orbit-ring orbit-r1"></div>
+      <div class="orbit-ring orbit-r2"></div>
+      <div class="orbit-ring orbit-r3"></div>
+      <div class="orbit-center"><div class="inner"></div></div>
+      <div class="orbit-label" style="top:38%;left:50%;transform:translate(-50%,-50%);margin-left:-90px" data-idx="0">Scanner</div>
+      <div class="orbit-label" style="top:15%;left:50%;transform:translate(-50%,-50%);margin-left:80px" data-idx="1">Intel</div>
+      <div class="orbit-label" style="top:38%;left:50%;transform:translate(-50%,-50%);margin-top:100px" data-idx="2">Trades</div>
+      <div class="orbit-label" style="top:15%;left:50%;transform:translate(-50%,-50%);margin-left:-120px" data-idx="3">Notifications</div>
+      <div class="orbit-label" style="top:30%;left:50%;transform:translate(-50%,-50%);margin-top:-60px;margin-left:-30px" data-idx="4">Reports</div>
+    </div>
+    <div class="elem e2 text-white text-lg glow" style="margin-top:30px;font-weight:600">One system.</div>
+    <div class="elem e3 text-xs text-muted" style="letter-spacing:3px">Endless execution.</div>
+  </div>
+
+  <!-- SCENE 11: FINAL -->
+  <div class="slide" data-scene="11">
+    <div class="logo-final elem e0"><div class="inner">S</div></div>
+    <div class="elem e1 text-white text-xl glow" style="margin-bottom:4px">THE SLAYERS</div>
+    <div class="final-line elem e2" id="finalLine1">Structure.</div>
+    <div class="final-line elem e3" id="finalLine2" style="animation-delay:.6s">Discipline.</div>
+    <div class="final-line elem e4" id="finalLine3" style="animation-delay:.8s">Execution.</div>
+  </div>
+
+  <!-- PROGRESS -->
+  <div class="progress-bar-bottom"><div class="fill" id="progressFill"></div></div>
+</div>
+
+<script>
+// ===== SCENE SEQUENCE =====
+const slides=document.querySelectorAll('.slide');
+const totalScenes=slides.length;
+let current=0;
+let timer=null;
+let sceneTimers=[];
+
+const SCENE_DURATIONS=[6,6,5,6,6,5,5,6,6,7,8];
+
+function showScene(idx){
+  slides.forEach((s,i)=>{
+    s.classList.remove('active','exit');
+    if(i<idx)s.classList.add('exit');
+    if(i===idx)s.classList.add('active');
+  });
+  current=idx;
+  animateScene(idx);
+
+  const progress=document.getElementById('progressFill');
+  if(progress){
+    const pct=(idx/(totalScenes-1))*100;
+    progress.style.transition='width 1.5s cubic-bezier(.25,.46,.45,.94)';
+    progress.style.width=pct+'%';
+  }
+}
+
+function animateScene(idx){
+  switch(idx){
+    case 1: animateEngine();break;
+    case 2: startNeural();break;
+    case 3: animateScanner();break;
+    case 4: animateIntel();break;
+    case 5: animateSignal();break;
+    case 6: animateAutomation();break;
+    case 7: animateDashboard();break;
+    case 8: animateReport();break;
+    case 9: animateOrbit();break;
+    case 10: animateFinal();break;
+  }
+}
+
+function animateEngine(){
+  const modules=document.querySelectorAll('#modules span');
+  modules.forEach((el,i)=>{
+    setTimeout(()=>el.classList.add('lit'),200+i*150);
+  });
+}
+
+// ===== CANVAS NEURAL =====
+const canvas=document.getElementById('neuralCanvas');
+const ctx=canvas.getContext('2d');
+let neuralRunning=false;
+let neuralAnimId=null;
+
+function resizeCanvas(){
+  canvas.width=window.innerWidth;
+  canvas.height=window.innerHeight;
+}
+
+let nodes=[],edges=[];
+function initNeural(){
+  resizeCanvas();
+  nodes=[];
+  const count=28;
+  for(let i=0;i<count;i++){
+    nodes.push({
+      x:Math.random()*canvas.width,
+      y:Math.random()*canvas.height,
+      vx:(Math.random()-.5)*.3,
+      vy:(Math.random()-.5)*.3,
+      r:Math.random()*1.5+1
+    });
+  }
+  edges=[];
+  for(let i=0;i<count;i++){
+    for(let j=i+1;j<count;j++){
+      if(Math.random()<.15){
+        edges.push({from:i,to:j});
+      }
+    }
+  }
+}
+
+function drawNeural(){
+  if(!neuralRunning)return;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  for(const n of nodes){
+    n.x+=n.vx;n.y+=n.vy;
+    if(n.x<0||n.x>canvas.width)n.vx*=-1;
+    if(n.y<0||n.y>canvas.height)n.vy*=-1;
+  }
+  for(const e of edges){
+    const f=nodes[e.from],t=nodes[e.to];
+    const dx=f.x-t.x,dy=f.y-t.y;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+    if(dist<250){
+      const alpha=Math.max(0,.08*(1-dist/250));
+      ctx.beginPath();
+      ctx.moveTo(f.x,f.y);
+      ctx.lineTo(t.x,t.y);
+      ctx.strokeStyle=`rgba(184,255,44,${alpha})`;
+      ctx.lineWidth=.5;
+      ctx.stroke();
+    }
+  }
+  for(const n of nodes){
+    ctx.beginPath();
+    ctx.arc(n.x,n.y,n.r,0,Math.PI*2);
+    ctx.fillStyle='rgba(184,255,44,.15)';
+    ctx.fill();
+  }
+  neuralAnimId=requestAnimationFrame(drawNeural);
+}
+
+function startNeural(){
+  if(!neuralRunning){
+    neuralRunning=true;
+    initNeural();
+    drawNeural();
+  }
+}
+function stopNeural(){
+  neuralRunning=false;
+  if(neuralAnimId)cancelAnimationFrame(neuralAnimId);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+}
+
+// ===== SCANNER =====
+function animateScanner(){
+  document.querySelectorAll('.scanner-row .fill').forEach((el,i)=>{
+    const w=el.dataset.w;
+    setTimeout(()=>{
+      el.style.transition='width 1.2s cubic-bezier(.25,.46,.45,.94)';
+      el.style.width=w+'%';
+      if(w==='100')el.classList.add('complete');
+    },300+i*400);
+  });
+}
+
+// ===== INTEL =====
+function animateIntel(){
+  document.querySelectorAll('.intel-chip').forEach((el,i)=>{
+    setTimeout(()=>el.classList.add('show'),600+i*300);
+  });
+}
+
+// ===== SIGNAL =====
+function animateSignal(){
+  const card=document.querySelector('.signal-card');
+  if(card){
+    card.style.animation='none';
+    void card.offsetHeight;
+  }
+}
+
+// ===== AUTOMATION =====
+function animateAutomation(){
+  document.querySelectorAll('.data-stream').forEach((el,i)=>{
+    setTimeout(()=>el.classList.add('lit'),200+i*300);
+  });
+}
+
+// ===== DASHBOARD =====
+function animateDashboard(){
+  const pieces=document.querySelectorAll('.dash-piece');
+  pieces.forEach((el,i)=>{
+    setTimeout(()=>el.classList.add('in'),100+i*200);
+  });
+}
+
+// ===== REPORT =====
+function animateReport(){
+  const num=document.querySelector('.report-number');
+  if(!num)return;
+  num.style.opacity='0';
+  num.style.transform='scale(.5)';
+  num.style.transition='all 1s cubic-bezier(.175,.885,.32,1.275)';
+  setTimeout(()=>{
+    num.style.opacity='1';
+    num.style.transform='scale(1)';
+  },300);
+}
+
+// ===== ORBIT =====
+function animateOrbit(){
+  const labels=document.querySelectorAll('.orbit-label');
+  labels.forEach((el,i)=>{
+    setTimeout(()=>el.classList.add('lit'),200+i*300);
+  });
+}
+
+// ===== FINAL =====
+function animateFinal(){
+  const lines=document.querySelectorAll('.final-line');
+  lines.forEach((el,i)=>{
+    setTimeout(()=>el.classList.add('show'),400+i*600);
+  });
+}
+
+// ===== AUTO ADVANCE =====
+function startSequence(){
+  current=0;
+  showScene(0);
+  let totalDelay=0;
+  for(let i=0;i<totalScenes-1;i++){
+    const duration=SCENE_DURATIONS[i]||5;
+    totalDelay+=duration;
+    sceneTimers.push(setTimeout(()=>{
+      if(i+1<totalScenes)showScene(i+1);
+    },totalDelay*1000));
+  }
+}
+
+function stopSequence(){
+  sceneTimers.forEach(t=>clearTimeout(t));
+  sceneTimers=[];
+  stopNeural();
+}
+
+// ===== NAVIGATION =====
+document.addEventListener('click',()=>{
+  if(current<totalScenes-1){
+    stopSequence();
+    sceneTimers=[];
+    showScene(current+1);
+  }
+});
+
+document.addEventListener('touchstart',()=>{
+  if(current<totalScenes-1){
+    stopSequence();
+    sceneTimers=[];
+    showScene(current+1);
+  }
+});
+
+// ===== INIT =====
+window.addEventListener('resize',()=>{
+  if(neuralRunning){initNeural()}
+});
+startSequence();
+</script>
+</body>
+</html>
