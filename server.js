@@ -966,6 +966,11 @@ async function checkQMRTrades(instId,price,cHigh,cLow){
       t.beFired=true;
       t.beTime=Date.now();
       await tgQMRUpdate(t,'tp1');try{const[pt,pb]=pushTextFor('tp1',t);sendPushToTrackers(t.sigId,pt,pb,'tp1');}catch(e){}
+      // Record TP1 partial win immediately so app shows +1R
+      const tp1R=computeR(t,t.tp1);
+      tradeHistory.push({instId:t.instId,type:t.type,tf:t.tf,outcome:'TP1',rMultiple:tp1R,time:new Date().toISOString(),duration,partial:true});
+      updateMemberStats(t.sigId,'TP1',tp1R);
+      autoJournalEntry(t,'TP1',tp1R,duration);
       // Same-candle check: if this candle also touches buffer SL, close remainder immediately
       if(isB?lo<=t.sl:hi>=t.sl){
         t.slFired=true;
