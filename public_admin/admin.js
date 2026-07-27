@@ -169,6 +169,13 @@ async function renderDashboard(){
   const top=await api('/api/admin/top-markets');
   const ai=await api('/api/admin/ai-summary');
   const svc=await api('/api/admin/services');
+  renderDashboardContent(data,perf,top,ai,svc);
+}
+
+async function renderDashboardContent(data,perf,top,ai,svc){
+  if(!data)return;
+  const cont=document.getElementById('pageContent');
+  if(!cont)return;
 
   const up=data.uptime,hrs=Math.floor(up/3600),mins=Math.floor((up%3600)/60);
   const wr=data.todayTrades?(data.todayWins+data.todayLosses)?Math.round(data.todayWins/(data.todayWins+data.todayLosses)*100):0:0;
@@ -503,10 +510,19 @@ window.onhashchange=initApp;
 let pollTimer=null;
 function startPolling(){
   stopPolling();
-  pollTimer=setInterval(()=>{
+  pollTimer=setInterval(async()=>{
     const r=route();
-    if(r==='dashboard'){renderDashboard()}
-  },30000)
+    if(r==='dashboard'){
+      const[data,perf,top,ai,svc]=await Promise.all([
+        api('/api/admin/dashboard'),
+        api('/api/admin/performance?period=week'),
+        api('/api/admin/top-markets'),
+        api('/api/admin/ai-summary'),
+        api('/api/admin/services')
+      ]);
+      renderDashboardContent(data,perf,top,ai,svc);
+    }
+  },60000) // every 60s — don't rebuild shell, just refresh content
 }
 function stopPolling(){if(pollTimer){clearInterval(pollTimer);pollTimer=null}}
 
