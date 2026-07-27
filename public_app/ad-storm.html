@@ -7,31 +7,13 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#090909;color:#FFF;font-family:-apple-system,'SF Pro Display',Inter,Helvetica,Arial,sans-serif;overflow:hidden;width:100vw;height:100vh;-webkit-font-smoothing:antialiased}
-canvas{position:absolute;inset:0;z-index:0;pointer-events:none}
+canvas{position:absolute;inset:0;z-index:1;pointer-events:none}
+.overlay{position:absolute;inset:0;z-index:2;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.text-overlay{z-index:3;pointer-events:none;text-align:center}
 
-.slide{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px;opacity:0;pointer-events:none;transition:opacity 1.2s cubic-bezier(.25,.46,.45,.94);z-index:1}
-.slide.active{opacity:1;pointer-events:auto;z-index:2}
-.slide.exit{opacity:0;transition:opacity .8s;z-index:3}
-.elem{opacity:0;transform:translateY(14px)}
-.slide.active .elem{animation:fadeUp .7s cubic-bezier(.16,1,.3,1) forwards}
-.slide.active .e0{animation-delay:0s}
-.slide.active .e1{animation-delay:.2s}
-.slide.active .e2{animation-delay:.4s}
-.slide.active .e3{animation-delay:.6s}
-.slide.active .e4{animation-delay:.8s}
-.slide.active .e5{animation-delay:1s}
-.slide.active .e6{animation-delay:1.2s}
-@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
-
-/* ===== EYE MASK ===== */
-.eye-mask{position:absolute;inset:0;z-index:1;pointer-events:none;mask:radial-gradient(circle at 50% 50%, transparent 0%, transparent 0%, #000 0%, #000 100%);-webkit-mask:radial-gradient(circle at 50% 50%, transparent 0%, transparent 0%, #000 0%, #000 100%);transition:mask-size .1s,-webkit-mask-size .1s}
-.eye-mask.active{transition:mask-size 2.5s cubic-bezier(.25,.46,.45,.94),-webkit-mask-size 2.5s cubic-bezier(.25,.46,.45,.94)}
-.eye-content{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:2;pointer-events:none}
-
-/* ===== REAL APP CARD ===== */
 .card{background:#121212;border-radius:24px;padding:20px;position:relative;overflow:hidden;border:.5px solid rgba(255,255,255,.04);box-shadow:0 4px 24px rgba(0,0,0,.3);width:100%;max-width:340px}
 .card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(183,255,42,.06),transparent)}
-.mono{font-family:ui-monospace,'SF Mono','Roboto Mono',monospace;font-weight:600;letter-spacing:-.02em}
+.mono{font-family:ui-monospace,'SF Mono','Roboto Mono',monospace}
 .text-accent{color:#B7FF2A}
 .text-muted{color:#5F5F5F}
 .text-xs{font-size:10px;letter-spacing:.04em;font-weight:500}
@@ -40,17 +22,12 @@ canvas{position:absolute;inset:0;z-index:0;pointer-events:none}
 .text-xl{font-size:34px;font-weight:800;letter-spacing:-.5px}
 .pill{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;border-radius:99px;padding:3px 8px;border:.5px solid}
 
-/* ===== SCENE 0 ===== */
-.storm-text{position:absolute;bottom:80px;text-align:center;z-index:3;pointer-events:none;width:100%;left:0}
-
-/* ===== SCENE 4: SCANNER ===== */
 .sig-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:.5px solid rgba(255,255,255,.03)}
 .sig-row:last-child{border-bottom:none}
 .sig-pair{font-weight:600;font-size:14px}
 .sig-bar{width:60px;height:3px;background:rgba(255,255,255,.04);border-radius:2px;overflow:hidden}
 .sig-bar .fill{height:100%;background:#B7FF2A;border-radius:2px;width:0%;transition:width 1.8s cubic-bezier(.16,1,.3,1)}
 
-/* ===== SCENE 5: ECOSYSTEM ===== */
 .eco-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;max-width:340px}
 .eco-card{background:#121212;border-radius:16px;padding:16px;border:.5px solid rgba(255,255,255,.04);position:relative;overflow:hidden}
 .eco-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(183,255,42,.04),transparent)}
@@ -59,15 +36,20 @@ canvas{position:absolute;inset:0;z-index:0;pointer-events:none}
 .ec-value.green{color:#4ADE80}
 .ec-value.accent{color:#B7FF2A}
 
-/* ===== SCENE 6: SIGNAL ===== */
 .signal-card{background:#121212;border-radius:24px;padding:24px;border:.5px solid rgba(255,255,255,.04);width:100%;max-width:340px;position:relative;overflow:hidden}
 .signal-card .glow-bar{position:absolute;top:0;left:-100%;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(183,255,42,.3),transparent);animation:sweep 2.5s ease-in-out infinite}
 @keyframes sweep{0%{left:-100%}100%{left:100%}}
-.sc-row{display:flex;justify-content:space-between;padding:8px 0;font-size:11px;color:#8E8E8E;border-bottom:.5px solid rgba(255,255,255,.03)}
+.sc-row{display:flex;justify-content:space-between;padding:8px 0;font-size:11px;color:#8E8E8E;border-bottom:.5px rgba(255,255,255,.03)}
 .sc-row:last-child{border-bottom:none}
 .sc-row .val{font-weight:600;color:#FFF}
 
-/* ===== SCENE 8: ORBIT ===== */
+.chain-wrap{width:100%;max-width:280px}
+.chain-item{display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:10px;margin-bottom:5px;font-size:12px;color:rgba(255,255,255,.15);border:.5px solid rgba(255,255,255,.02);opacity:0;transition:all .5s}
+.chain-item.lit{opacity:1;color:rgba(255,255,255,.6);border-color:rgba(183,255,42,.08);background:rgba(183,255,42,.02)}
+.chain-item .cd{width:5px;height:5px;border-radius:50%;background:rgba(183,255,42,.2);flex-shrink:0;transition:all .3s}
+.chain-item.lit .cd{background:#B7FF2A;box-shadow:0 0 8px rgba(183,255,42,.4)}
+.chain-item .ca{margin-left:auto;font-size:8px;color:rgba(183,255,42,.15)}
+
 .orbit-area{position:relative;width:100%;max-width:300px;height:300px}
 .orb-ring{position:absolute;top:50%;left:50%;border-radius:50%;border:1px solid rgba(183,255,42,.05);transform:translate(-50%,-50%);pointer-events:none}
 .orb-r1{width:110px;height:110px}
@@ -76,328 +58,240 @@ canvas{position:absolute;inset:0;z-index:0;pointer-events:none}
 .orb-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:28px;height:28px;border-radius:50%;background:rgba(183,255,42,.04);display:flex;align-items:center;justify-content:center}
 .orb-center .dot{width:8px;height:8px;border-radius:50%;background:#B7FF2A;box-shadow:0 0 16px rgba(183,255,42,.3);animation:pulseDot 2s ease-in-out infinite}
 @keyframes pulseDot{0%,100%{opacity:.3;transform:scale(1)}50%{opacity:1;transform:scale(1.3)}}
-.orb-label{position:absolute;font-size:7px;color:rgba(255,255,255,.1);text-transform:uppercase;letter-spacing:1.5px;pointer-events:none;transition:all .5s;font-weight:500}
-.orb-label.lit{color:rgba(183,255,42,.3)}
+.orb-lbl{position:absolute;font-size:7px;color:rgba(255,255,255,.1);text-transform:uppercase;letter-spacing:1.5px;pointer-events:none;transition:all .5s;font-weight:500}
+.orb-lbl.lit{color:rgba(183,255,42,.3)}
 
-/* ===== SCENE 10: LOGO ===== */
-.logo-final{width:80px;height:80px;border-radius:50%;border:1.5px solid rgba(183,255,42,.12);display:flex;align-items:center;justify-content:center;overflow:hidden;background:rgba(183,255,42,.02);animation:logoSpawn 1.5s cubic-bezier(.16,1,.3,1) forwards}
-.logo-final img{width:68%;height:68%;object-fit:contain;opacity:.7}
+.final-scene{position:absolute;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;transition:opacity 2s;pointer-events:none}
+.final-scene.show{opacity:1;pointer-events:auto}
+.logo-el{width:80px;height:80px;border-radius:50%;border:1.5px solid rgba(183,255,42,.12);display:flex;align-items:center;justify-content:center;overflow:hidden;background:rgba(183,255,42,.02);animation:logoSpawn 1.5s cubic-bezier(.16,1,.3,1) forwards}
+.logo-el img{width:68%;height:68%;object-fit:contain;opacity:.7}
 @keyframes logoSpawn{from{transform:scale(.75);opacity:0}to{transform:scale(1);opacity:1}}
-.final-line{font-size:10px;color:rgba(255,255,255,.1);letter-spacing:5px;text-transform:uppercase;font-weight:500;opacity:0;transition:all 1.2s}
-.final-line.show{opacity:1}
-
-/* ===== STORM CANVAS OVERLAY ===== */
-#stormCanvas{z-index:0}
-#uiCanvas{z-index:1;pointer-events:none;opacity:0;transition:opacity 2s}
-#uiCanvas.visible{opacity:1}
-
-/* ===== PROGRESS ===== */
-.progress-track{position:fixed;bottom:0;left:0;right:0;height:1px;background:rgba(255,255,255,.01);z-index:99}
-.progress-track .fill{height:100%;background:#B7FF2A;width:0%;transition:width 1s linear;opacity:.3}
+.fl{font-size:10px;color:rgba(255,255,255,.1);letter-spacing:5px;text-transform:uppercase;font-weight:500;opacity:0;transition:all 1.2s}
+.fl.show{opacity:1}
 </style>
 </head>
 <body>
 <canvas id="stormCanvas"></canvas>
-<canvas id="uiCanvas"></canvas>
 
-<div class="storm-text" id="stormText">
-  <div class="elem e0 text-xs" style="color:rgba(183,255,42,.05);letter-spacing:5px;text-transform:uppercase">Every market is a storm</div>
-  <div class="elem e1 text-xs" style="color:rgba(183,255,42,.03);letter-spacing:6px;text-transform:uppercase;margin-top:5px">Every storm has an eye</div>
+<div class="text-overlay" id="textLayer" style="position:absolute;inset:0;z-index:3;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center">
+  <div id="stormText" style="text-align:center;transition:opacity 1.5s">
+    <div style="font-size:10px;color:rgba(183,255,42,.05);letter-spacing:5px;text-transform:uppercase;font-weight:500">Every market is a storm</div>
+    <div style="font-size:10px;color:rgba(183,255,42,.03);letter-spacing:6px;text-transform:uppercase;margin-top:5px;font-weight:500">Every storm has an eye</div>
+  </div>
+  <div class="overlay" id="eyeContent" style="z-index:4;transition:opacity 1.5s"></div>
 </div>
 
-<!-- SCENE: CALM EYE BUILDING -->
-<div class="eye-mask" id="eyeMask">
-  <div class="eye-content" id="eyeContent"></div>
+<div class="final-scene" id="finalScene">
+  <div class="logo-el"><img src="mascot.png" alt="" onerror="this.innerHTML='S'"></div>
+  <div style="font-size:34px;font-weight:800;letter-spacing:-.5px;margin-bottom:6px;margin-top:16px">THE SLAYERS</div>
+  <div class="fl" id="finalLine">Find the eye.</div>
 </div>
-
-<!-- SCENE: FINAL LOGO -->
-<div class="slide" data-scene="10">
-  <div class="elem e0 logo-final"><img src="mascot.png" alt="" onerror="this.innerHTML='S'"></div>
-  <div class="elem e1 text-xl text-white" style="font-weight:800;letter-spacing:-.5px;margin-bottom:6px">THE SLAYERS</div>
-  <div class="final-line elem e2">Find the eye.</div>
-</div>
-
-<div class="progress-track"><div class="fill" id="progressFill"></div></div>
 
 <script>
-// ===== SLIDE MANAGEMENT =====
-const slides=document.querySelectorAll('.slide');
-const total=slides.length;
-let current=0,sceneTimers=[];
-const DUR=[5,6,6,5,6,6,5,5,6,5];
-
-const stormText=document.getElementById('stormText');
-const eyeMask=document.getElementById('eyeMask');
+const canvas=document.getElementById('stormCanvas');
+const ctx=canvas.getContext('2d');
 const eyeContent=document.getElementById('eyeContent');
-const stormCanvas=document.getElementById('stormCanvas');
-const uiCanvas=document.getElementById('uiCanvas');
-const ctx=stormCanvas.getContext('2d');
-const uctx=uiCanvas.getContext('2d');
+const stormText=document.getElementById('stormText');
+const finalScene=document.getElementById('finalScene');
+const finalLine=document.getElementById('finalLine');
 
-let stormRunning=false,stormId=null;
+let W,H,scene=0,timers=[],running=true;
 
-function resizeAll(){
-  stormCanvas.width=window.innerWidth;
-  stormCanvas.height=window.innerHeight;
-  uiCanvas.width=window.innerWidth;
-  uiCanvas.height=window.innerHeight;
-}
-resizeAll();window.addEventListener('resize',resizeAll);
+function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight;}
+resize();window.addEventListener('resize',resize);
 
-// ===== RAINDROPS (STORM) =====
+// ===== RAIN =====
 let drops=[];
-function initStorm(n){
+function initRain(n){
   drops=[];
-  const w=stormCanvas.width,h=stormCanvas.height;
-  for(let i=0;i<n;i++){
-    drops.push({
-      x:Math.random()*w,y:Math.random()*h,
-      speed:2+Math.random()*6,
-      length:8+Math.random()*20,
-      opacity:.02+Math.random()*.08,
-      width:.3+Math.random()*.7
-    });
-  }
+  for(let i=0;i<n;i++)drops.push({x:Math.random()*W,y:Math.random()*H,speed:2+Math.random()*6,len:8+Math.random()*20,op:.02+Math.random()*.08,w:.3+Math.random()*.7});
 }
 
-function drawStorm(intensity){
-  intensity=intensity||1;
-  const w=stormCanvas.width,h=stormCanvas.height;
-  uctx.clearRect(0,0,w,h);
-
-  // Draw rain
+let rainIntensity=1;
+function draw(){
+  if(!running)return;
+  ctx.clearRect(0,0,W,H);
   for(const d of drops){
-    d.y+=d.speed*intensity;
-    if(d.y>h){d.y=-d.length;d.x=Math.random()*w;d.speed=2+Math.random()*6;}
-    const a=d.opacity*Math.min(1,intensity*1.5);
-    ctx.beginPath();
-    ctx.moveTo(d.x,d.y);
-    ctx.lineTo(d.x-d.width*.3,d.y+d.length);
-    ctx.strokeStyle=`rgba(183,255,42,${a})`;
-    ctx.lineWidth=d.width;
-    ctx.stroke();
+    d.y+=d.speed*rainIntensity;
+    if(d.y>H){d.y=-d.len;d.x=Math.random()*W;}
+    ctx.beginPath();ctx.moveTo(d.x,d.y);ctx.lineTo(d.x-d.w*.3,d.y+d.len);
+    ctx.strokeStyle=`rgba(183,255,42,${d.op*Math.min(1,rainIntensity*1.5)})`;
+    ctx.lineWidth=d.w;ctx.stroke();
   }
-
-  // Draw connections (lightning-like)
-  for(let i=0;i<3*intensity;i++){
-    const x=Math.random()*w,oy=Math.random()*h;
-    ctx.beginPath();
-    ctx.moveTo(x,oy);
-    ctx.lineTo(x+(Math.random()-.5)*40,oy+20+Math.random()*30);
-    ctx.strokeStyle=`rgba(183,255,42,${.01*intensity})`;
-    ctx.lineWidth=.5;
-    ctx.stroke();
+  for(let i=0;i<3*rainIntensity;i++){
+    const x=Math.random()*W,y=Math.random()*H;
+    ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+(Math.random()-.5)*40,y+20+Math.random()*30);
+    ctx.strokeStyle=`rgba(183,255,42,${.01*rainIntensity})`;ctx.lineWidth=.5;ctx.stroke();
   }
+  requestAnimationFrame(draw);
 }
 
-function startStorm(intensity){
-  if(!stormRunning){
-    stormRunning=true;
-    initStorm(180);
-    stormLoop(intensity);
-  }
+// ===== EYE MASK =====
+function setEye(radius){
+  eyeContent.style.maskImage=`radial-gradient(circle at 50% 50%, transparent ${radius}px, #000 ${radius+10}px)`;
+  eyeContent.style.webkitMaskImage=`radial-gradient(circle at 50% 50%, transparent ${radius}px, #000 ${radius+10}px)`;
 }
 
-function stormLoop(intensity){
-  if(!stormRunning)return;
-  ctx.clearRect(0,0,stormCanvas.width,stormCanvas.height);
-  drawStorm(intensity);
-  stormId=requestAnimationFrame(()=>stormLoop(intensity));
-}
-
-function stopStorm(){
-  stormRunning=false;
-  if(stormId)cancelAnimationFrame(stormId);
-  ctx.clearRect(0,0,stormCanvas.width,stormCanvas.height);
-}
-
-// ===== EYE CALM =====
-function buildEye(){
-  if(!eyeMask||!eyeContent)return;
-  eyeMask.style.maskImage='radial-gradient(circle at 50% 50%, transparent 0%, #000 0%)';
-  eyeMask.style.webkitMaskImage='radial-gradient(circle at 50% 50%, transparent 0%, #000 0%)';
-  eyeMask.classList.add('active');
-
-  // Build cards inside eye
-  eyeContent.innerHTML=`
-    <div class="card" style="max-width:280px;opacity:0;transition:opacity 1.5s;background:rgba(18,18,18,.7);backdrop-filter:blur(8px)" id="eyeCard">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <span style="font-size:12px;font-weight:700;color:#fff">Scanner</span>
-        <span class="pill" style="border-color:rgba(183,255,42,.12);color:#B7FF2A">LIVE</span>
-      </div>
-      <div class="sig-row"><span class="sig-pair">EURUSD</span><span class="text-sm text-muted">94%</span><div class="sig-bar"><div class="fill" style="width:94%"></div></div></div>
-      <div class="sig-row"><span class="sig-pair">XAUUSD</span><span class="text-sm text-muted">76%</span><div class="sig-bar"><div class="fill" style="width:76%"></div></div></div>
-      <div class="sig-row"><span class="sig-pair">NAS100</span><span class="text-sm text-muted">61%</span><div class="sig-bar"><div class="fill" style="width:61%"></div></div></div>
-      <div style="text-align:center;margin-top:12px;font-size:9px;color:rgba(183,255,42,.4);letter-spacing:1.5px;text-transform:uppercase">The eye is calm</div>
-    </div>`;
-
-  // Step 1: small eye
-  requestAnimationFrame(()=>{
-    eyeMask.style.maskImage='radial-gradient(circle at 50% 50%, transparent '+80+'px, #000 '+(80+10)+'px)';
-    eyeMask.style.webkitMaskImage='radial-gradient(circle at 50% 50%, transparent '+80+'px, #000 '+(80+10)+'px)';
-  });
-
-  // Card fades in
-  setTimeout(()=>{
-    const ec=document.getElementById('eyeCard');
-    if(ec)ec.style.opacity='1';
-  },1200);
-}
-
-function expandEye(size){
-  if(!eyeMask)return;
-  const s=size||200;
-  eyeMask.style.transition='mask-size 2.5s cubic-bezier(.25,.46,.45,.94), -webkit-mask-size 2.5s cubic-bezier(.25,.46,.45,.94)';
-  eyeMask.style.maskImage='radial-gradient(circle at 50% 50%, transparent '+s+'px, #000 '+(s+20)+'px)';
-  eyeMask.style.webkitMaskImage='radial-gradient(circle at 50% 50%, transparent '+s+'px, #000 '+(s+20)+'px)';
-}
-
-// ===== SLIDE =====
-function show(i){
-  slides.forEach((s,idx)=>{
-    s.classList.remove('active','exit');
-    if(idx<i)s.classList.add('exit');
-    if(idx===i)s.classList.add('active');
-  });
-  current=i;
-  onScene(i);
-  const p=document.getElementById('progressFill');
-  if(p){p.style.transition='width 1s';p.style.width=((i/(total-1))*100)+'%';}
-}
-
-function onScene(i){
-  const intensity=Math.max(.2,1-(i/8));
-  stormRunning=true;
-  startStorm(intensity);
-  stormLoop(intensity);
-
-  switch(i){
+// ===== SCENE RENDERERS =====
+function renderScene(s){
+  switch(s){
     case 0:
-      // Storm rages, text fades in
-      if(stormText)stormText.style.opacity='1';
-      buildEye();
+      // Storm only
+      rainIntensity=1;
+      stormText.style.opacity='1';
+      eyeContent.innerHTML='';
+      setEye(0);
       break;
     case 1:
-      // Eye expands
-      if(stormText)stormText.style.opacity='0';
-      expandEye(160);
+      // Eye opens with scanner card
+      rainIntensity=1;
+      stormText.style.opacity='0';
+      eyeContent.innerHTML=`
+        <div class="card" style="max-width:280px;background:rgba(18,18,18,.7);backdrop-filter:blur(8px);animation:fadeIn 1.5s ease">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span style="font-size:12px;font-weight:700;color:#fff">Scanner</span>
+            <span class="pill" style="border-color:rgba(183,255,42,.12);color:#B7FF2A">LIVE</span>
+          </div>
+          <div class="sig-row"><span class="sig-pair">EURUSD</span><span class="text-sm text-muted">94%</span><div class="sig-bar"><div class="fill" style="width:94%"></div></div></div>
+          <div class="sig-row"><span class="sig-pair">XAUUSD</span><span class="text-sm text-muted">76%</span><div class="sig-bar"><div class="fill" style="width:76%"></div></div></div>
+          <div class="sig-row"><span class="sig-pair">NAS100</span><span class="text-sm text-muted">61%</span><div class="sig-bar"><div class="fill" style="width:61%"></div></div></div>
+          <div style="text-align:center;margin-top:10px;font-size:9px;color:rgba(183,255,42,.3);letter-spacing:1.5px;text-transform:uppercase">The eye is calm</div>
+        </div>`;
+      setTimeout(()=>setEye(90),200);
       break;
     case 2:
-      expandEye(250);
+      setEye(160);
       break;
     case 3:
-      expandEye(400);
+      setEye(280);
       break;
     case 4:
-      // Storm calms, replace eye content with ecosystem
-      expandEye(600);
-      if(eyeContent){
-        eyeContent.innerHTML=`
-          <div class="eco-grid" style="opacity:0;transition:opacity 1.5s" id="ecoGrid">
-            <div class="eco-card"><div class="ec-label">Scanner</div><div class="ec-value accent">4</div><div class="text-xs text-muted" style="margin-top:4px">active pairs</div></div>
-            <div class="eco-card"><div class="ec-label">P&L</div><div class="ec-value green">+3.4R</div><div class="text-xs text-muted" style="margin-top:4px">today</div></div>
-            <div class="eco-card"><div class="ec-label">Intel</div><div class="ec-value accent">92%</div><div class="text-xs text-muted" style="margin-top:4px">confidence</div></div>
-            <div class="eco-card"><div class="ec-label">Journal</div><div class="ec-value" style="color:#fff">14</div><div class="text-xs text-muted" style="margin-top:4px">trades</div></div>
-          </div>`;
-        setTimeout(()=>{
-          const grid=document.getElementById('ecoGrid');
-          if(grid)grid.style.opacity='1';
-        },500);
-      }
+      // Ecosystem grid
+      rainIntensity=.6;
+      setEye(500);
+      eyeContent.innerHTML=`
+        <div class="eco-grid" style="animation:fadeIn 1.5s ease">
+          <div class="eco-card"><div class="ec-label">Scanner</div><div class="ec-value accent">4</div><div class="text-xs text-muted" style="margin-top:4px">active pairs</div></div>
+          <div class="eco-card"><div class="ec-label">P&L</div><div class="ec-value green">+3.4R</div><div class="text-xs text-muted" style="margin-top:4px">today</div></div>
+          <div class="eco-card"><div class="ec-label">Intel</div><div class="ec-value accent">92%</div><div class="text-xs text-muted" style="margin-top:4px">confidence</div></div>
+          <div class="eco-card"><div class="ec-label">Journal</div><div class="ec-value" style="color:#fff">14</div><div class="text-xs text-muted" style="margin-top:4px">trades</div></div>
+        </div>`;
       break;
     case 5:
       // Signal card
-      if(eyeContent){
-        eyeContent.innerHTML=`
-          <div class="signal-card" style="opacity:1">
-            <div class="glow-bar"></div>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-              <span style="font-size:12px;font-weight:700">QMR Signal</span>
-              <span class="pill" style="background:rgba(183,255,42,.08);border-color:rgba(183,255,42,.15);color:#B7FF2A">LIVE</span>
-            </div>
-            <div class="sig-row"><span class="sig-pair">XAUUSD</span><span class="text-sm text-muted">1h</span><span style="color:#B7FF2A;font-weight:700">BUY</span></div>
-            <div class="sc-row"><span>Liquidity Sweep</span><span class="val" style="color:#4ADE80">✓</span></div>
-            <div class="sc-row"><span>MSS</span><span class="val" style="color:#4ADE80">✓</span></div>
-            <div class="sc-row"><span>Risk</span><span class="val">0.5%</span></div>
-            <div class="sc-row"><span>Target</span><span class="val">1.08750</span></div>
-          </div>`;
-      }
+      rainIntensity=.4;
+      eyeContent.innerHTML=`
+        <div class="signal-card" style="animation:fadeIn 1.5s ease">
+          <div class="glow-bar"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <span style="font-size:12px;font-weight:700">QMR Signal</span>
+            <span class="pill" style="background:rgba(183,255,42,.08);border-color:rgba(183,255,42,.15);color:#B7FF2A">LIVE</span>
+          </div>
+          <div class="sig-row"><span class="sig-pair">XAUUSD</span><span class="text-sm text-muted">1h</span><span style="color:#B7FF2A;font-weight:700">BUY</span></div>
+          <div class="sc-row" style="display:flex;justify-content:space-between;padding:8px 0;font-size:11px;color:#8E8E8E;border-bottom:.5px solid rgba(255,255,255,.03)"><span>Liquidity Sweep</span><span style="color:#4ADE80;font-weight:600">✓</span></div>
+          <div class="sc-row" style="display:flex;justify-content:space-between;padding:8px 0;font-size:11px;color:#8E8E8E;border-bottom:.5px solid rgba(255,255,255,.03)"><span>MSS</span><span style="color:#4ADE80;font-weight:600">✓</span></div>
+          <div class="sc-row" style="display:flex;justify-content:space-between;padding:8px 0;font-size:11px;color:#8E8E8E"><span>Risk</span><span style="color:#FFF;font-weight:600">0.5%</span></div>
+        </div>`;
       break;
     case 6:
-      // Chain reaction
-      if(eyeContent){
-        eyeContent.innerHTML=`
-          <div style="width:100%;max-width:280px">
-            <div class="chain-link" style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:10px;margin-bottom:5px;font-size:12px;color:rgba(255,255,255,.15);border:.5px solid rgba(255,255,255,.02);opacity:0;transition:all .5s" id="cl0"><span style="width:5px;height:5px;border-radius:50%;background:rgba(183,255,42,.2);flex-shrink:0"></span> Telegram <span style="margin-left:auto;font-size:8px;color:rgba(183,255,42,.15)">→</span></div>
-            <div class="chain-link" style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:10px;margin-bottom:5px;font-size:12px;color:rgba(255,255,255,.15);border:.5px solid rgba(255,255,255,.02);opacity:0;transition:all .5s" id="cl1"><span style="width:5px;height:5px;border-radius:50%;background:rgba(183,255,42,.2);flex-shrink:0"></span> Notification <span style="margin-left:auto;font-size:8px;color:rgba(183,255,42,.15)">→</span></div>
-            <div class="chain-link" style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:10px;margin-bottom:5px;font-size:12px;color:rgba(255,255,255,.15);border:.5px solid rgba(255,255,255,.02);opacity:0;transition:all .5s" id="cl2"><span style="width:5px;height:5px;border-radius:50%;background:rgba(183,255,42,.2);flex-shrink:0"></span> Journal <span style="margin-left:auto;font-size:8px;color:rgba(183,255,42,.15)">→</span></div>
-            <div class="chain-link" style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:10px;margin-bottom:5px;font-size:12px;color:rgba(255,255,255,.15);border:.5px solid rgba(255,255,255,.02);opacity:0;transition:all .5s" id="cl3"><span style="width:5px;height:5px;border-radius:50%;background:rgba(183,255,42,.2);flex-shrink:0"></span> Weekly Report <span style="margin-left:auto;font-size:8px;color:rgba(183,255,42,.15)">✓</span></div>
-          </div>`;
-          for(let i=0;i<4;i++){
-            setTimeout(()=>{
-              const el=document.getElementById('cl'+i);
-              if(el){el.style.opacity='1';el.style.color='rgba(255,255,255,.6)';el.style.borderColor='rgba(183,255,42,.08)';el.style.background='rgba(183,255,42,.02)';}
-            },300+i*250);
-          }
-      }
+      // Chain
+      rainIntensity=.3;
+      eyeContent.innerHTML=`
+        <div class="chain-wrap" style="animation:fadeIn 1s ease">
+          <div class="chain-item" id="c0"><span class="cd"></span> Telegram <span class="ca">→</span></div>
+          <div class="chain-item" id="c1"><span class="cd"></span> Push Notification <span class="ca">→</span></div>
+          <div class="chain-item" id="c2"><span class="cd"></span> Journal <span class="ca">→</span></div>
+          <div class="chain-item" id="c3"><span class="cd"></span> Weekly Report <span class="ca">✓</span></div>
+        </div>`;
+      for(let i=0;i<4;i++)setTimeout(()=>{const e=document.getElementById('c'+i);if(e)e.classList.add('lit');},300+i*250);
       break;
     case 7:
-      // Orbit view
-      if(eyeContent){
-        eyeContent.innerHTML=`
-          <div class="orbit-area" id="orbArea">
-            <div class="orb-ring orb-r1"></div>
-            <div class="orb-ring orb-r2"></div>
-            <div class="orb-ring orb-r3"></div>
-            <div class="orb-center"><div class="dot"></div></div>
-            <div class="orb-label" style="top:36%;left:50%;transform:translate(-50%,-50%);margin-left:-70px">Scanner</div>
-            <div class="orb-label" style="top:14%;left:50%;transform:translate(-50%,-50%);margin-left:65px">Intel</div>
-            <div class="orb-label" style="top:42%;left:50%;transform:translate(-50%,-50%);margin-top:80px">Trades</div>
-            <div class="orb-label" style="top:12%;left:50%;transform:translate(-50%,-50%);margin-left:-100px">Notifs</div>
-            <div class="orb-label" style="top:26%;left:50%;transform:translate(-50%,-50%);margin-top:-45px;margin-left:-15px">Reports</div>
-          </div>`;
-        setTimeout(()=>{
-          document.querySelectorAll('.orb-label').forEach((el,i)=>{
-            setTimeout(()=>el.classList.add('lit'),200+i*300);
-          });
-        },500);
-      }
+      // Orbit
+      rainIntensity=.2;
+      eyeContent.innerHTML=`
+        <div class="orbit-area" style="animation:fadeIn 1.5s ease">
+          <div class="orb-ring orb-r1"></div>
+          <div class="orb-ring orb-r2"></div>
+          <div class="orb-ring orb-r3"></div>
+          <div class="orb-center"><div class="dot"></div></div>
+          <div class="orb-lbl" style="top:36%;left:50%;transform:translate(-50%,-50%);margin-left:-70px">Scanner</div>
+          <div class="orb-lbl" style="top:14%;left:50%;transform:translate(-50%,-50%);margin-left:65px">Intel</div>
+          <div class="orb-lbl" style="top:42%;left:50%;transform:translate(-50%,-50%);margin-top:80px">Trades</div>
+          <div class="orb-lbl" style="top:12%;left:50%;transform:translate(-50%,-50%);margin-left:-100px">Notifs</div>
+          <div class="orb-lbl" style="top:26%;left:50%;transform:translate(-50%,-50%);margin-top:-45px;margin-left:-15px">Reports</div>
+        </div>`;
+      setTimeout(()=>{document.querySelectorAll('.orb-lbl').forEach((el,i)=>{setTimeout(()=>el.classList.add('lit'),200+i*300);});},500);
       break;
     case 8:
-      // Storm fades, eye expands fully
-      expandEye(1200);
-      if(eyeContent){
-        eyeContent.innerHTML=`
-          <div style="text-align:center;opacity:0;transition:opacity 2s" id="calmText">
-            <div class="text-xs" style="color:rgba(183,255,42,.15);letter-spacing:4px;text-transform:uppercase">The storm passes</div>
-            <div class="text-lg text-white" style="font-weight:700;margin-top:8px;letter-spacing:-.3px">Only the system remains</div>
-          </div>`;
-        setTimeout(()=>{
-          const ct=document.getElementById('calmText');
-          if(ct)ct.style.opacity='1';
-        },1000);
-      }
+      // Calm before final - everything fades
+      rainIntensity=0;
+      setEye(2000);
+      eyeContent.innerHTML=`
+        <div style="text-align:center;animation:fadeIn 2s ease">
+          <div class="text-xs" style="color:rgba(183,255,42,.15);letter-spacing:4px;text-transform:uppercase">The storm passes</div>
+          <div class="text-lg" style="font-weight:700;margin-top:8px;color:#fff;letter-spacing:-.3px">Only the system remains</div>
+        </div>`;
       break;
     case 9:
-      // Transition to final logo slide, reduce storm to nothing
-      if(eyeMask)eyeMask.style.opacity='0';
-      if(stormText)stormText.style.opacity='0';
+      // Final logo
+      eyeContent.style.opacity='0';
+      finalScene.classList.add('show');
+      setTimeout(()=>{if(finalLine)finalLine.classList.add('show');},800);
       break;
   }
 }
 
-// ===== START =====
-function startSeq(){
-  show(0);
-  let d=0;
-  for(let i=0;i<total-1;i++){d+=DUR[i]||4;sceneTimers.push(setTimeout(()=>{if(i+1<total)show(i+1);},d*1000));}
+// ===== SEQUENCE =====
+const DURATIONS=[4,5,4,4,5,5,4,5,5,5]; // 46s total
+
+function advance(){
+  scene++;
+  if(scene>=DURATIONS.length){
+    // End - nothing more to do
+    running=false;
+    return;
+  }
+  renderScene(scene);
+  setTimeout(advance,DURATIONS[scene]*1000);
 }
-function stopSeq(){sceneTimers.forEach(t=>clearTimeout(t));sceneTimers=[];stopStorm();}
 
-document.addEventListener('click',()=>{if(current<total-1){stopSeq();sceneTimers=[];show(current+1);}});
-document.addEventListener('touchstart',()=>{if(current<total-1){stopSeq();sceneTimers=[];show(current+1);}});
+// Kick off
+renderScene(0);
+initRain(180);
 
-startSeq();
+// Animate rain
+function rainLoop(){
+  if(!running)return;
+  draw();
+  requestAnimationFrame(rainLoop);
+}
+rainLoop();
+
+// Start sequence after initial pause
+setTimeout(advance,4000);
+
+// Click to advance
+document.addEventListener('click',()=>{
+  if(scene<DURATIONS.length-1&&running){
+    clearTimeout();
+    scene++;
+    renderScene(scene);
+    setTimeout(advance,DURATIONS[scene]*1000);
+  }
+});
+document.addEventListener('touchstart',()=>{
+  if(scene<DURATIONS.length-1&&running){
+    clearTimeout();
+    scene++;
+    renderScene(scene);
+    setTimeout(advance,DURATIONS[scene]*1000);
+  }
+});
+
+// Keyframe for fadeIn
+const style=document.createElement('style');
+style.textContent='@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}';
+document.head.appendChild(style);
 </script>
 </body>
 </html>
