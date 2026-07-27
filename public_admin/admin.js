@@ -452,7 +452,7 @@ function subStatus(m){
   if(d<=10)return{label:d+'d left',color:'#FFA726',bg:'rgba(255,167,38,.12)'};
   return{label:'Active',color:'#4ADE80',bg:'rgba(74,222,128,.1)'};
 }
-function subLoad(){try{_subs=JSON.parse(localStorage.getItem('slayers-subs')||'[]')}catch{_subs=[]}}
+function subLoad(){try{_subs=JSON.parse(localStorage.getItem('slayers-subs')||'[]');if(!_subs.length){const old=localStorage.getItem('slayers-members');if(old){_subs=JSON.parse(old).map(m=>({id:m.id,name:m.name,tg:m.telegram||m.tg,plan:m.plan,pd:m.paidDate||m.pd,exp:m.expiry||m.exp,notes:m.notes||'',addedOn:m.addedOn}));localStorage.setItem('slayers-subs',JSON.stringify(_subs));localStorage.removeItem('slayers-members')}}}catch{_subs=[]}}
 function subSave(){localStorage.setItem('slayers-subs',JSON.stringify(_subs));const f=document.getElementById('subFlash');if(f){f.classList.add('show');setTimeout(()=>f.classList.remove('show'),2000)}}
 function subRender(){
   const q=(document.getElementById('subSearch')?.value||'').toLowerCase();
