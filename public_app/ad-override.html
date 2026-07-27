@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>The Slayers — System Override</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#090909;color:#FFF;font-family:-apple-system,'SF Pro Display',Inter,Helvetica,Arial,sans-serif;overflow:hidden;width:100vw;height:100vh;-webkit-font-smoothing:antialiased}
+
+/* ===== 3D STAGE ===== */
+.stage{position:absolute;inset:0;perspective:1200px;perspective-origin:50% 50%;overflow:hidden;z-index:1}
+#camera{position:absolute;inset:0;transform-style:preserve-3d;will-change:transform}
+#co{position:absolute;left:50%;top:50%;transform-style:preserve-3d}
+
+/* ===== ALL POSITIONED ELEMENTS ===== */
+.elm{position:absolute;left:0;top:0;backface-visibility:hidden;will-change:transform,opacity}
+
+/* ===== REAL APP CARD ===== */
+.card{background:#121212;border-radius:24px;padding:20px;overflow:hidden;border:.5px solid rgba(255,255,255,.04);box-shadow:0 4px 24px rgba(0,0,0,.3)}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(183,255,42,.06),transparent)}
+.mono{font-family:ui-monospace,'SF Mono','Roboto Mono',monospace}
+.text-accent{color:#B7FF2A}
+.text-muted{color:#5F5F5F}
+.text-xs{font-size:10px;letter-spacing:.04em;font-weight:500}
+.text-sm{font-size:12px}
+.text-lg{font-size:20px;font-weight:700;letter-spacing:-.3px}
+.text-xl{font-size:30px;font-weight:800;letter-spacing:-.5px}
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;border-radius:99px;padding:3px 8px;border:.5px solid}
+
+/* ===== EYES ===== */
+.eye{width:14px;height:18px;border-radius:50%;background:rgba(183,255,42,.9);box-shadow:0 0 40px rgba(183,255,42,.3),0 0 80px rgba(183,255,42,.1);pointer-events:none}
+.eye-pulse{animation:eyePulse 3s ease-in-out infinite}
+@keyframes eyePulse{0%,100%{box-shadow:0 0 40px rgba(183,255,42,.3),0 0 80px rgba(183,255,42,.1)}50%{box-shadow:0 0 60px rgba(183,255,42,.5),0 0 120px rgba(183,255,42,.15)}}
+
+/* ===== FRAGMENTS ===== */
+.fragment{border-radius:6px;pointer-events:none}
+.frag-stat{font-size:22px;font-weight:900;font-family:'SF Mono',monospace;color:#B7FF2A}
+.frag-chip{padding:4px 10px;border-radius:99px;font-size:9px;font-weight:600;border:.5px solid rgba(183,255,42,.12);background:rgba(183,255,42,.04);color:#B7FF2A}
+.frag-line{width:60px;height:2px;background:rgba(183,255,42,.15);border-radius:1px}
+.frag-badge{width:20px;height:20px;border-radius:50%;background:rgba(183,255,42,.08);border:.5px solid rgba(183,255,42,.12)}
+
+/* ===== DASHBOARD CARD ===== */
+.dash-card{border-radius:16px;padding:14px;background:rgba(18,18,18,.85);border:.5px solid rgba(255,255,255,.04);backdrop-filter:blur(8px);box-shadow:0 8px 32px rgba(0,0,0,.3)}
+.dash-card .dl{font-size:7px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.15);margin-bottom:4px}
+.dash-card .dv{font-size:16px;font-weight:700;font-family:'SF Mono',monospace}
+.dash-card .db{height:2px;background:rgba(255,255,255,.04);border-radius:2px;margin-top:6px;overflow:hidden;width:100%}
+.dash-card .df{height:100%;border-radius:2px;width:0%;transition:width 1.5s cubic-bezier(.16,1,.3,1)}
+
+/* ===== SCANNER ===== */
+.scanner-card .sig-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:.5px solid rgba(255,255,255,.03)}
+.scanner-card .sig-row:last-child{border-bottom:none}
+.scanner-card .sig-pair{font-weight:600;font-size:13px;transition:all .3s}
+.scanner-card .sig-pair.highlight{color:#B7FF2A;text-shadow:0 0 20px rgba(183,255,42,.15)}
+.scanner-card .sig-bar{width:50px;height:3px;background:rgba(255,255,255,.04);border-radius:2px;overflow:hidden;flex-shrink:0}
+.scanner-card .sig-bar .fill{height:100%;background:#B7FF2A;border-radius:2px;width:0%;transition:width 1.8s cubic-bezier(.16,1,.3,1)}
+
+/* ===== PROGRESS RING ===== */
+.progress-ring{width:44px;height:44px;position:relative;flex-shrink:0}
+.progress-ring svg{transform:rotate(-90deg)}
+.progress-ring .track{fill:none;stroke:rgba(255,255,255,.04);stroke-width:3}
+.progress-ring .arc{fill:none;stroke:#B7FF2A;stroke-width:3;stroke-linecap:round;stroke-dasharray:188.5;stroke-dashoffset:188.5;transition:stroke-dashoffset 2s cubic-bezier(.16,1,.3,1)}
+.progress-ring .pct{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#B7FF2A;font-family:'SF Mono',monospace}
+
+/* ===== TIMELINE ===== */
+.timeline{width:100%;max-width:260px;position:relative}
+.tl-node{display:flex;align-items:flex-start;gap:12px;padding:5px 0;opacity:0;transform:translateX(-8px);transition:all .6s cubic-bezier(.16,1,.3,1)}
+.tl-node.lit{opacity:1;transform:translateX(0)}
+.tl-dot{width:8px;height:8px;border-radius:50%;border:1.5px solid rgba(183,255,42,.15);flex-shrink:0;margin-top:3px;transition:all .5s;background:transparent}
+.tl-node.lit .tl-dot{background:#B7FF2A;border-color:#B7FF2A;box-shadow:0 0 12px rgba(183,255,42,.3)}
+.tl-line{position:absolute;left:3px;top:14px;width:2px;background:rgba(183,255,42,.06);height:0;transition:height 1.5s cubic-bezier(.16,1,.3,1);border-radius:1px}
+.tl-label{font-size:11px;color:rgba(255,255,255,.2);transition:color .4s;font-weight:500}
+.tl-node.lit .tl-label{color:rgba(255,255,255,.7)}
+
+/* ===== INTEL ===== */
+.intel-text{font-size:12px;color:#8E8E8E;line-height:1.6;min-height:50px}
+
+/* ===== NOTIFICATION ===== */
+.notif-el{background:rgba(20,20,20,.9);border-radius:14px;padding:14px 16px;border:.5px solid rgba(183,255,42,.08)}
+.notif-el .ntitle{font-size:11px;font-weight:700;color:#FFF;margin-bottom:2px}
+.notif-el .nbody{font-size:10px;color:#5F5F5F}
+.notif-el .ntime{font-size:9px;color:rgba(255,255,255,.15)}
+.live-dot{width:5px;height:5px;border-radius:50%;background:#B7FF2A;display:inline-block;box-shadow:0 0 8px rgba(183,255,42,.5);margin-right:6px;animation:pulseRing 1.5s ease-out infinite}
+@keyframes pulseRing{0%{opacity:.7;transform:scale(1)}50%{opacity:0;transform:scale(2.5)}}
+
+/* ===== CANVAS ===== */
+#connectionCanvas{position:absolute;inset:0;z-index:2;pointer-events:none}
+#particleCanvas{z-index:0}
+
+/* ===== FINAL ===== */
+.final-logo{border-radius:50%;border:1.5px solid rgba(183,255,42,.1);display:flex;align-items:center;justify-content:center;overflow:hidden;background:rgba(183,255,42,.02)}
+.final-logo img{width:65%;height:65%;object-fit:contain;opacity:.7}
+.final-mascot{inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:-1}
+.final-mascot img{max-width:280px;max-height:280px;object-fit:contain;opacity:.06;filter:grayscale(1) contrast(1.2)}
+.tagline{font-size:10px;color:rgba(255,255,255,.1);letter-spacing:6px;text-transform:uppercase;font-weight:500;transition:all 1.2s cubic-bezier(.16,1,.3,1);opacity:0}
+
+/* ===== PROGRESS ===== */
+.progress-track{position:fixed;bottom:0;left:0;right:0;height:1px;background:rgba(255,255,255,.01);z-index:99}
+.progress-track .fill{height:100%;background:#B7FF2A;width:0%;transition:width .8s linear;opacity:.3}
+</style>
+</head>
+<body>
+<canvas id="particleCanvas"></canvas>
+<canvas id="connectionCanvas"></canvas>
+<div class="stage" id="stage">
+<div id="camera">
+<div id="co">
+
+<!-- ==================== SCENE 1: EYES + FRAGMENTS ==================== -->
+<div class="eye elm" id="eyeL"></div>
+<div class="eye elm" id="eyeR"></div>
+<div class="fragment elm" id="f1"><span class="frag-stat">+3.4</span></div>
+<div class="fragment elm" id="f2"><div class="frag-line" style="width:50px"></div></div>
+<div class="fragment elm" id="f3"><span class="frag-chip">USD Bullish</span></div>
+<div class="fragment elm" id="f4"><div class="frag-badge"></div></div>
+<div class="fragment elm" id="f5"><div class="frag-line" style="width:70px;height:1px;background:rgba(183,255,42,.06)"></div></div>
+<div class="fragment elm" id="f6"><span style="font-size:8px;color:rgba(183,255,42,.1);letter-spacing:2px;text-transform:uppercase">scanning</span></div>
+
+<!-- ==================== SCENE 2: DASHBOARD ==================== -->
+<div class="dash-card elm" id="dc1" style="width:110px">
+  <div class="dl">Scanner</div><div class="dv text-accent">12 pairs</div>
+  <div class="db"><div class="df" style="background:#B7FF2A" data-w="80"></div></div>
+</div>
+<div class="dash-card elm" id="dc2" style="width:100px">
+  <div class="dl">Active</div><div class="dv" style="color:#4ADE80">4 trades</div>
+</div>
+<div class="dash-card elm" id="dc3" style="width:120px">
+  <div class="dl">Today P&amp;L</div><div class="dv text-accent">+3.4R</div>
+  <div class="db"><div class="df" style="background:#B7FF2A" data-w="68"></div></div>
+</div>
+<div class="dash-card elm" id="dc4" style="width:90px">
+  <div class="dl">Intel</div><div class="dv" style="color:#8E8E8E">92%</div>
+</div>
+<div class="dash-card elm" id="dc5" style="width:90px">
+  <div class="dl">Journal</div><div class="dv" style="color:#FFF">14</div>
+</div>
+<div class="dash-card elm" id="dc6" style="width:110px">
+  <div class="dl">Win Rate</div><div class="dv text-accent">78.5%</div>
+  <div class="db"><div class="df" style="background:#4ADE80" data-w="78"></div></div>
+</div>
+<div class="dash-card elm" id="dc7" style="width:85px">
+  <div class="dl">Risk</div><div class="dv" style="color:#8E8E8E">0.5%</div>
+</div>
+<div class="dash-card elm" id="dc8" style="width:105px">
+  <div class="dl">Reports</div><div class="dv" style="color:#8E8E8E">+8.4R wk</div>
+</div>
+<div class="text-xs text-muted elm" id="sysLabel" style="letter-spacing:3px">SYSTEM ONLINE</div>
+
+<!-- ==================== SCENE 3: SCANNER ==================== -->
+<div class="card scanner-card elm" id="scanCard" style="max-width:320px;padding:18px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <span style="font-size:11px;font-weight:700">Market Scanner</span>
+    <span class="pill" style="border-color:rgba(183,255,42,.12);color:#B7FF2A;background:rgba(183,255,42,.04)">LIVE</span>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+    <span class="text-xs text-muted" id="scanStatus">Scanning 12 pairs</span>
+    <div class="progress-ring"><svg width="44" height="44" viewBox="0 0 64 64"><circle class="track" cx="32" cy="32" r="30"/><circle class="arc" cx="32" cy="32" r="30" id="ringArc"/></svg><span class="pct" id="ringPct">0%</span></div>
+  </div>
+  <div id="scanPairs">
+    <div class="sig-row"><span class="sig-pair">EURUSD</span><span class="text-sm text-muted" style="font-size:11px">94%</span><div class="sig-bar"><div class="fill" data-w="94"></div></div></div>
+    <div class="sig-row"><span class="sig-pair">GBPUSD</span><span class="text-sm text-muted" style="font-size:11px">78%</span><div class="sig-bar"><div class="fill" data-w="78"></div></div></div>
+    <div class="sig-row"><span class="sig-pair">NAS100</span><span class="text-sm text-muted" style="font-size:11px">64%</span><div class="sig-bar"><div class="fill" data-w="64"></div></div></div>
+    <div class="sig-row"><span class="sig-pair">XAUUSD</span><span class="text-sm text-muted" style="font-size:11px">91%</span><div class="sig-bar"><div class="fill" data-w="91"></div></div></div>
+    <div class="sig-row"><span class="sig-pair">US30</span><span class="text-sm text-muted" style="font-size:11px">42%</span><div class="sig-bar"><div class="fill" data-w="42"></div></div></div>
+  </div>
+</div>
+
+<!-- ==================== SCENE 4: TRADE DETAIL ==================== -->
+<div class="card elm" id="tradeCard" style="max-width:300px;transform-style:preserve-3d">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <span style="font-size:12px;font-weight:700">QMR Trade</span>
+    <span class="pill" style="background:rgba(183,255,42,.08);border-color:rgba(183,255,42,.15);color:#B7FF2A">BUY · XAUUSD</span>
+  </div>
+  <div style="display:flex;justify-content:space-between;font-size:11px;color:#8E8E8E;margin-bottom:8px">
+    <span>Entry <span class="mono" style="color:#FFF;font-weight:600">1.08342</span></span>
+    <span>TP <span class="mono" style="color:#B7FF2A;font-weight:600">1.08750</span></span>
+    <span>SL <span class="mono" style="color:#FF4444;font-weight:600">1.08100</span></span>
+  </div>
+  <div class="timeline" id="timeline">
+    <div class="tl-line" id="tlLine"></div>
+    <div class="tl-node"><div class="tl-dot"></div><span class="tl-label">Signal Created</span></div>
+    <div class="tl-node"><div class="tl-dot"></div><span class="tl-label">Entry Triggered</span></div>
+    <div class="tl-node"><div class="tl-dot"></div><span class="tl-label">Risk Confirmed</span></div>
+    <div class="tl-node"><div class="tl-dot"></div><span class="tl-label">TP1 · +1.0R</span></div>
+    <div class="tl-node"><div class="tl-dot"></div><span class="tl-label">Breakeven</span></div>
+    <div class="tl-node"><div class="tl-dot"></div><span class="tl-label">Runner Active</span></div>
+  </div>
+</div>
+
+<!-- ==================== SCENE 5: INTEL ==================== -->
+<div class="card elm" id="intelCard" style="max-width:300px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <span style="font-size:12px;font-weight:700">Market Intelligence</span>
+    <span class="pill" style="border-color:rgba(183,255,42,.12);color:#B7FF2A">AI</span>
+  </div>
+  <div class="intel-text" id="intelText"></div>
+  <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap" id="intelChips">
+    <span class="pill" style="border-color:rgba(183,255,42,.12);color:#B7FF2A;background:rgba(183,255,42,.04);opacity:0">USD Bullish</span>
+    <span class="pill" style="border-color:rgba(255,255,255,.08);color:#8E8E8E;background:rgba(255,255,255,.02);opacity:0">Gold Neutral</span>
+    <span class="pill" style="border-color:rgba(255,68,68,.12);color:#FF4444;background:rgba(255,68,68,.04);opacity:0">Indices Bearish</span>
+  </div>
+  <div style="margin-top:8px;display:flex;gap:8px">
+    <div style="flex:1"><div class="text-xs text-muted" style="margin-bottom:4px">Confidence</div><div style="height:3px;background:rgba(255,255,255,.04);border-radius:2px;overflow:hidden"><div style="height:100%;background:#B7FF2A;border-radius:2px;width:0%" id="confBar"></div></div></div>
+    <div style="flex:1"><div class="text-xs text-muted" style="margin-bottom:4px">Momentum</div><div style="height:3px;background:rgba(255,255,255,.04);border-radius:2px;overflow:hidden"><div style="height:100%;background:#8E8E8E;border-radius:2px;width:0%" id="momBar"></div></div></div>
+  </div>
+</div>
+
+<!-- ==================== SCENE 6: NOTIF + REPORT ==================== -->
+<div class="notif-el elm" id="notifEl" style="max-width:300px">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div><div class="ntitle"><span class="live-dot"></span>Weekly Report Ready</div><div class="nbody">Your trading summary is available.</div></div>
+    <span class="ntime">now</span>
+  </div>
+</div>
+<div class="card elm" id="reportCard" style="max-width:300px">
+  <div class="text-xs text-muted" style="letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px">Weekly Report</div>
+  <div class="text-sm" style="color:rgba(255,255,255,.1);margin-bottom:10px">Jun 14 — Jun 20</div>
+  <div style="display:flex;gap:16px;margin-bottom:10px">
+    <div><div class="text-xs text-muted">Total R</div><div class="text-xl text-accent" id="reportR" style="font-weight:900">+0.0</div></div>
+    <div><div class="text-xs text-muted">Win Rate</div><div class="text-xl" style="font-weight:900;color:#4ADE80" id="reportWR">0%</div></div>
+  </div>
+  <div style="display:flex;gap:10px;font-size:11px;color:#5F5F5F">
+    <div style="flex:1;padding:8px;border-radius:8px;background:rgba(255,255,255,.02)"><span>Wins</span><br><span style="color:#4ADE80;font-weight:700" id="reportW">0</span></div>
+    <div style="flex:1;padding:8px;border-radius:8px;background:rgba(255,255,255,.02)"><span>Losses</span><br><span style="color:#FF4444;font-weight:700" id="reportL">0</span></div>
+    <div style="flex:1;padding:8px;border-radius:8px;background:rgba(255,255,255,.02)"><span>Avg R</span><br><span style="color:#B7FF2A;font-weight:700" id="reportAvg">0</span></div>
+  </div>
+</div>
+
+<!-- ==================== SCENE 7: FINAL MERGE ==================== -->
+<div class="dash-card elm" id="fm1" style="width:100px"><div class="dl">Scanner</div><div class="dv text-accent">12</div></div>
+<div class="dash-card elm" id="fm2" style="width:90px"><div class="dl">Active</div><div class="dv" style="color:#4ADE80">4</div></div>
+<div class="dash-card elm" id="fm3" style="width:100px"><div class="dl">P&amp;L</div><div class="dv text-accent">+3.4R</div></div>
+<div class="dash-card elm" id="fm4" style="width:80px"><div class="dl">Intel</div><div class="dv" style="color:#8E8E8E">92%</div></div>
+<div class="dash-card elm" id="fm5" style="width:80px"><div class="dl">Trade</div><div class="dv" style="color:#B7FF2A">XAU</div></div>
+<div class="card elm" id="fm6" style="width:90px;padding:10px;border-radius:16px;text-align:center"><span style="font-size:8px;color:#5F5F5F">Scanner</span></div>
+<div class="card elm" id="fm7" style="width:90px;padding:10px;border-radius:16px;text-align:center"><span style="font-size:8px;color:#5F5F5F">Report</span></div>
+
+<div class="final-logo elm" id="finalLogo" style="width:72px;height:72px"><img src="mascot.png" alt="" onerror="this.innerHTML='S'"></div>
+<div class="elm" id="brandName" style="font-size:24px;font-weight:800;letter-spacing:-.5px;color:#FFF;width:300px;text-align:center">THE SLAYERS</div>
+<div class="final-mascot elm" id="finalMascot"><img src="mascot.png" alt=""></div>
+<div class="tagline elm" id="tag1" style="width:200px;text-align:center">Less noise.</div>
+<div class="tagline elm" id="tag2" style="width:200px;text-align:center">More execution.</div>
+
+</div><!-- /co -->
+</div><!-- /camera -->
+</div><!-- /stage -->
+
+<div class="progress-track"><div class="fill" id="progressFill"></div></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const W = () => window.innerWidth;
+const H = () => window.innerHeight;
+
+// ===== PARTICLES =====
+const pCanvas = $('particleCanvas');
+const pCtx = pCanvas.getContext('2d');
+let particles = [];
+
+function resizeParticles() {
+  pCanvas.width = window.innerWidth;
+  pCanvas.height = window.innerHeight;
+  if (!particles.length) {
+    for (let i = 0; i < 80; i++) particles.push({
+      x: Math.random() * pCanvas.width, y: Math.random() * pCanvas.height,
+      vx: (Math.random() - 0.5) * 0.15, vy: (Math.random() - 0.5) * 0.15,
+      size: 0.5 + Math.random() * 1.2, op: 0.015 + Math.random() * 0.045
+    });
+  }
+}
+resizeParticles();
+window.addEventListener('resize', resizeParticles);
+
+function drawParticles() {
+  pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
+  for (const p of particles) {
+    p.x += p.vx; p.y += p.vy;
+    if (p.x < 0 || p.x > pCanvas.width) p.vx *= -1;
+    if (p.y < 0 || p.y > pCanvas.height) p.vy *= -1;
+    pCtx.beginPath(); pCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    pCtx.fillStyle = `rgba(183,255,42,${p.op})`; pCtx.fill();
+  }
+  requestAnimationFrame(drawParticles);
+}
+drawParticles();
+
+// ===== CONNECTION LINES =====
+const cCanvas = $('connectionCanvas');
+const cCtx = cCanvas.getContext('2d');
+
+function resizeCC() {
+  cCanvas.width = window.innerWidth;
+  cCanvas.height = window.innerHeight;
+}
+resizeCC();
+window.addEventListener('resize', resizeCC);
+
+function drawLine(x1, y1, x2, y2, a) {
+  cCtx.beginPath(); cCtx.moveTo(x1, y1);
+  cCtx.quadraticCurveTo((x1 + x2) / 2, (y1 + y2) / 2 - 20, x2, y2);
+  cCtx.strokeStyle = `rgba(183,255,42,${a})`; cCtx.lineWidth = 0.5; cCtx.stroke();
+}
+
+// ===== CAMERA SYSTEM =====
+const camera = $('camera');
+let currentScene = 0;
+let isTransitioning = false;
+let sceneTimers = [];
+let connectionsActive = false;
+let connectionTime = 0;
+
+const cam = { tx: 0, ty: 0, tz: 0, rx: 0, ry: 0 };
+const camT = { tx: 0, ty: 0, tz: 0, rx: 0, ry: 0 };
+
+function updateCamera() {
+  const t = Date.now() / 1000;
+  const orbitRy = Math.sin(t * 0.04) * 1.5;
+  const orbitRx = Math.sin(t * 0.025) * 0.8;
+  const driftY = Math.sin(t * 0.015) * 4;
+
+  cam.tx += (camT.tx - cam.tx) * 0.025;
+  cam.ty += (camT.ty - cam.ty) * 0.025;
+  cam.tz += (camT.tz - cam.tz) * 0.025;
+
+  camera.style.transform =
+    `translateX(${cam.tx}px) translateY(${cam.ty + driftY}px) translateZ(${cam.tz}px) rotateX(${camT.rx + orbitRx}deg) rotateY(${camT.ry + orbitRy}deg)`;
+  requestAnimationFrame(updateCamera);
+}
+
+function setCameraTarget(n) {
+  const t = {
+    1: { tx: 0, ty: 0, tz: 0, rx: 0, ry: 0 },
+    2: { tx: 0, ty: -8, tz: -40, rx: 2, ry: 0 },
+    3: { tx: 0, ty: 0, tz: -20, rx: 0, ry: 0 },
+    4: { tx: 0, ty: 4, tz: -10, rx: -1, ry: 2 },
+    5: { tx: 0, ty: 0, tz: -15, rx: 0, ry: -1 },
+    6: { tx: 0, ty: -12, tz: -30, rx: 1, ry: 0 },
+    7: { tx: 0, ty: 0, tz: -80, rx: 3, ry: 0 }
+  }[n] || { tx: 0, ty: 0, tz: 0, rx: 0, ry: 0 };
+  Object.assign(camT, t);
+}
+
+// ===== LAYOUT SYSTEM =====
+// Each element's position per scene: { x, y, z, scale, opacity, rotX, rotY }
+// Positions are relative to viewport center (0, 0)
+
+const layouts = {};
+const ALL_IDS = [
+  'eyeL','eyeR','f1','f2','f3','f4','f5','f6',
+  'dc1','dc2','dc3','dc4','dc5','dc6','dc7','dc8','sysLabel',
+  'scanCard','tradeCard','intelCard',
+  'notifEl','reportCard',
+  'fm1','fm2','fm3','fm4','fm5','fm6','fm7',
+  'finalLogo','brandName','tag1','tag2','finalMascot'
+];
+const HIDDEN = { x: 0, y: 0, z: -500, s: 0, op: 0, rx: 0, ry: 0 };
+
+function def(n, m) { layouts[n] = m; }
+
+// S1: Eyes + Fragments
+def(1, {
+  eyeL:  { x: -12, y: -45, z: 0, s: 1, op: 0, rx: 0, ry: 0 },
+  eyeR:  { x: 12, y: -45, z: 0, s: 1, op: 0, rx: 0, ry: 0 },
+  f1:    { x: -100, y: -100, z: -40, s: 1, op: 0, rx: 0, ry: -5 },
+  f2:    { x: 90, y: -80, z: -50, s: 1, op: 0, rx: 0, ry: 3 },
+  f3:    { x: -80, y: 40, z: -60, s: 1, op: 0, rx: 0, ry: 2 },
+  f4:    { x: 100, y: 50, z: -45, s: 1, op: 0, rx: 0, ry: -2 },
+  f5:    { x: 20, y: 0, z: -70, s: 1, op: 0, rx: 0, ry: 0 },
+  f6:    { x: -30, y: 80, z: -55, s: 1, op: 0, rx: 0, ry: 0 }
+});
+
+// S2: Dashboard
+def(2, {
+  dc1:    { x: -100, y: -95, z: 0, s: 1, op: 1, rx: 0, ry: 0 },
+  dc2:    { x: 110, y: -105, z: -10, s: 1, op: 1, rx: 0, ry: 0 },
+  dc3:    { x: -120, y: 15, z: 5, s: 1, op: 1, rx: 0, ry: 0 },
+  dc4:    { x: 125, y: 20, z: -15, s: 1, op: 1, rx: 0, ry: 0 },
+  dc5:    { x: -80, y: 110, z: 10, s: 1, op: 1, rx: 0, ry: 0 },
+  dc6:    { x: 90, y: 115, z: -5, s: 1, op: 1, rx: 0, ry: 0 },
+  dc7:    { x: -30, y: 185, z: -20, s: 1, op: 1, rx: 0, ry: 0 },
+  dc8:    { x: 50, y: 180, z: -25, s: 1, op: 1, rx: 0, ry: 0 },
+  sysLabel: { x: 0, y: 230, z: 0, s: 1, op: 0, rx: 0, ry: 0 }
+});
+
+// S3: Scanner (~320px wide → offset -160 to center)
+def(3, { scanCard: { x: -160, y: 0, z: 0, s: 1, op: 1, rx: 0, ry: 0 } });
+
+// S4: Trade Detail (~300px wide → offset -150)
+def(4, { tradeCard: { x: -150, y: 0, z: 0, s: 1, op: 1, rx: 0, ry: 0 } });
+
+// S5: Intel (~300px wide)
+def(5, { intelCard: { x: -150, y: 0, z: 0, s: 1, op: 1, rx: 0, ry: 0 } });
+
+// S6: Notif + Report (~300px wide)
+def(6, {
+  notifEl: { x: -150, y: -55, z: 0, s: 1, op: 1, rx: 0, ry: 0 },
+  reportCard: { x: -150, y: 55, z: 5, s: 1, op: 1, rx: 0, ry: 0 }
+});
+
+// S7: Final Merge
+def(7, {
+  fm1: { x: -120, y: -55, z: -30, s: .9, op: 1, rx: 0, ry: 0 },
+  fm2: { x: 130, y: -45, z: -40, s: .85, op: 1, rx: 0, ry: 0 },
+  fm3: { x: -40, y: -95, z: -20, s: .95, op: 1, rx: 0, ry: 0 },
+  fm4: { x: 50, y: -105, z: -35, s: .9, op: 1, rx: 0, ry: 0 },
+  fm5: { x: -100, y: 55, z: -25, s: .9, op: 1, rx: 0, ry: 0 },
+  fm6: { x: 100, y: 65, z: -45, s: .85, op: 1, rx: 0, ry: 0 },
+  fm7: { x: 0, y: 80, z: -30, s: .9, op: 1, rx: 0, ry: 0 },
+  finalLogo: { x: -36, y: -25, z: 0, s: 1, op: 1, rx: 0, ry: 0 },
+  brandName: { x: -130, y: 30, z: 5, s: 1, op: 0, rx: 0, ry: 0 },
+  tag1: { x: -100, y: 70, z: 10, s: 1, op: 0, rx: 0, ry: 0 },
+  tag2: { x: -120, y: 90, z: 10, s: 1, op: 0, rx: 0, ry: 0 },
+  finalMascot: { x: 0, y: 0, z: -80, s: 1, op: 0, rx: 0, ry: 0 }
+});
+
+// Fill hidden defaults for all elements in all scenes
+for (let s = 1; s <= 7; s++) {
+  if (!layouts[s]) layouts[s] = {};
+  for (const id of ALL_IDS) {
+    if (!(id in layouts[s])) layouts[s][id] = { ...HIDDEN };
+  }
+}
+
+// ===== APPLY POSITION =====
+let animFrame = null;
+
+function setPos(id, x, y, z, s, op, rx, ry, dur) {
+  const el = $(id);
+  if (!el) return;
+  el.style.transition = dur || 'none';
+  el.style.transform = `translate3d(${x}px,${y}px,${z}px) scale(${s}) rotateX(${rx||0}deg) rotateY(${ry||0}deg)`;
+  el.style.opacity = op;
+}
+
+function applyLayout(n, instant) {
+  const layout = layouts[n];
+  if (!layout) return;
+  const dur = instant ? 'none' : 'all 1.2s cubic-bezier(.16,1,.3,1)';
+  for (const [id, p] of Object.entries(layout)) {
+    setPos(id, p.x, p.y, p.z, p.s, p.op, p.rx, p.ry, dur);
+  }
+}
+
+// ===== SCENE TRANSITION =====
+function transitionTo(n) {
+  if (isTransitioning) return;
+  isTransitioning = true;
+  setCameraTarget(n);
+
+  // For scene 2, stagger cards; for others, transition all at once
+  if (n === 2) {
+    const layout = layouts[2];
+    const dur = 'all 1.2s cubic-bezier(.16,1,.3,1)';
+    // First hide everything that should be hidden
+    for (const [id, p] of Object.entries(layout)) {
+      if (!id.startsWith('dc')) {
+        setPos(id, p.x, p.y, p.z, p.s, p.op, p.rx, p.ry, dur);
+      }
+    }
+    // Stagger cards
+    const cards = ['dc1','dc2','dc3','dc4','dc5','dc6','dc7','dc8'];
+    cards.forEach((id, i) => {
+      const p = layout[id];
+      setTimeout(() => {
+        setPos(id, p.x, p.y, p.z, p.s, p.op, p.rx, p.ry, dur);
+      }, i * 200);
+    });
+  } else {
+    applyLayout(n, false);
+  }
+
+  setTimeout(() => {
+    currentScene = n;
+    isTransitioning = false;
+    runScene(n);
+    const pf = $('progressFill');
+    if (pf) pf.style.width = ((n - 1) / 6 * 100) + '%';
+  }, 1400);
+}
+
+// ===== SCENE LOGIC =====
+function runScene(n) {
+  switch (n) {
+    case 1: enterScene1(); break;
+    case 2: enterScene2(); break;
+    case 3: enterScene3(); break;
+    case 4: enterScene4(); break;
+    case 5: enterScene5(); break;
+    case 6: enterScene6(); break;
+    case 7: enterScene7(); break;
+  }
+}
+
+function enterScene1() {
+  // Eyes fade in (position already set by layout)
+  const eyeL = $('eyeL'), eyeR = $('eyeR');
+  if (eyeL) { eyeL.style.transition = 'all 2.5s cubic-bezier(.25,.46,.45,.94)'; eyeL.style.opacity = '1'; }
+  if (eyeR) { eyeR.style.transition = 'all 2.5s cubic-bezier(.25,.46,.45,.94)'; eyeR.style.opacity = '1'; }
+
+  // Pulse at 2.5s
+  setTimeout(() => {
+    if (eyeL) eyeL.classList.add('eye-pulse');
+    if (eyeR) eyeR.classList.add('eye-pulse');
+  }, 2500);
+
+  // Fragments emerge from center outward
+  const frags = ['f1','f2','f3','f4','f5','f6'];
+  frags.forEach((id, i) => {
+    setTimeout(() => {
+      const p = layouts[1][id];
+      if (!p) return;
+      const el = $(id);
+      if (!el) return;
+      // Start at center, scale 0
+      el.style.transition = 'none';
+      el.style.transform = 'translate3d(0px, -45px, 0px) scale(0)';
+      el.style.opacity = '0';
+      el.offsetHeight;
+      // Animate to scattered position
+      el.style.transition = 'all 1.2s cubic-bezier(.34,1.56,.64,1)';
+      el.style.transform = `translate3d(${p.x}px,${p.y}px,${p.z}px) scale(${p.s}) rotateX(${p.rx||0}deg) rotateY(${p.ry||0}deg)`;
+      el.style.opacity = '0.8';
+    }, 3000 + i * 400);
+  });
+
+  // Eyes fade at end
+  setTimeout(() => {
+    if (eyeL) { eyeL.style.transition = 'opacity 1.5s'; eyeL.style.opacity = '0'; }
+    if (eyeR) { eyeR.style.transition = 'opacity 1.5s'; eyeR.style.opacity = '0'; }
+  }, 5000);
+}
+
+function enterScene2() {
+  // Fill bars
+  setTimeout(() => {
+    document.querySelectorAll('.dash-card .df').forEach(el => {
+      if (el.dataset.w) el.style.width = el.dataset.w + '%';
+    });
+  }, 1000);
+  // Label
+  setTimeout(() => { const l = $('sysLabel'); if (l) l.style.opacity = '1'; }, 3000);
+}
+
+function enterScene3() {
+  // Scan progress
+  const arc = $('ringArc');
+  const pct = $('ringPct');
+  let progress = 0;
+  const si = setInterval(() => {
+    progress += 2;
+    if (progress >= 100) { progress = 100; clearInterval(si); }
+    const c = 188.5;
+    if (arc) arc.style.strokeDashoffset = c - (progress / 100) * c;
+    if (pct) pct.textContent = progress + '%';
+  }, 70);
+
+  // Pairs animate
+  const rows = document.querySelectorAll('#scanPairs .sig-row');
+  rows.forEach((row, i) => {
+    setTimeout(() => {
+      row.style.opacity = '0';
+      row.style.transition = 'opacity 0.3s';
+      row.style.opacity = '1';
+      const fill = row.querySelector('.fill');
+      if (fill && fill.dataset.w) setTimeout(() => { fill.style.width = fill.dataset.w + '%'; }, 200);
+    }, i * 300 + 400);
+  });
+
+  // Highlight XAUUSD
+  setTimeout(() => {
+    document.querySelectorAll('#scanPairs .sig-pair').forEach(el => el.classList.remove('highlight'));
+    const pairs = document.querySelectorAll('#scanPairs .sig-pair');
+    if (pairs[3]) pairs[3].classList.add('highlight');
+  }, 6500);
+}
+
+function enterScene4() {
+  const nodes = document.querySelectorAll('#tradeCard .tl-node');
+  const line = $('tlLine');
+  nodes.forEach((node, i) => {
+    setTimeout(() => {
+      node.classList.add('lit');
+      if (line) line.style.height = ((i + 1) / nodes.length * 100) + '%';
+    }, 800 + i * 600);
+  });
+}
+
+function enterScene5() {
+  const textEl = $('intelText');
+  const summary = 'Bullish momentum detected across major pairs. EURUSD showing strong accumulation on the 4H with liquidity sweeping above the weekly high. Gold remains in consolidation, awaiting a breakout trigger. Indices showing weakness — potential rotation into FX.';
+  let idx = 0;
+  if (textEl) {
+    textEl.textContent = '';
+    const ti = setInterval(() => {
+      if (idx < summary.length) { textEl.textContent += summary[idx]; idx++; } else clearInterval(ti);
+    }, 18);
+  }
+  setTimeout(() => {
+    document.querySelectorAll('#intelChips .pill').forEach((el, i) => {
+      setTimeout(() => { el.style.opacity = '1'; }, i * 300);
+    });
+  }, 2000);
+  setTimeout(() => {
+    if ($('confBar')) $('confBar').style.width = '92%';
+    if ($('momBar')) $('momBar').style.width = '67%';
+  }, 3500);
+}
+
+function enterScene6() {
+  const notif = $('notifEl');
+  if (notif) { notif.style.transition = 'all 1s cubic-bezier(.34,1.56,.64,1)'; notif.style.opacity = '1'; }
+  setTimeout(() => {
+    const r = $('reportCard');
+    if (r) { r.style.transition = 'all 1s cubic-bezier(.34,1.56,.64,1)'; r.style.opacity = '1'; }
+  }, 1200);
+  setTimeout(() => {
+    animateVal('reportR', 0, 8.4, 2000, '+', 1);
+    animateVal('reportWR', 0, 78, 2000, '', 0);
+    animateVal('reportW', 0, 11, 1500, '', 0);
+    animateVal('reportL', 0, 3, 1500, '', 0);
+    animateVal('reportAvg', 0, 2.1, 2000, '+', 1);
+  }, 2500);
+}
+
+function animateVal(id, s, e, d, pre, dec) {
+  const el = $(id);
+  if (!el) return;
+  const t0 = Date.now();
+  function st() {
+    const p = Math.min((Date.now() - t0) / d, 1);
+    const v = s + (e - s) * (1 - Math.pow(1 - p, 3));
+    if (dec > 0) el.textContent = pre + v.toFixed(dec);
+    else el.textContent = pre + Math.round(v);
+    if (p < 1) requestAnimationFrame(st);
+  }
+  st();
+}
+
+function enterScene7() {
+  connectionsActive = true;
+  connectionTime = Date.now();
+
+  // After showing modules with connections, merge to logo
+  setTimeout(() => {
+    const mids = ['fm1','fm2','fm3','fm4','fm5','fm6','fm7'];
+    mids.forEach((id, i) => {
+      setTimeout(() => {
+        const el = $(id);
+        if (!el) return;
+        el.style.transition = 'all 2s cubic-bezier(.16,1,.3,1)';
+        el.style.transform = 'translate3d(0px, 0px, 0px) scale(0) rotateY(180deg)';
+        el.style.opacity = '0';
+      }, i * 200);
+    });
+
+    // Show logo
+    setTimeout(() => {
+      const logo = $('finalLogo');
+      if (logo) {
+        logo.style.transition = 'all 1.5s cubic-bezier(.34,1.56,.64,1)';
+        logo.style.transform = 'scale(1)';
+        logo.style.opacity = '1';
+      }
+    }, 2000);
+
+    // Brand name
+    setTimeout(() => { const bn = $('brandName'); if (bn) bn.style.opacity = '1'; }, 3000);
+
+    // Mascot behind
+    setTimeout(() => { const m = $('finalMascot'); if (m) m.style.opacity = '1'; }, 3500);
+  }, 4000);
+
+  // Taglines
+  setTimeout(() => { const t = $('tag1'); if (t) t.style.opacity = '1'; }, 6000);
+  setTimeout(() => { const t = $('tag2'); if (t) t.style.opacity = '1'; }, 7200);
+
+  // Final progress
+  setTimeout(() => { const p = $('progressFill'); if (p) p.style.width = '100%'; }, 1000);
+}
+
+// ===== CONNECTION LINES LOOP =====
+function drawConnections() {
+  if (!connectionsActive) { requestAnimationFrame(drawConnections); return; }
+  cCtx.clearRect(0, 0, cCanvas.width, cCanvas.height);
+
+  const mids = ['fm1','fm2','fm3','fm4','fm5','fm6','fm7'];
+  const pos = [];
+  mids.forEach(id => {
+    const el = $(id);
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    if (r.width > 0) pos.push({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+  });
+
+  const elapsed = (Date.now() - connectionTime) / 1000;
+  for (let i = 0; i < pos.length; i++) {
+    for (let j = i + 1; j < pos.length; j++) {
+      const dist = Math.hypot(pos[i].x - pos[j].x, pos[i].y - pos[j].y);
+      if (dist < 400) {
+        const pls = Math.sin(Date.now() / 1000 + i + j) * 0.3 + 0.5;
+        drawLine(pos[i].x, pos[i].y, pos[j].x, pos[j].y, 0.04 + pls * 0.06);
+      }
+    }
+  }
+
+  if (elapsed > 6) { connectionsActive = false; cCtx.clearRect(0, 0, cCanvas.width, cCanvas.height); }
+  requestAnimationFrame(drawConnections);
+}
+
+// ===== EYE PULSE LINE =====
+const eyeLineCanvas = document.createElement('canvas');
+eyeLineCanvas.style.cssText = 'position:absolute;inset:0;z-index:1;pointer-events:none';
+eyeLineCanvas.id = 'eyeLineCanvas';
+document.getElementById('stage').appendChild(eyeLineCanvas);
+const elCtx = eyeLineCanvas.getContext('2d');
+
+function resizeEL() {
+  eyeLineCanvas.width = window.innerWidth;
+  eyeLineCanvas.height = window.innerHeight;
+}
+resizeEL();
+window.addEventListener('resize', resizeEL);
+
+function drawEyePulse() {
+  elCtx.clearRect(0, 0, eyeLineCanvas.width, eyeLineCanvas.height);
+
+  if (currentScene === 1) {
+    const W = eyeLineCanvas.width, H = eyeLineCanvas.height;
+    const cx = W / 2, cy = H / 2 - 45;
+    const lx = cx - 12, rx = cx + 12;
+    const pulse = Math.sin(Date.now() / 1500) * 0.5 + 0.5;
+    const alpha = 0.02 + pulse * 0.04;
+
+    elCtx.beginPath(); elCtx.moveTo(lx + 7, cy + 10); elCtx.lineTo(rx - 7, cy + 10);
+    elCtx.strokeStyle = `rgba(183,255,42,${alpha})`; elCtx.lineWidth = 1; elCtx.stroke();
+
+    elCtx.beginPath();
+    elCtx.arc(cx, cy + 10, (rx - lx) / 2 - 7, 0, Math.PI, false);
+    elCtx.strokeStyle = `rgba(183,255,42,${alpha * 0.5})`; elCtx.lineWidth = 0.5; elCtx.stroke();
+
+    for (let i = 1; i <= 3; i++) {
+      const r = i * 15 + pulse * 10;
+      const a = 0.01 * (1 - i * 0.3) * pulse;
+      if (a > 0) {
+        elCtx.beginPath(); elCtx.arc(cx, cy + 10, r, 0, Math.PI * 2);
+        elCtx.strokeStyle = `rgba(183,255,42,${a})`; elCtx.lineWidth = 0.5; elCtx.stroke();
+      }
+    }
+  }
+  requestAnimationFrame(drawEyePulse);
+}
+
+// ===== SEQUENCE =====
+const DUR = [6, 9, 8, 8, 7, 6, 6];
+
+function startSeq() {
+  setCameraTarget(1);
+  // Hide all elements initially
+  for (const id of ALL_IDS) {
+    const el = $(id);
+    if (el) { el.style.transition = 'none'; el.style.transform = 'translate3d(0px,0px,-500px) scale(0)'; el.style.opacity = '0'; }
+  }
+
+  currentScene = 1;
+  applyLayout(1, true);
+  setTimeout(() => runScene(1), 100);
+
+  let d = DUR[0];
+  for (let i = 2; i <= 7; i++) {
+    const si = i;
+    sceneTimers.push(setTimeout(() => transitionTo(si), d * 1000));
+    if (i <= 6) d += DUR[i - 1];
+  }
+}
+
+// ===== SKIP =====
+function skip() {
+  if (currentScene >= 7) return;
+  sceneTimers.forEach(t => clearTimeout(t));
+  sceneTimers = [];
+  transitionTo(currentScene + 1);
+}
+document.addEventListener('click', skip);
+document.addEventListener('touchstart', skip);
+
+// ===== BOOT =====
+updateCamera();
+drawConnections();
+drawEyePulse();
+startSeq();
+</script>
+</body>
+</html>
