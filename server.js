@@ -42,6 +42,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 const API_KEY  = process.env.TWELVEDATA_API_KEY  || '';
+const API_KEY2 = process.env.BACKTEST_API_KEY || API_KEY;
 const TG_TOKEN = process.env.TELEGRAM_TOKEN      || '';
 const TG_CHAT  = process.env.TELEGRAM_CHAT_ID    || '';
 const CHARTIMG_KEY = process.env.CHARTIMG_API_KEY || '';
@@ -268,7 +269,7 @@ function refine1HEntry(c,qmrType,zoneLevel,zoneSL){
 async function refine4HEntry(inst,qmrType,zoneLevel,zoneSL){
   // Returns {price,source} for a refined 1H entry inside the 4H zone, or null
   try{
-    const res=await fetch('https://api.twelvedata.com/time_series?symbol='+encodeURIComponent(inst.sym)+'&interval=1h&outputsize=100&apikey='+API_KEY);
+    const res=await fetch('https://api.twelvedata.com/time_series?symbol='+encodeURIComponent(inst.sym)+'&interval=1h&outputsize=100&apikey='+API_KEY2);
     const json=await res.json();
     if(json.status==='error')return null;
     const c=parseC(json);
@@ -793,7 +794,7 @@ async function sendDailyBriefing(){
   const aligned=[];const snapshot=[];
   for(const inst of QMR_INSTS){
     try{
-      const res=await fetch('https://api.twelvedata.com/time_series?symbol='+encodeURIComponent(inst.sym)+'&interval=1day&outputsize=60&apikey='+API_KEY);
+      const res=await fetch('https://api.twelvedata.com/time_series?symbol='+encodeURIComponent(inst.sym)+'&interval=1day&outputsize=60&apikey='+API_KEY2);
       const json=await res.json();
       if(json.status==='error'){await sleep(DELAY_MS);continue;}
       const c=parseC(json);
@@ -1276,7 +1277,7 @@ async function runScan(manual=false){
   for(const inst of CRT_INSTS){
     if(doW){
       try{
-        const wr=await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym)}&interval=1week&outputsize=20&apikey=${API_KEY}`);
+        const wr=await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym)}&interval=1week&outputsize=20&apikey=${API_KEY2}`);
         const wj=await wr.json();
         if(wj.status!=='error'){
           const wc=parseC(wj),newBias=getWBias(wc),oldBias=weeklyCache[inst.id]?.bias;
@@ -1289,7 +1290,7 @@ async function runScan(manual=false){
     // Cache daily data for 2h to avoid over-fetching
     if(!dailyCache[inst.id]||Date.now()-dailyCache[inst.id].ts>2*60*60*1000){
       try{
-        const res=await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym)}&interval=1day&outputsize=100&apikey=${API_KEY}`);
+        const res=await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym)}&interval=1day&outputsize=100&apikey=${API_KEY2}`);
         const json=await res.json();if(json.status==='error'){await sleep(DELAY_MS);continue;}
         const c=parseC(json);if(c.length<10){await sleep(DELAY_MS);continue;}
         briefingData[inst.id]={price:fmtN(c[c.length-1].close,inst.dec)};
@@ -1304,7 +1305,7 @@ async function runScan(manual=false){
     const qmrOnly=QMR_INSTS.filter(qi=>!CRT_INSTS.find(ci=>ci.id===qi.id));
     for(const inst of qmrOnly){
       try{
-        const wr=await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym)}&interval=1week&outputsize=20&apikey=${API_KEY}`);
+        const wr=await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym)}&interval=1week&outputsize=20&apikey=${API_KEY2}`);
         const wj=await wr.json();
         if(wj.status!=='error'){
           const wc=parseC(wj),newBias=getWBias(wc),oldBias=weeklyCache[inst.id]?.bias;
@@ -1349,7 +1350,7 @@ async function runScan(manual=false){
       const dce=dailyCache[inst.id];
       if(!dce||Date.now()-dce.ts>26*60*60*1000){
         try{
-          const dres=await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym)}&interval=1day&outputsize=60&apikey=${API_KEY}`);
+          const dres=await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym)}&interval=1day&outputsize=60&apikey=${API_KEY2}`);
           const dj=await dres.json();
           if(dj.status!=='error'){const dcand=parseC(dj);if(dcand.length>=10)dailyCache[inst.id]={c:dcand,ts:Date.now()};}
           await sleep(DELAY_MS);
@@ -1360,7 +1361,7 @@ async function runScan(manual=false){
       if(!manual&&!isPairInSession(inst.id)){log('QMR scan skipped for '+inst.id+' (outside pair session)');continue;}
       for(const tf of QMR_TFS){
         try{
-          const res=await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym)}&interval=${tf}&outputsize=100&apikey=${API_KEY}`);
+          const res=await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym)}&interval=${tf}&outputsize=100&apikey=${API_KEY2}`);
           const json=await res.json();if(json.status==='error'){log('QMR: TwelveData API error for '+inst.id+' '+tf+': '+(json.message||json.status));await sleep(DELAY_MS);continue;}
           const c=parseC(json);if(c.length<25){log('QMR: insufficient data for '+inst.id+' '+tf+' ('+c.length+' candles)');await sleep(DELAY_MS);continue;}
           const lastC=c[c.length-1],prevC=c.length>=2?c[c.length-2]:lastC;
@@ -1599,7 +1600,7 @@ async function runScan(manual=false){
     if(inLondon||inNY){
       for(const inst of SCALP_INSTS){
         try{
-          const sres=await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym)}&interval=5min&outputsize=100&apikey=${API_KEY}`);
+          const sres=await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym)}&interval=5min&outputsize=100&apikey=${API_KEY2}`);
           const sj=await sres.json();
           if(sj.status==='error'){await sleep(DELAY_MS);continue;}
           const sc=parseC(sj);if(sc.length<25){await sleep(DELAY_MS);continue;}
@@ -2811,7 +2812,7 @@ loadState().then(()=>{
     for(const pid of openPairs){
       try{
         const inst=SCALP_INSTS.find(i=>i.id===pid);if(!inst)continue;
-        const res=await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym)}&interval=5min&outputsize=5&apikey=${API_KEY}`);
+        const res=await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym)}&interval=5min&outputsize=5&apikey=${API_KEY2}`);
         const j=await res.json();
         if(j.status==='error')continue;
         const c=parseC(j);if(c.length<3)continue;
