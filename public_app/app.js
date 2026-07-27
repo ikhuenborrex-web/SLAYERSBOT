@@ -236,7 +236,7 @@ async function fetchAll(bg){
     });
   }).catch(function(){}));
   promises.push(ft(withCode('/api/active')).then(function(r){return j(r).then(function(d){state.active=d.trades||[];render();});}).catch(function(){}));
-  promises.push(ft(withCode('/api/confluence')).then(function(r){return j(r).then(function(d){state.confluence=d.pairs||[];render();});}).catch(function(){}));
+  promises.push(ft(withCode('/api/confluence')).then(function(r){return j(r).then(function(d){state.confluence=d.pairs||[];state.dailyBias=state.confluence.map(function(p){return{pair:p.name,dir:p.signalDir&&p.signalDir!=='NONE'?p.signalDir:p.weeklyBias||'NEUTRAL',conf:Math.round((p.conviction||0)*10)};});render();});}).catch(function(){}));
   promises.push(ft(withCode('/api/stats')).then(function(r){return j(r).then(function(d){state.stats=d;render();});}).catch(function(){}));
   promises.push(ft(withCode('/api/stats/detailed')).then(function(r){return j(r).then(function(d){state.detailedStats=d;render();});}).catch(function(){}));
   promises.push(ft(withCode('/api/stats/weekly')).then(function(r){return j(r).then(function(d){state.weeklyStats=d;render();});}).catch(function(){}));

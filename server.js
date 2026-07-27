@@ -218,6 +218,7 @@ let lastBriefingTime=null;
 let weeklySummaryData=null;
 let saveTimer=null;
 let lastIntelHash=0;
+let lastIntelPushHash=0;
 let lastIntelPushTime=0;
 let lastIntelBriefing=null;
 let lastIntelBriefingTime=null;
@@ -1669,6 +1670,9 @@ function intelSnapshot(){
   for(var k in weeklyCache){var b=weeklyCache[k].bias||'NEUTRAL';biases.push(k+':'+b);}
   parts.push('wb:'+biases.sort().join(','));
   parts.push('sg:'+(appSignalFeed.filter(function(s){return!s.outcome;}).length||0));
+  var dailyTrends=[];
+  for(var k in dailyCache){var dc=dailyCache[k];if(dc&&dc.c&&dc.c.length>=12){var tr=detectStructure(dc.c).trend||'RANGING';dailyTrends.push(k+':'+tr);}}
+  parts.push('dt:'+dailyTrends.sort().join(','));
   return parts.join('|');
 }
 
@@ -1768,10 +1772,10 @@ async function checkIntelChangeAndPush(){
   if(!webpush||!VAPID_PUBLIC||!VAPID_PRIVATE||!pushSubscriptions.length)return;
   var snap=intelSnapshot(),hash=0;
   for(var i=0;i<snap.length;i++){hash=((hash<<5)-hash)+snap.charCodeAt(i);hash|=0;}
-  if(hash===lastIntelHash)return;
+  if(hash===lastIntelPushHash)return;
   var now=Date.now();
   if(now-lastIntelPushTime<10*60*1000)return; // max 1 push per 10 min
-  lastIntelHash=hash;
+  lastIntelPushHash=hash;
   lastIntelPushTime=now;
   lastIntelBriefing=generateIntelBriefing();
   lastIntelBriefingTime=new Date().toISOString();
@@ -1781,7 +1785,7 @@ async function checkIntelChangeAndPush(){
   if(newsCount)body+=' \u00B7 '+newsCount+' articles';
   if(acCount)body+=' \u00B7 '+acCount+' active trade'+(acCount>1?'s':'');
   if(sigCount)body+=' \u00B7 '+sigCount+' signal'+(sigCount>1?'s':'');
-  sendPushToAll('\uD83D\uDCA1 Slayers Intelligence',body,'/');
+  sendPushToAll('\uD83D\uDCA1 Slayers Intelligence',body,'/app/');
   log('Intel change detected — push sent');
 }
 
