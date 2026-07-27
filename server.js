@@ -970,7 +970,6 @@ async function checkQMRTrades(instId,price,cHigh,cLow){
       const tp1R=computeR(t,t.tp1);
       tradeHistory.push({instId:t.instId,type:t.type,tf:t.tf,outcome:'TP1',rMultiple:tp1R,time:new Date().toISOString(),duration,partial:true});
       updateMemberStats(t.sigId,'TP1',tp1R);
-      autoJournalEntry(t,'TP1',tp1R,duration);
       // Same-candle check: if this candle also touches buffer SL, close remainder immediately
       if(isB?lo<=t.sl:hi>=t.sl){
         t.slFired=true;
