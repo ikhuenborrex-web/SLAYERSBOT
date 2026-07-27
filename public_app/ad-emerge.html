@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>The Slayers — Emerge</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#090909;color:#FFF;font-family:-apple-system,'SF Pro Display',Inter,Helvetica,Arial,sans-serif;overflow:hidden;width:100vw;height:100vh;-webkit-font-smoothing:antialiased}
+canvas{position:absolute;inset:0;z-index:0}
+
+.slide{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px;opacity:0;pointer-events:none;transition:opacity 1.2s cubic-bezier(.25,.46,.45,.94);z-index:1}
+.slide.active{opacity:1;pointer-events:auto;z-index:2}
+.slide.exit{opacity:0;transition:opacity .8s;z-index:3}
+.elem{opacity:0;transform:translateY(16px) scale(.97)}
+.slide.active .elem{animation:emergeUp .9s cubic-bezier(.16,1,.3,1) forwards}
+.slide.active .e0{animation-delay:0s}
+.slide.active .e1{animation-delay:.25s}
+.slide.active .e2{animation-delay:.5s}
+.slide.active .e3{animation-delay:.75s}
+.slide.active .e4{animation-delay:1s}
+.slide.active .e5{animation-delay:1.25s}
+@keyframes emergeUp{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+/* ===== REAL APP CARD ===== */
+.card{background:#121212;border-radius:24px;padding:20px;position:relative;overflow:hidden;border:.5px solid rgba(255,255,255,.04);box-shadow:0 4px 24px rgba(0,0,0,.3);width:100%;max-width:340px}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(183,255,42,.06),transparent)}
+.mono{font-family:ui-monospace,'SF Mono','Roboto Mono',monospace;font-weight:600;letter-spacing:-.02em}
+.text-accent{color:#B7FF2A}
+.text-muted{color:#5F5F5F}
+.text-xs{font-size:10px;letter-spacing:.04em}
+.text-sm{font-size:12px}
+.text-lg{font-size:20px;font-weight:700;letter-spacing:-.3px}
+.text-xl{font-size:32px;font-weight:800;letter-spacing:-.5px}
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;border-radius:99px;padding:3px 8px;border:.5px solid}
+
+/* ===== SCENE 1: PARTICLES ===== */
+.scene-1-text{position:absolute;bottom:80px;text-align:center;pointer-events:none}
+
+/* ===== SCENE 2: FORMING ===== */
+.forming-container{position:relative;width:280px;height:200px}
+.form-path{position:absolute;border:1px solid rgba(183,255,42,.03);border-radius:20px;width:100%;height:100%;top:0;left:0;opacity:0;transition:opacity 2s}
+.form-path.show{opacity:1}
+
+/* ===== SCENE 4: SCANNER ===== */
+.signal-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:.5px solid rgba(255,255,255,.03)}
+.signal-row:last-child{border-bottom:none}
+.signal-pair{font-weight:600;font-size:14px}
+.signal-bar{width:60px;height:3px;background:rgba(255,255,255,.04);border-radius:2px;overflow:hidden}
+.signal-bar .fill{height:100%;background:#B7FF2A;border-radius:2px;width:0%;transition:width 1.8s cubic-bezier(.16,1,.3,1)}
+
+/* ===== SCENE 5: MULTIPLE CARDS ===== */
+.multi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;max-width:340px}
+.multi-grid .mini-card{background:#121212;border-radius:16px;padding:14px;border:.5px solid rgba(255,255,255,.04);overflow:hidden;position:relative}
+.multi-grid .mini-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(183,255,42,.04),transparent)}
+.mc-label{font-size:7px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.2);margin-bottom:4px}
+.mc-value{font-size:18px;font-weight:800;color:#FFF;font-family:'SF Mono',monospace}
+.mc-value.green{color:#4ADE80}
+.mc-value.accent{color:#B7FF2A}
+.mc-value.small{font-size:12px}
+.mc-sub{font-size:8px;color:rgba(255,255,255,.2);margin-top:2px}
+
+/* ===== SCENE 6 ===== */
+.float-cards{position:relative;width:100%;max-width:340px;height:260px}
+.float-card{position:absolute;border-radius:16px;padding:12px;background:rgba(18,18,18,.85);border:.5px solid rgba(255,255,255,.04);backdrop-filter:blur(8px);box-shadow:0 8px 32px rgba(0,0,0,.3);opacity:0;transition:all 1.2s cubic-bezier(.34,1.56,.64,1)}
+.float-card.in{opacity:1}
+.float-card .fcl{font-size:7px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.2);margin-bottom:2px}
+.float-card .fcv{font-size:11px;font-weight:700;font-family:'SF Mono',monospace}
+
+/* ===== SCENE 8: LOGO ===== */
+.final-logo{width:90px;height:90px;border-radius:50%;border:1.5px solid rgba(183,255,42,.1);display:flex;align-items:center;justify-content:center;overflow:hidden;background:rgba(183,255,42,.015);margin-bottom:16px;animation:materialize 2s cubic-bezier(.16,1,.3,1) forwards}
+.final-logo img{width:68%;height:68%;object-fit:contain;opacity:.6;animation:logoGlow 3s ease-in-out infinite}
+@keyframes materialize{from{transform:scale(.7);opacity:0;border-color:rgba(183,255,42,.01)}to{transform:scale(1);opacity:1;border-color:rgba(183,255,42,.1)}}
+@keyframes logoGlow{0%,100%{opacity:.6}50%{opacity:.9}}
+.final-text{font-size:10px;color:rgba(255,255,255,.1);letter-spacing:6px;text-transform:uppercase;font-weight:500;opacity:0;transition:all 1.5s}
+.final-text.show{opacity:1}
+
+/* ===== PROGRESS ===== */
+.progress-track{position:fixed;bottom:0;left:0;right:0;height:1px;background:rgba(255,255,255,.01);z-index:99}
+.progress-track .fill{height:100%;background:#B7FF2A;width:0%;transition:width 1s linear;opacity:.3}
+</style>
+</head>
+<body>
+<div class="stage">
+  <canvas id="particleCanvas"></canvas>
+
+  <!-- SCENE 1: DARK PARTICLES -->
+  <div class="slide active" data-scene="1">
+    <div class="scene-1-text">
+      <div class="elem e0 text-xs" style="color:rgba(183,255,42,.06);letter-spacing:6px;text-transform:uppercase;font-weight:500">In the chaos</div>
+      <div class="elem e1 text-xs" style="color:rgba(183,255,42,.03);letter-spacing:8px;text-transform:uppercase;margin-top:6px">order emerges</div>
+    </div>
+  </div>
+
+  <!-- SCENE 2: AGGREGATING -->
+  <div class="slide" data-scene="2">
+    <div class="forming-container elem e0">
+      <div class="form-path" id="formPath"></div>
+    </div>
+    <div class="elem e1 text-xs text-muted" style="letter-spacing:3px;margin-top:24px">FORMING</div>
+  </div>
+
+  <!-- SCENE 3: CARD ASSEMBLY -->
+  <div class="slide" data-scene="3">
+    <div class="elem e0 card" id="assemblyCard" style="text-align:center;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center">
+      <div id="assemblyContent" style="opacity:0;transition:opacity 1s">
+        <div style="font-size:10px;color:#5F5F5F;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">THE SLAYERS</div>
+        <div style="font-size:18px;font-weight:800;color:#B7FF2A;letter-spacing:-.3px">Signal Center</div>
+        <div style="font-size:11px;color:#5F5F5F;margin-top:4px">Market scanning · Intelligence · Execution</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCENE 4: SCANNER -->
+  <div class="slide" data-scene="4">
+    <div class="elem e0 card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-size:11px;font-weight:700">Scanner</span>
+        <span class="pill" style="border-color:rgba(183,255,42,.12);color:#B7FF2A;background:rgba(183,255,42,.04)">LIVE</span>
+      </div>
+      <div class="signal-row"><span class="signal-pair">EURUSD</span><span class="text-sm text-muted">93%</span><div class="signal-bar"><div class="fill" data-w="100"></div></div></div>
+      <div class="signal-row"><span class="signal-pair">XAUUSD</span><span class="text-sm text-muted">78%</span><div class="signal-bar"><div class="fill" data-w="78"></div></div></div>
+      <div class="signal-row"><span class="signal-pair">NAS100</span><span class="text-sm text-muted">64%</span><div class="signal-bar"><div class="fill" data-w="64"></div></div></div>
+      <div class="signal-row"><span class="signal-pair">GBPJPY</span><span class="text-sm text-muted">42%</span><div class="signal-bar"><div class="fill" data-w="42"></div></div></div>
+    </div>
+  </div>
+
+  <!-- SCENE 5: ECOSYSTEM -->
+  <div class="slide" data-scene="5">
+    <div class="multi-grid elem e0">
+      <div class="mini-card"><div class="mc-label">Active Trades</div><div class="mc-value accent">4</div><div class="mc-sub">QMR signals</div></div>
+      <div class="mini-card"><div class="mc-label">P&L Today</div><div class="mc-value green">+3.4R</div><div class="mc-sub">100% win rate</div></div>
+      <div class="mini-card"><div class="mc-label">Market Intel</div><div class="mc-value small" style="color:#8E8E8E">92%</div><div class="mc-sub">Confidence</div></div>
+      <div class="mini-card"><div class="mc-label">Journal</div><div class="mc-value small" style="color:#8E8E8E">14</div><div class="mc-sub">trades this week</div></div>
+    </div>
+    <div class="elem e1 text-xs text-muted" style="letter-spacing:3px;margin-top:20px">EVERYTHING IN VIEW</div>
+  </div>
+
+  <!-- SCENE 6: PULSE -->
+  <div class="slide" data-scene="6">
+    <div class="float-cards elem e0" id="floatCards">
+      <div class="float-card" style="width:120px;top:5%;left:3%"><div class="fcl">Scanner</div><div class="fcv text-accent">4 pairs</div></div>
+      <div class="float-card" style="width:100px;top:2%;right:8%"><div class="fcl">Intel</div><div class="fcv" style="color:#8E8E8E">92%</div></div>
+      <div class="float-card" style="width:130px;top:35%;left:-2%"><div class="fcl">Today P&L</div><div class="fcv" style="color:#4ADE80">+3.4R</div></div>
+      <div class="float-card" style="width:110px;top:38%;right:3%"><div class="fcl">Signals</div><div class="fcv text-accent">2 pending</div></div>
+      <div class="float-card" style="width:100px;bottom:15%;left:8%"><div class="fcl">Risk</div><div class="fcv" style="color:#FFF">0.5%</div></div>
+      <div class="float-card" style="width:120px;bottom:12%;right:5%"><div class="fcl">Reports</div><div class="fcv" style="color:#8E8E8E">+8.4R wk</div></div>
+    </div>
+    <div class="elem e1 pulse-ring-glow" style="position:absolute;width:200px;height:200px;border-radius:50%;border:1px solid rgba(183,255,42,.06);pointer-events:none;animation:ringExpand 2.5s ease-out infinite;opacity:0"></div>
+    <div class="elem e2 text-lg text-white" style="font-weight:700;margin-top:200px;opacity:.6;letter-spacing:-.3px">Connected</div>
+  </div>
+
+  <!-- SCENE 7: DISSOLVE -->
+  <div class="slide" data-scene="7">
+    <div class="elem e0 text-xs" style="color:rgba(183,255,42,.04);letter-spacing:5px;text-transform:uppercase;font-weight:500">From data</div>
+    <div class="elem e1 text-xs" style="color:rgba(183,255,42,.02);letter-spacing:6px;text-transform:uppercase;margin-top:6px">structure emerges</div>
+  </div>
+
+  <!-- SCENE 8: LOGO -->
+  <div class="slide" data-scene="8">
+    <div class="elem e0 final-logo"><img src="mascot.png" alt="Slayers" onerror="this.innerHTML='S'"></div>
+    <div class="elem e1 text-xl text-white" style="font-weight:800;margin-bottom:8px;letter-spacing:-.5px">THE SLAYERS</div>
+    <div class="final-text elem e2">Emerge.</div>
+  </div>
+
+  <div class="progress-track"><div class="fill" id="progressFill"></div></div>
+</div>
+
+<script>
+const slides=document.querySelectorAll('.slide');
+const total=slides.length;
+let current=0,sceneTimers=[];
+const DUR=[4,4,5,5,5,5,4,5];
+
+function show(i){
+  slides.forEach((s,idx)=>{
+    s.classList.remove('active','exit');
+    if(idx<i)s.classList.add('exit');
+    if(idx===i)s.classList.add('active');
+  });
+  current=i;
+  onScene(i);
+  const p=document.getElementById('progressFill');
+  if(p){p.style.transition='width 1s cubic-bezier(.16,1,.3,1)';p.style.width=((i/(total-1))*100)+'%';}
+}
+
+function onScene(i){
+  switch(i){
+    case 0:startParticles('float');break;
+    case 1:startParticles('aggregate');setTimeout(()=>{const f=document.getElementById('formPath');if(f)f.classList.add('show');},500);break;
+    case 2:startParticles('card');setTimeout(()=>{const c=document.getElementById('assemblyContent');if(c)c.style.opacity='1';},800);break;
+    case 3:startParticles('float');animateScanBars();break;
+    case 4:startParticles('float');break;
+    case 5:startParticles('orbit');animateFloatCards();break;
+    case 6:startParticles('dissolve');break;
+    case 7:startParticles('logo');break;
+  }
+}
+
+function animateScanBars(){
+  document.querySelectorAll('.signal-bar .fill').forEach((el,i)=>{
+    const w=el.dataset.w;
+    setTimeout(()=>{el.style.width=w+'%';},200+i*250);
+  });
+}
+
+function animateFloatCards(){
+  const cards=document.querySelectorAll('.float-card');
+  cards.forEach((c,i)=>{
+    setTimeout(()=>c.classList.add('in'),200+i*200);
+  });
+}
+
+// ===== PARTICLE SYSTEM =====
+const canvas=document.getElementById('particleCanvas');
+const ctx=canvas.getContext('2d');
+let particles=[],animId=null,running=false;
+let mode='float';
+let targetPositions=[];
+
+function resizeC(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;}
+resizeC();window.addEventListener('resize',resizeC);
+
+function initParticles(n){
+  particles=[];
+  for(let i=0;i<n;i++){
+    particles.push({
+      x:Math.random()*canvas.width,y:Math.random()*canvas.height,
+      tx:null,ty:null,
+      vx:(Math.random()-.5)*.3,vy:(Math.random()-.5)*.3,
+      size:Math.random()*2+.5,baseSize:Math.random()*2+.5,
+      phase:Math.random()*Math.PI*2,
+      speed:.01+Math.random()*.02
+    });
+  }
+}
+
+function setTargets(fn){
+  const w=canvas.width,h=canvas.height;
+  targetPositions=[];
+  if(fn==='float'){
+    // No targets, free float
+  }else if(fn==='aggregate'){
+    // Form a grid pattern
+    const cols=12,rows=8;
+    const gw=w*0.5/cols,gh=h*0.4/rows;
+    const ox=(w-gw*cols)/2,oy=(h-gh*rows)/2;
+    particles.forEach((p,i)=>{
+      const col=i%cols,row=Math.floor(i/cols)%rows;
+      if(i<cols*rows){
+        p.tx=ox+col*gw+Math.random()*4-2;
+        p.ty=oy+row*gh+Math.random()*4-2;
+        p.size=p.baseSize*1.2;
+      }else{
+        p.tx=null;p.ty=null;
+        p.size=p.baseSize*.5;
+      }
+    });
+  }else if(fn==='card'){
+    // Form a card outline
+    const cw=w*0.5,ch=h*0.4;
+    const cx=(w-cw)/2,cy=(h-ch)/2;
+    const perimeter=2*(cw+ch);
+    particles.forEach((p,i)=>{
+      const pos=(i/particles.length)*perimeter;
+      if(pos<cw){p.tx=cx+pos;p.ty=cy;p.size=1.5;}
+      else if(pos<cw+ch){p.tx=cx+cw;p.ty=cy+(pos-cw);p.size=1.5;}
+      else if(pos<2*cw+ch){p.tx=cx+cw-(pos-cw-ch);p.ty=cy+ch;p.size=1.5;}
+      else{p.tx=cx;p.ty=cy+ch-(pos-2*cw-ch);p.size=1.5;}
+    });
+  }else if(fn==='orbit'){
+    // Form concentric circles
+    const cx=w/2,cy=h/2-20;
+    const radii=[60,100,140];
+    particles.forEach((p,i)=>{
+      const ring=i%3;
+      const r=radii[ring];
+      const angle=(i/particles.length)*Math.PI*2*3+ring*2.1;
+      p.tx=cx+Math.cos(angle)*r+(Math.random()-.5)*8;
+      p.ty=cy+Math.sin(angle)*r+(Math.random()-0.5)*8;
+      p.size=ring===0?2.5:ring===1?1.8:1.2;
+    });
+  }else if(fn==='dissolve'){
+    // Scatter
+    particles.forEach(p=>{
+      p.tx=Math.random()*w*1.5-w*.25;
+      p.ty=Math.random()*h*1.5-h*.25;
+      p.size=p.baseSize*.6;
+    });
+  }else if(fn==='logo'){
+    // Form S shape
+    const cx=w/2,cy=h/2-10;
+    const r=45;
+    particles.forEach((p,i)=>{
+      const t=i/particles.length;
+      const angle=t*Math.PI*2;
+      const rr=r*(.7+Math.sin(t*Math.PI*4)*.3);
+      p.tx=cx+Math.cos(angle)*rr*1.2+(Math.random()-.5)*6;
+      p.ty=cy+Math.sin(angle)*rr*.8+(Math.random()-.5)*6;
+      p.size=2;
+    });
+  }
+}
+
+function drawParticles(){
+  if(!running)return;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // Draw connections between nearby particles
+  for(let i=0;i<particles.length;i++){
+    for(let j=i+1;j<particles.length;j++){
+      const dx=particles[i].x-particles[j].x;
+      const dy=particles[i].y-particles[j].y;
+      const d=Math.sqrt(dx*dx+dy*dy);
+      if(d<80){
+        const a=Math.max(0,.04*(1-d/80));
+        ctx.beginPath();ctx.moveTo(particles[i].x,particles[i].y);
+        ctx.lineTo(particles[j].x,particles[j].y);
+        ctx.strokeStyle=`rgba(183,255,42,${a})`;
+        ctx.lineWidth=.5;
+        ctx.stroke();
+      }
+    }
+  }
+
+  for(const p of particles){
+    if(p.tx!=null){
+      p.x+=(p.tx-p.x)*p.speed;
+      p.y+=(p.ty-p.y)*p.speed;
+    }else{
+      p.x+=p.vx;p.y+=p.vy;
+      if(p.x<0||p.x>canvas.width)p.vx*=-1;
+      if(p.y<0||p.y>canvas.height)p.vy*=-1;
+    }
+    const a=Math.max(0,.4-Math.abs(p.size-1.5)*.1);
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,Math.max(.3,p.size),0,Math.PI*2);
+    ctx.fillStyle=`rgba(183,255,42,${a})`;
+    ctx.fill();
+  }
+  animId=requestAnimationFrame(drawParticles);
+}
+
+function startParticles(m){
+  if(!running){
+    running=true;
+    initParticles(150);
+    drawParticles();
+  }
+  setTargets(m);
+}
+function stopParticles(){
+  running=false;
+  if(animId)cancelAnimationFrame(animId);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+}
+
+// ===== SEQUENCE =====
+function startSeq(){
+  show(0);
+  let d=0;
+  for(let i=0;i<total-1;i++){d+=DUR[i]||4;sceneTimers.push(setTimeout(()=>{if(i+1<total)show(i+1);},d*1000));}
+}
+function stopSeq(){sceneTimers.forEach(t=>clearTimeout(t));sceneTimers=[];stopParticles();}
+
+document.addEventListener('click',()=>{if(current<total-1){stopSeq();sceneTimers=[];show(current+1);}});
+document.addEventListener('touchstart',()=>{if(current<total-1){stopSeq();sceneTimers=[];show(current+1);}});
+
+startSeq();
+</script>
+</body>
+</html>
