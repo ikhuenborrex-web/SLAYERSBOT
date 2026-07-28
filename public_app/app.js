@@ -90,7 +90,12 @@ function esc(t){return String(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function withCode(u){if(!u)return'';var c=getCode();if(!c)return u;return u+(u.indexOf('?')>-1?'&':'?')+'code='+encodeURIComponent(c)+'&device='+encodeURIComponent(getDeviceId());}
 function fmt(v){if(v==null||v===undefined)return'-';var n=parseFloat(v);if(isNaN(n))return v;return n.toFixed(5).replace(/0+$/,'').replace(/\.$/,'');}
 function timeAgo(t){if(!t)return'';var n=Date.now(),d=new Date(t).getTime();if(isNaN(d))return'';var diff=n-d;if(diff<0)return'just now';var s=Math.floor(diff/1e3),m=Math.floor(s/60),h=Math.floor(m/60),d2=Math.floor(h/24);if(d2>0)return d2+'d ago';if(h>0)return h+'h ago';if(m>0)return m+'m ago';return s+'s ago';}
-function greeting(){var h=new Date().getHours();if(h<5)return'Late night';if(h<12)return'Good morning';if(h<18)return'Good afternoon';return'Good evening';}
+function greeting(){var h=new Date().getHours();if(h<5)return'Good night';if(h<12)return'Good morning';if(h<18)return'Good afternoon';return'Good evening';}
+var _flipI={knight:'<svg viewBox="0 0 36 36" fill="none" stroke="#C7FF38" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L12 16l6 4-6 4 8 4 4-4-4-4 4-6-4-4z"/><path d="M10 28l4-4"/><path d="M8 30l4-4"/></svg>',shield:'<svg viewBox="0 0 36 36" fill="none" stroke="#C7FF38" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6v12c0 6 10 12 10 12s10-6 10-12V6l-10-4-10 4z"/><path d="M14 16l3 3 5-6"/></svg>',target:'<svg viewBox="0 0 36 36" fill="none" stroke="#C7FF38" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="12"/><circle cx="18" cy="18" r="6"/><circle cx="18" cy="18" r="2" fill="#C7FF38"/></svg>',compass:'<svg viewBox="0 0 36 36" fill="none" stroke="#C7FF38" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="12"/><path d="M18 8l-3 10 3 2 3-2-3-10z"/><circle cx="18" cy="18" r="1.5" fill="#C7FF38"/></svg>',hourglass:'<svg viewBox="0 0 36 36" fill="none" stroke="#C7FF38" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 6h16v4c0 3-4 8-4 8s4 5 4 8v4H10v-4c0-3 4-8 4-8s-4-5-4-8V6z"/><line x1="10" y1="6" x2="26" y2="6"/><line x1="10" y1="30" x2="26" y2="30"/></svg>',candle:'<svg viewBox="0 0 36 36" fill="none" stroke="#C7FF38" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="12" y="10" width="5" height="18"/><line x1="14.5" y1="6" x2="14.5" y2="10"/><line x1="14.5" y1="28" x2="14.5" y2="32"/><rect x="21" y="14" width="5" height="14"/><line x1="23.5" y1="10" x2="23.5" y2="14"/><line x1="23.5" y1="28" x2="23.5" y2="30"/></svg>',crosshair:'<svg viewBox="0 0 36 36" fill="none" stroke="#C7FF38" stroke-width="1.8" stroke-linecap="round"><circle cx="18" cy="18" r="10"/><line x1="18" y1="4" x2="18" y2="12"/><line x1="18" y1="24" x2="18" y2="32"/><line x1="4" y1="18" x2="12" y2="18"/><line x1="24" y1="18" x2="32" y2="18"/><circle cx="18" cy="18" r="2" fill="#C7FF38"/></svg>',diamond:'<svg viewBox="0 0 36 36" fill="none" stroke="#C7FF38" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 4L6 14l12 18 12-18L18 4z"/><line x1="8" y1="14" x2="28" y2="14"/><line x1="18" y1="4" x2="18" y2="32"/></svg>',trend:'<svg viewBox="0 0 36 36" fill="none" stroke="#C7FF38" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 28 12 18 18 22 26 10"/><line x1="26" y1="10" x2="32" y2="10"/><line x1="26" y1="10" x2="26" y2="4"/></svg>',grid:'<svg viewBox="0 0 36 36" fill="none" stroke="#C7FF38" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="12" height="12"/><rect x="20" y="4" width="12" height="12"/><rect x="4" y="20" width="12" height="12"/><rect x="20" y="20" width="12" height="12"/></svg>',chart:'<svg viewBox="0 0 36 36" fill="none" stroke="#C7FF38" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="28" height="28" rx="2"/><line x1="10" y1="24" x2="14" y2="16"/><line x1="14" y1="16" x2="18" y2="20"/><line x1="18" y1="20" x2="24" y2="10"/><circle cx="24" cy="10" r="1.5" fill="#C7FF38"/></svg>'};
+var _cards=[
+  {t:'Stay Disciplined.',s:'The market rewards patience.',i:'knight'},{t:'Protect Capital.',s:'Opportunities never stop.',i:'shield'},{t:'Structure Before Entry.',s:'Execution comes later.',i:'grid'},{t:'Let Winners Run.',s:'Don\u2019t cut your edge.',i:'trend'},{t:'Wait For Confirmation.',s:'Patience compounds.',i:'hourglass'},{t:'Execution Over Emotion.',s:'Consistency beats excitement.',i:'target'},{t:'One Good Trade.',s:'Is better than ten average ones.',i:'crosshair'},{t:'Respect Risk.',s:'Confidence follows discipline.',i:'shield'},{t:'Great Traders Wait.',s:'Average traders chase.',i:'hourglass'},{t:'Read Structure.',s:'Ignore the noise.',i:'candle'},{t:'Every Candle',s:'Tells a story.',i:'chart'},{t:'Quality.',s:'Always beats quantity.',i:'diamond'},{t:'Trade Less.',s:'Execute Better.',i:'target'},{t:'Discipline Today.',s:'Freedom Tomorrow.',i:'compass'},{t:'Master Yourself.',s:'The market will follow.',i:'knight'},{t:'Patience Pays.',s:'Impulse Costs.',i:'hourglass'}
+];
+function _pickCard(){var c=_cards[Math.floor(Math.random()*_cards.length)];return'<div class="bc" id="bc"><div class="bc-inner"></div><div class="bc-g"></div><div class="bi">'+(_flipI[c.i]||'')+'</div><div class="bt">'+c.t+'</div><div class="bs">'+c.s+'</div><div class="bf">slayers \u03B1</div></div>';}
 function emptyState(msg){return'<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center"><div style="font-size:28px;margin-bottom:12px;opacity:0.1">\u25CB</div><div style="font-size:13px;color:#8E8E8E;line-height:1.5;max-width:260px">'+msg+'</div></div>';}
 function showToast(msg){var d=document.createElement('div');d.textContent=msg;d.style.cssText='position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#151515;border:0.5px solid rgba(255,255,255,0.06);color:#FFF;padding:10px 20px;border-radius:99px;font-size:12px;font-weight:500;z-index:9999;box-shadow:0 4px 24px rgba(0,0,0,0.3);animation:fadeUp 0.2s ease';document.body.appendChild(d);setTimeout(function(){d.style.opacity='0';d.style.transition='opacity 0.3s';setTimeout(function(){d.remove();},300);},2000);}
 
@@ -359,8 +364,7 @@ function overviewScreen(){
   var st=state.stats||{},ws=state.weeklyStats||{},m=state.myStats||state.stats||{};
   var wr=st.winRate||0,tr=st.totalR||0;
   var rVal=(ws.totalR>0?'+':'')+(ws.totalR||'0')+'R';
-  var hero='<div id="wt-hero" style="background:#111111;border-radius:28px;padding:24px;border:1px solid rgba(255,255,255,0.05);position:relative;overflow:hidden">'+
-    '<div style="position:absolute;top:-100px;right:-80px;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(199,255,56,0.07) 0%,transparent 70%);pointer-events:none"></div>'+
+  var heroInner='<div style="position:absolute;top:-100px;right:-80px;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(199,255,56,0.07) 0%,transparent 70%);pointer-events:none"></div>'+
     '<div style="position:absolute;top:0;left:12%;right:12%;height:1px;background:linear-gradient(90deg,transparent,rgba(199,255,56,0.15),transparent)"></div>'+
     '<div style="font-size:12px;font-weight:500;color:#7E7E7E;letter-spacing:-0.01em;margin-bottom:2px;position:relative;z-index:1">'+greeting()+'</div>'+
     '<div style="font-size:38px;font-weight:800;color:#FFF;letter-spacing:-0.04em;line-height:1;margin-bottom:20px;position:relative;z-index:1">SLAYERS.</div>'+
@@ -370,7 +374,17 @@ function overviewScreen(){
     '<div style="flex:1;text-align:center"><div style="font-size:22px;font-weight:800;letter-spacing:-0.02em;line-height:1;background:linear-gradient(180deg,#FFF,rgba(255,255,255,0.7));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">'+(ws.winRate||wr)+'%</div><div style="font-size:8px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.07em;margin-top:3px">Win Rate</div></div>'+
     '<div style="width:1px;height:28px;background:rgba(255,255,255,0.05);flex-shrink:0"></div>'+
     '<div style="flex:1;text-align:center"><div style="font-size:22px;font-weight:800;letter-spacing:-0.02em;line-height:1;background:linear-gradient(180deg,#FFF,rgba(255,255,255,0.7));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">'+state.active.length+'</div><div style="font-size:8px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.07em;margin-top:3px">Active</div></div>'+
-    '</div></div>';
+    '</div>';
+  var hero;
+  if(!window._cardFlipDone&&state.tab==='dash'){
+    window._cardFlipDone='pending';
+    hero='<div class="fc"><div class="flip" id="flip"><div class="face face-f"><div id="wt-hero" style="background:#111111;border-radius:28px;padding:24px;border:1px solid rgba(255,255,255,0.05);position:relative;overflow:hidden">'+
+      heroInner+'</div></div><div class="face face-b">'+_pickCard()+'</div></div>'+
+      '<div class="cs" id="cs"></div><div class="er" id="er"><div class="er-i"></div></div></div>';
+    setTimeout(startFlipAnim,50);
+  }else{
+    hero='<div id="wt-hero" style="background:#111111;border-radius:28px;padding:24px;border:1px solid rgba(255,255,255,0.05);position:relative;overflow:hidden">'+heroInner+'</div>';
+  }
 
   var mc=miniChart(state.journal);
 
@@ -2339,6 +2353,43 @@ document.getElementById('wtFinalBtn').addEventListener('click',function(){
   endOnboarding(true);
 });
 
+function startFlipAnim(){
+  if(window._cardFlipDone==='done')return;
+  var flip=document.getElementById('flip'),cs=document.getElementById('cs'),er=document.getElementById('er');
+  if(!flip||!cs||!er){window._cardFlipDone='';return;}
+  var T0=performance.now();
+  function st(d){setTimeout(function(){
+    var e=performance.now()-T0,d2=Math.max(0,d-e);
+    setTimeout(function(){
+      // lift
+      flip.style.transition='transform 250ms cubic-bezier(.215,.61,.355,1)';
+      flip.style.transform='scale(1.03) translateY(-6px)';
+      cs.classList.add('lift');er.classList.add('active');
+    },d2);
+    // flip 180
+    setTimeout(function(){
+      flip.style.transition='transform 700ms cubic-bezier(.645,.045,.355,1)';
+      flip.style.transform='rotateY(180deg) scale(1.03) translateY(-6px)';
+    },250+d2);
+    // flip back 360
+    setTimeout(function(){
+      flip.style.transition='transform 700ms cubic-bezier(.645,.045,.355,1)';
+      flip.style.transform='rotateY(360deg) scale(1.03) translateY(-6px)';
+    },2200+d2);
+    // settle
+    setTimeout(function(){
+      flip.style.transition='transform 400ms cubic-bezier(.215,.61,.355,1)';
+      flip.style.transform='rotateY(360deg) scale(1) translateY(0)';
+    },2900+d2);
+    // cleanup
+    setTimeout(function(){
+      flip.style.transition='none';flip.style.transform='';
+      cs.classList.remove('lift');er.classList.remove('active');
+      window._cardFlipDone='done';
+    },3300+d2);
+  },0);}
+  requestAnimationFrame(st);
+}
 function checkHash(){
   if(location.hash==='#weekly-report'&&getCode()){state.tab='weekly-report';render();}
 }

@@ -154,6 +154,27 @@
   .wt-final-btn{background:#C7FF38;color:#090909;border:none;padding:13px 36px;border-radius:99px;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .2s;box-shadow:0 0 24px rgba(199,255,56,0.08)}
   .wt-final-btn:active{transform:scale(0.96)}
   @keyframes wtFadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+  /* ===== CARD FLIP ===== */
+  .fc{width:100%;perspective:900px;position:relative}
+  .flip{position:relative;width:100%;transform-style:preserve-3d;will-change:transform}
+  .face{backface-visibility:hidden;-webkit-backface-visibility:hidden;position:absolute;top:0;left:0;width:100%}
+  .face-f{position:relative;z-index:2}
+  .face-b{z-index:1;transform:rotateY(180deg)}
+  .bc{background:#0d0d0d;border-radius:28px;padding:36px 24px;border:1px solid rgba(199,255,56,0.12);position:relative;overflow:hidden;width:100%;text-align:center;min-height:222px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .bc-inner{position:absolute;inset:0;border-radius:28px;background:radial-gradient(ellipse at 50% 30%,rgba(199,255,56,0.02) 0%,transparent 60%);pointer-events:none}
+  .bc-g{position:absolute;width:60px;height:60px;border-radius:50%;background:radial-gradient(circle,rgba(199,255,56,0.06),transparent 70%);pointer-events:none;top:50%;left:50%;transform:translate(-50%,-50%)}
+  .bi{width:36px;height:36px;margin-bottom:14px;position:relative}
+  .bi svg{width:36px;height:36px;display:block}
+  .bt{font-size:20px;font-weight:700;letter-spacing:-0.02em;color:#FFF;line-height:1.3}
+  .bs{font-size:12px;color:#8E8E8E;font-weight:400;margin-top:6px;line-height:1.4;max-width:260px}
+  .bf{position:absolute;bottom:16px;font-size:7px;color:rgba(199,255,56,0.16);letter-spacing:0.12em;text-transform:uppercase;pointer-events:none}
+  .cs{position:absolute;bottom:-8px;left:5%;right:5%;height:30px;border-radius:50%;background:radial-gradient(ellipse at center,rgba(0,0,0,.5),transparent 70%);filter:blur(8px);transition:transform .25s cubic-bezier(.215,.61,.355,1),opacity .25s;pointer-events:none;z-index:0}
+  .cs.lift{transform:scaleY(1.2) translateY(6px);opacity:.7}
+  .er{position:absolute;top:0;left:0;right:0;bottom:0;border-radius:28px;pointer-events:none;z-index:6;overflow:hidden;opacity:0;transition:opacity .05s}
+  .er.active{opacity:1}
+  .er-i{position:absolute;inset:0;border-radius:28px;background:linear-gradient(90deg,transparent 0%,rgba(199,255,56,0) 10%,rgba(199,255,56,.12) 25%,rgba(199,255,56,0) 40%,rgba(199,255,56,0) 60%,rgba(199,255,56,.08) 75%,rgba(199,255,56,0) 90%,transparent 100%);animation:sweepR 1.4s ease-in-out infinite;mask:linear-gradient(#FFF,#FFF) border-box;mask-composite:exclude;-webkit-mask:linear-gradient(#FFF,#FFF) border-box;-webkit-mask-composite:exclude;padding:1px}
+  @keyframes sweepR{0%{transform:translateX(-30%)}50%{transform:translateX(30%)}100%{transform:translateX(-30%)}}
 </style>
 </head>
 <body>
