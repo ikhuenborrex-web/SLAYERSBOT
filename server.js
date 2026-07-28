@@ -488,8 +488,9 @@ function detectSD(c){const s=[],d=[];for(let i=0;i<c.length-2;i++){const b=c[i],
 function detectOB(c){const bull=[],bear=[];for(let i=0;i<c.length-2;i++){const b=c[i],n=c[i+1];if(Math.abs(n.close-n.open)/n.open<IMPULSE)continue;if(n.close>n.open&&b.close<b.open)bull.push({top:Math.max(b.open,b.close),bottom:Math.min(b.open,b.close)});else if(n.close<n.open&&b.close>b.open)bear.push({top:Math.max(b.open,b.close),bottom:Math.min(b.open,b.close)});}return{bull:bull.slice(-4).reverse(),bear:bear.slice(-4).reverse()};}
 function detectFVG(c){const bull=[],bear=[];for(let i=0;i<c.length-2;i++){const a=c[i],z=c[i+2];if(z.low>a.high&&(z.low-a.high)/a.high>MIN_FVG)bull.push({top:z.low,bottom:a.high});if(z.high<a.low&&(a.low-z.high)/a.low>MIN_FVG)bear.push({top:a.low,bottom:z.high});}return{bull:bull.slice(-5).reverse(),bear:bear.slice(-5).reverse()};}
 function detectBRK(c,sdZ){const cp=c[c.length-1].close,bull=[],bear=[],near=(p,z)=>p>=z.bottom*(1-PROX)&&p<=z.top*(1+PROX);for(const z of sdZ.demand)if(c.some(x=>x.close<z.bottom)&&near(cp,z))bear.push(z);for(const z of sdZ.supply)if(c.some(x=>x.close>z.top)&&near(cp,z))bull.push(z);return{bull,bear};}
-function detectScalp(c,instId){
-  const h=new Date().getUTCHours();
+function detectScalp(c,instId,t){
+  const d=t?new Date(t):new Date();
+  const h=d.getUTCHours();
   let session=null;
   if(h>=7&&h<11)session='LONDON';
   else if(h>=13&&h<17)session='NY';
@@ -2519,6 +2520,67 @@ app.post('/api/settings',(req,res)=>{
 app.get('/api/briefing',(req,res)=>{
   const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
   res.json({pairs:lastBriefingSnapshot,generatedAt:lastBriefingTime});
+});
+app.get('/api/backtest-scalp',async(req,res)=>{
+  const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
+  const results=[],allTrades=[];
+  for(const inst of SCALP_INSTS){
+    let allCandles=[];
+    try{
+      const url=`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym)}&interval=5min&outputsize=5000&apikey=${API_KEY2}`;
+      const resp=await fetch(url),j=await resp.json();
+      if(j.status!=='ok'||!j.values?.length){results.push({id:inst.id,sym:inst.sym,trades:0,reason:'API error: '+(j.status||'no data')});await sleep(2000);continue;}
+      allCandles=parseC(j);
+      if(allCandles.length<100){results.push({id:inst.id,sym:inst.sym,trades:0,reason:'insufficient data: '+allCandles.length+' candles'});await sleep(2000);continue;}
+    }catch(e){results.push({id:inst.id,sym:inst.sym,trades:0,reason:'fetch error'});await sleep(2000);continue;}
+    const btSeen=new Set();
+    for(let i=100;i<allCandles.length;i++){
+      const window=allCandles.slice(i-100,i+1),cc=allCandles[i];
+      const dtStr=(cc.dt.includes('T')?cc.dt:cc.dt.replace(' ','T'))+'Z',cd=new Date(dtStr),h=cd.getUTCHours();
+      if(h<7||(h>=11&&h<13)||h>=17)continue;
+      const signal=detectScalp(window,inst.id,cd.getTime());
+      if(!signal)continue;
+      const sKey=inst.id+'-'+signal.type+'-'+signal.session+'-'+cc.dt.slice(0,10);
+      if(btSeen.has(sKey))continue;
+      btSeen.add(sKey);
+      const lh=allCandles.slice(i+1);
+      if(lh.length<3)continue;
+      const isLong=signal.type==='BULLISH',fvgW=Math.abs(signal.entry-signal.sl),tp1=isLong?signal.entry+fvgW:signal.entry-fvgW;
+      let outcome='TIMEOUT',bars=0,tp1Hit=false;
+      for(let k=0;k<Math.min(lh.length,48);k++){
+        const bar=lh[k];bars=k+1;
+        if(isLong){
+          if(bar.low<=signal.sl&&tp1Hit){outcome='BE';break;}
+          if(bar.low<=signal.sl){outcome='SL';break;}
+          if(bar.high>=signal.tp2){outcome='WIN';break;}
+          if(bar.high>=tp1)tp1Hit=true;
+        }else{
+          if(bar.high>=signal.sl&&tp1Hit){outcome='BE';break;}
+          if(bar.high>=signal.sl){outcome='SL';break;}
+          if(bar.low<=signal.tp2){outcome='WIN';break;}
+          if(bar.low<=tp1)tp1Hit=true;
+        }
+      }
+      allTrades.push({dt:cc.dt,type:signal.type,session:signal.session,outcome,inst:inst.id,
+        r:outcome==='WIN'?1.5:outcome==='BE'?0:outcome==='SL'?-1:0,
+        entry:Math.round(signal.entry*1e5)/1e5,rr:signal.rr,score:signal.score,fib:signal.fib,bars});
+    }
+    const ws=allTrades.filter(t=>t.outcome==='WIN'&&t.inst===inst.id),
+      ls=allTrades.filter(t=>t.outcome==='SL'&&t.inst===inst.id),
+      bs=allTrades.filter(t=>t.outcome==='BE'&&t.inst===inst.id),
+      ts=allTrades.filter(t=>t.outcome==='TIMEOUT'&&t.inst===inst.id);
+    results.push({id:inst.id,sym:inst.sym,trades:(ws.length+ls.length+bs.length+ts.length),wins:ws.length,losses:ls.length,be:bs.length,timeout:ts.length,
+      totalR:Math.round((ws.reduce((s,t)=>s+t.r,0)+ls.reduce((s,t)=>s+t.r,0)+bs.reduce((s,t)=>s+t.r,0))*100)/100});
+    await sleep(3000);
+  }
+  const ws=allTrades.filter(t=>t.outcome==='WIN'),ls=allTrades.filter(t=>t.outcome==='SL'),closed=ws.length+ls.length;
+  const totalR=Math.round(allTrades.reduce((s,t)=>s+t.r,0)*100)/100;
+  res.json({totalTrades:allTrades.length,wins:ws.length,losses:ls.length,be:allTrades.filter(t=>t.outcome==='BE').length,timeout:allTrades.filter(t=>t.outcome==='TIMEOUT').length,
+    winRate:closed>0?Math.round(ws.length/closed*1e4)/100:0,totalR,expectancy:allTrades.length>0?Math.round(totalR/allTrades.length*100)/100:0,
+    profitFactor:ls.length>0?Math.round(ws.length*1.5/ls.length*100)/100:0,
+    avgWinBars:ws.length>0?Math.round(ws.reduce((s,t)=>s+t.bars,0)/ws.length):0,
+    avgLossBars:ls.length>0?Math.round(ls.reduce((s,t)=>s+t.bars,0)/ls.length):0,
+    instruments:results});
 });
 // Weekly stats for in-app summary card
 app.get('/api/stats/weekly',(req,res)=>{
