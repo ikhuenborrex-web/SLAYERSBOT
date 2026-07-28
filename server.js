@@ -489,10 +489,10 @@ function detectOB(c){const bull=[],bear=[];for(let i=0;i<c.length-2;i++){const b
 function detectFVG(c){const bull=[],bear=[];for(let i=0;i<c.length-2;i++){const a=c[i],z=c[i+2];if(z.low>a.high&&(z.low-a.high)/a.high>MIN_FVG)bull.push({top:z.low,bottom:a.high});if(z.high<a.low&&(a.low-z.high)/a.low>MIN_FVG)bear.push({top:a.low,bottom:z.high});}return{bull:bull.slice(-5).reverse(),bear:bear.slice(-5).reverse()};}
 function detectBRK(c,sdZ){const cp=c[c.length-1].close,bull=[],bear=[],near=(p,z)=>p>=z.bottom*(1-PROX)&&p<=z.top*(1+PROX);for(const z of sdZ.demand)if(c.some(x=>x.close<z.bottom)&&near(cp,z))bear.push(z);for(const z of sdZ.supply)if(c.some(x=>x.close>z.top)&&near(cp,z))bull.push(z);return{bull,bear};}
 function detectScalp(c,instId){
-  const h=new Date().getUTCHours(),m=new Date().getUTCMinutes();
+  const h=new Date().getUTCHours();
   let session=null;
-  if((h===7&&m>=0)||(h>7&&h<10)||(h===10&&m===0))session='LONDON';
-  else if((h===13&&m>=0)||(h>13&&h<16)||(h===16&&m===0))session='NY';
+  if(h>=7&&h<11)session='LONDON';
+  else if(h>=13&&h<17)session='NY';
   else return null;
   const ss=session==='LONDON'?7:13;
   let openIdx=-1;
@@ -501,7 +501,7 @@ function detectScalp(c,instId){
     const tPart=dt.includes('T')?dt.split('T')[1]:dt.split(' ')[1];
     if(!tPart)continue;
     const parts=tPart.split(':');if(parts.length<2)continue;
-    if(parseInt(parts[0])===ss&&parseInt(parts[1])===0){openIdx=i;break;}
+    if(parseInt(parts[0])===ss&&parseInt(parts[1])<=15){openIdx=i;break;}
   }
   if(openIdx===-1||c.length-1-openIdx<6)return null;
   const rangeC=c.slice(openIdx,openIdx+6);if(rangeC.length<6)return null;
@@ -538,7 +538,7 @@ function detectScalp(c,instId){
   const rr=Math.abs(tp2-entry)/Math.abs(entry-sl);
   let score=fibScore+1;
   if(rr>=2)score++;
-  if(score<3)return null;
+  if(score<2)return null;
   const avgVol=rangeC.reduce((s,x)=>s+x.volume,0)/rangeC.length;
   const volRatio=avgVol>0?postC.slice(-5).reduce((s,x)=>s+x.volume,0)/5/avgVol:1;
   return{type:dir,entry,sl,tp2,session,rangeHigh,rangeLow,score,rr,fib:hitFib,fibPct:Math.round(fibPct*10)/10,fvgTop:fvg.top,fvgBottom:fvg.bottom,volRatio:Math.round(volRatio*10)/10};
@@ -1611,7 +1611,7 @@ async function runScan(manual=false){
           const sc=parseC(sj);if(sc.length<25){await sleep(DELAY_MS);continue;}
           const signal=detectScalp(sc,inst.id);
           if(signal){
-            const sKey=inst.id+'-'+signal.type+'-'+signal.session;
+            const sKey=inst.id+'-'+signal.type+'-'+signal.session+'-'+new Date().toISOString().slice(0,10);
             if(!scalpSeen.has(sKey)){
               scalpSeen.add(sKey);
               const chartFile=await genScalpChart(inst.id,'5min',[
