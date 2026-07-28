@@ -2528,16 +2528,11 @@ app.get('/api/backtest-scalp',async(req,res)=>{
     let allCandles=[];
     for(let b=0;b<batches;b++){
       try{
-        let url=`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym)}&interval=5min&outputsize=5000&apikey=${API_KEY2}`;
-        if(b>0&&allCandles.length){
-          const oldest=new Date(allCandles[0].dt.replace(' ','T')+'Z');
-          oldest.setDate(oldest.getDate()-1);
-          url+=`&start_date=${oldest.toISOString().slice(0,10)}`;
-        }
+        const url=`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym)}&interval=5min&outputsize=5000&apikey=${API_KEY2}`+(b>0&&allCandles.length?('&date='+new Date(allCandles[0].dt.replace(' ','T')+'Z').toISOString().slice(0,10)):'');
         const resp=await fetch(url),j=await resp.json();
         if(j.status==='ok'&&j.values?.length){
-          const parsed=parseC(j);
-          allCandles.push(...parsed);
+          const p=parseC(j);
+          if(p.some(c=>!allCandles.some(e=>e.dt===c.dt)))allCandles.push(...p);
         }
       }catch(e){/* skip */}
       if(b<batches-1)await sleep(2000);
@@ -2585,7 +2580,8 @@ app.get('/api/backtest-scalp',async(req,res)=>{
       bs=allTrades.filter(t=>t.outcome==='BE'&&t.inst===inst.id),
       ts=allTrades.filter(t=>t.outcome==='TIMEOUT'&&t.inst===inst.id);
     results.push({id:inst.id,sym:inst.sym,trades:(ws.length+ls.length+bs.length+ts.length),wins:ws.length,losses:ls.length,be:bs.length,timeout:ts.length,
-      totalR:Math.round((ws.reduce((s,t)=>s+t.r,0)+ls.reduce((s,t)=>s+t.r,0)+bs.reduce((s,t)=>s+t.r,0))*100)/100});
+      totalR:Math.round((ws.reduce((s,t)=>s+t.r,0)+ls.reduce((s,t)=>s+t.r,0)+bs.reduce((s,t)=>s+t.r,0))*100)/100,
+      candles:allCandles.length,from:allCandles[0]?.dt,to:allCandles[allCandles.length-1]?.dt});
     await sleep(3000);
   }
   const ws=allTrades.filter(t=>t.outcome==='WIN'),ls=allTrades.filter(t=>t.outcome==='SL'),closed=ws.length+ls.length;
