@@ -2523,23 +2523,26 @@ app.get('/api/briefing',(req,res)=>{
 });
 app.get('/api/backtest-scalp',async(req,res)=>{
   const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
-  const results=[],allTrades=[],batches=Math.min(Math.max(parseInt(req.query.batches)||3,1),6);
+  const results=[],allTrades=[],batches=Math.min(Math.max(parseInt(req.query.batches)||2,1),4);
   for(const inst of SCALP_INSTS){
-    let allCandles=[],fetchOk=false;
+    let allCandles=[];
     for(let b=0;b<batches;b++){
       try{
-        const d=new Date();d.setDate(d.getDate()-b*16);
-        const url=`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym)}&interval=5min&outputsize=5000&apikey=${API_KEY2}&date=${d.toISOString().slice(0,10)}`;
+        let url=`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym)}&interval=5min&outputsize=5000&apikey=${API_KEY2}`;
+        if(b>0&&allCandles.length){
+          const oldest=new Date(allCandles[0].dt.replace(' ','T')+'Z');
+          oldest.setDate(oldest.getDate()-1);
+          url+=`&start_date=${oldest.toISOString().slice(0,10)}`;
+        }
         const resp=await fetch(url),j=await resp.json();
         if(j.status==='ok'&&j.values?.length){
           const parsed=parseC(j);
           allCandles.push(...parsed);
-          fetchOk=true;
         }
-      }catch(e){/* skip batch */}
+      }catch(e){/* skip */}
       if(b<batches-1)await sleep(2000);
     }
-    if(!fetchOk){results.push({id:inst.id,sym:inst.sym,trades:0,reason:'API error: no data'});await sleep(2000);continue;}
+    if(!allCandles.length){results.push({id:inst.id,sym:inst.sym,trades:0,reason:'no data'});await sleep(2000);continue;}
     allCandles.sort((a,b)=>a.dt.localeCompare(b.dt));
     const deduped=[];const seen=new Set();
     for(const c of allCandles){if(!seen.has(c.dt)){seen.add(c.dt);deduped.push(c);}}
