@@ -1347,10 +1347,10 @@ function getTimeAgo(ts){
   return Math.floor(days/7)+'w ago';
 }
 function setupCardFlip(){
-  if(window._cardFlipDone||state.tab!=='dash'||document.getElementById('fc')){console.log('CF: skip',window._cardFlipDone,state.tab,document.getElementById('fc'));return;}
+  if(document.getElementById('fc')||window._cardFlipDone==='done')return;
+  if(state.tab!=='dash')return;
   var hero=document.getElementById('wt-hero');
-  if(!hero){console.log('CF: no hero');return;}
-  console.log('CF: setting up flip');
+  if(!hero)return;
   window._cardFlipDone='pending';
   var fc=document.createElement('div');fc.className='fc';fc.id='fc';
   var flip=document.createElement('div');flip.className='flip';flip.id='flip';
@@ -2367,8 +2367,7 @@ document.getElementById('wtFinalBtn').addEventListener('click',function(){
 function startFlipAnim(){
   if(window._cardFlipDone==='done')return;
   var flip=document.getElementById('flip'),cs=document.getElementById('cs'),er=document.getElementById('er');
-  if(!flip||!cs||!er){console.log('CF: missing els',!!flip,!!cs,!!er);window._cardFlipDone='';return;}
-  console.log('CF: animating');
+  if(!flip||!cs||!er){window._cardFlipDone='';return;}
   var T0=performance.now();
   function st(d){setTimeout(function(){
     var e=performance.now()-T0,d2=Math.max(0,d-e);
