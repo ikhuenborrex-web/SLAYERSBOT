@@ -364,7 +364,8 @@ function overviewScreen(){
   var st=state.stats||{},ws=state.weeklyStats||{},m=state.myStats||state.stats||{};
   var wr=st.winRate||0,tr=st.totalR||0;
   var rVal=(ws.totalR>0?'+':'')+(ws.totalR||'0')+'R';
-  var heroInner='<div style="position:absolute;top:-100px;right:-80px;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(199,255,56,0.07) 0%,transparent 70%);pointer-events:none"></div>'+
+  var hero='<div id="wt-hero" style="background:#111111;border-radius:28px;padding:24px;border:1px solid rgba(255,255,255,0.05);position:relative;overflow:hidden">'+
+    '<div style="position:absolute;top:-100px;right:-80px;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(199,255,56,0.07) 0%,transparent 70%);pointer-events:none"></div>'+
     '<div style="position:absolute;top:0;left:12%;right:12%;height:1px;background:linear-gradient(90deg,transparent,rgba(199,255,56,0.15),transparent)"></div>'+
     '<div style="font-size:12px;font-weight:500;color:#7E7E7E;letter-spacing:-0.01em;margin-bottom:2px;position:relative;z-index:1">'+greeting()+'</div>'+
     '<div style="font-size:38px;font-weight:800;color:#FFF;letter-spacing:-0.04em;line-height:1;margin-bottom:20px;position:relative;z-index:1">SLAYERS.</div>'+
@@ -374,17 +375,7 @@ function overviewScreen(){
     '<div style="flex:1;text-align:center"><div style="font-size:22px;font-weight:800;letter-spacing:-0.02em;line-height:1;background:linear-gradient(180deg,#FFF,rgba(255,255,255,0.7));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">'+(ws.winRate||wr)+'%</div><div style="font-size:8px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.07em;margin-top:3px">Win Rate</div></div>'+
     '<div style="width:1px;height:28px;background:rgba(255,255,255,0.05);flex-shrink:0"></div>'+
     '<div style="flex:1;text-align:center"><div style="font-size:22px;font-weight:800;letter-spacing:-0.02em;line-height:1;background:linear-gradient(180deg,#FFF,rgba(255,255,255,0.7));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">'+state.active.length+'</div><div style="font-size:8px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.07em;margin-top:3px">Active</div></div>'+
-    '</div>';
-  var hero;
-  if(!window._cardFlipDone&&state.tab==='dash'){
-    window._cardFlipDone='pending';
-    hero='<div class="fc"><div class="flip" id="flip"><div class="face face-f"><div id="wt-hero" style="background:#111111;border-radius:28px;padding:24px;border:1px solid rgba(255,255,255,0.05);position:relative;overflow:hidden">'+
-      heroInner+'</div></div><div class="face face-b">'+_pickCard()+'</div></div>'+
-      '<div class="cs" id="cs"></div><div class="er" id="er"><div class="er-i"></div></div></div>';
-    setTimeout(startFlipAnim,50);
-  }else{
-    hero='<div id="wt-hero" style="background:#111111;border-radius:28px;padding:24px;border:1px solid rgba(255,255,255,0.05);position:relative;overflow:hidden">'+heroInner+'</div>';
-  }
+    '</div></div>';
 
   var mc=miniChart(state.journal);
 
@@ -1355,6 +1346,24 @@ function getTimeAgo(ts){
   if(days<7)return days+'d ago';
   return Math.floor(days/7)+'w ago';
 }
+function setupCardFlip(){
+  if(window._cardFlipDone||state.tab!=='dash'||document.getElementById('fc'))return;
+  var hero=document.getElementById('wt-hero');
+  if(!hero)return;
+  window._cardFlipDone='pending';
+  var fc=document.createElement('div');fc.className='fc';fc.id='fc';
+  var flip=document.createElement('div');flip.className='flip';flip.id='flip';
+  var front=document.createElement('div');front.className='face face-f';
+  hero.parentNode.insertBefore(fc,hero);
+  front.appendChild(hero);
+  flip.appendChild(front);
+  var back=document.createElement('div');back.className='face face-b';back.innerHTML=_pickCard();
+  flip.appendChild(back);
+  var cs=document.createElement('div');cs.className='cs';cs.id='cs';
+  var er=document.createElement('div');er.className='er';er.id='er';er.innerHTML='<div class="er-i"></div>';
+  fc.appendChild(flip);fc.appendChild(er);fc.appendChild(cs);
+  startFlipAnim();
+}
 function render(){
   var app=document.getElementById('app');
   if(!window._sp)window._sp={};
@@ -1373,6 +1382,7 @@ function render(){
   var newSc=app.querySelector('.sc');
   if(newSc&&window._sp[state.tab])requestAnimationFrame(function(){newSc.scrollTop=window._sp[state.tab];});
   positionNavIndicator();
+  setTimeout(function(){setupCardFlip();},10);
 }
 
 function positionNavIndicator(){
