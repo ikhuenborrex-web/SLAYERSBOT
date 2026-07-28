@@ -68,7 +68,7 @@ const SCALP_INSTS=[
   {id:'EURUSD',sym:'EUR/USD',name:'EUR/USD',dec:5},
   {id:'GBPUSD',sym:'GBP/USD',name:'GBP/USD',dec:5},
   {id:'USDJPY',sym:'USD/JPY',name:'USD/JPY',dec:3},
-  {id:'NAS100',sym:'NASDAQ100',name:'NAS100',dec:2},
+  {id:'EURCAD',sym:'EUR/CAD',name:'EUR/CAD',dec:5},
 ];
 const CHECK_MS=30*60*1000,DELAY_MS=12000,PROX=0.007,IMPULSE=0.0015,MIN_FVG=0.0003;
 const QMR_MIN=3,WEEKLY_EVERY=24,LON_S=7,LON_E=16,NY_S=13,NY_E=22;
@@ -2523,16 +2523,28 @@ app.get('/api/briefing',(req,res)=>{
 });
 app.get('/api/backtest-scalp',async(req,res)=>{
   const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
-  const results=[],allTrades=[];
+  const results=[],allTrades=[],batches=Math.min(Math.max(parseInt(req.query.batches)||3,1),6);
   for(const inst of SCALP_INSTS){
-    let allCandles=[];
-    try{
-      const url=`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym)}&interval=5min&outputsize=5000&apikey=${API_KEY2}`;
-      const resp=await fetch(url),j=await resp.json();
-      if(j.status!=='ok'||!j.values?.length){results.push({id:inst.id,sym:inst.sym,trades:0,reason:'API error: '+(j.status||'no data')});await sleep(2000);continue;}
-      allCandles=parseC(j);
-      if(allCandles.length<100){results.push({id:inst.id,sym:inst.sym,trades:0,reason:'insufficient data: '+allCandles.length+' candles'});await sleep(2000);continue;}
-    }catch(e){results.push({id:inst.id,sym:inst.sym,trades:0,reason:'fetch error'});await sleep(2000);continue;}
+    let allCandles=[],fetchOk=false;
+    for(let b=0;b<batches;b++){
+      try{
+        const d=new Date();d.setDate(d.getDate()-b*16);
+        const url=`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym)}&interval=5min&outputsize=5000&apikey=${API_KEY2}&date=${d.toISOString().slice(0,10)}`;
+        const resp=await fetch(url),j=await resp.json();
+        if(j.status==='ok'&&j.values?.length){
+          const parsed=parseC(j);
+          allCandles.push(...parsed);
+          fetchOk=true;
+        }
+      }catch(e){/* skip batch */}
+      if(b<batches-1)await sleep(2000);
+    }
+    if(!fetchOk){results.push({id:inst.id,sym:inst.sym,trades:0,reason:'API error: no data'});await sleep(2000);continue;}
+    allCandles.sort((a,b)=>a.dt.localeCompare(b.dt));
+    const deduped=[];const seen=new Set();
+    for(const c of allCandles){if(!seen.has(c.dt)){seen.add(c.dt);deduped.push(c);}}
+    allCandles=deduped;
+    if(allCandles.length<100){results.push({id:inst.id,sym:inst.sym,trades:0,reason:'insufficient data: '+allCandles.length+' candles'});await sleep(2000);continue;}
     const btSeen=new Set();
     for(let i=100;i<allCandles.length;i++){
       const window=allCandles.slice(i-100,i+1),cc=allCandles[i];
