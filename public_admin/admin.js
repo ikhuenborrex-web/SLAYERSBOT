@@ -366,21 +366,21 @@ async function renderScalp(){
   const data=await api('/api/admin/scalp-trades');
   if(!data)return;
   if(!data.trades||!data.trades.length){
-    cont.innerHTML='<div class="empty-state">No active scalp trades. Scalper runs during London/NY sessions.</div>';
+    cont.innerHTML='<div class="empty-state">No active scalp trades. NY-open breakout runs 09:30–11:30 NY.</div>';
     return
   }
   cont.innerHTML=`
   <div class="section-header"><h2>Active Scalp Trades <span class="text-muted text-sm">(${data.count})</span></h2><div><button class="btn-secondary btn-sm" onclick="S.refresh()">${I.refresh} Refresh</button></div></div>
   <div class="card" style="overflow-x:auto;padding:0">
-    <table class="compact-table"><thead><tr><th>Pair</th><th>Type</th><th>Entry</th><th>SL</th><th>TP1</th><th>TP2</th><th>Session</th><th>Score</th><th>Status</th></tr></thead>
+    <table class="compact-table"><thead><tr><th>Pair</th><th>Type</th><th>Entry</th><th>SL</th><th>TP2</th><th>Session</th><th>ATR14</th><th>Status</th></tr></thead>
     <tbody>${data.trades.map(t=>`<tr>
       <td style="font-weight:600">${t.name||t.pair}</td>
       <td class="${t.type==='BULLISH'?'text-green':'text-red'}">${t.type==='BULLISH'?'BUY':'SELL'}</td>
       <td class="mono">${fmtN(t.entry,5)}</td><td class="mono text-muted">${fmtN(t.sl,5)}</td>
-      <td class="mono text-muted">${fmtN(t.tp1,5)}</td><td class="mono text-muted">${fmtN(t.tp2,5)}</td>
+      <td class="mono text-muted">${fmtN(t.tp2,5)}</td>
       <td class="text-muted text-sm">${t.session||'—'}</td>
-      <td><span class="badge ${(t.score||0)>=4?'badge-green':(t.score||0)>=3?'badge-orange':'badge-neutral'}">${t.score}/5</span></td>
-      <td>${t.beFired?'<span class="badge badge-green">BE✓</span> ':''}${t.tp1Fired?'<span class="badge badge-green">TP1✓</span> ':''}${t.closed?'<span class="badge badge-neutral">closed</span>':'<span class="badge badge-green">open</span>'}</td>
+      <td class="mono text-muted text-sm">${t.atr14!=null?fmtN(t.atr14,2):'—'}</td>
+      <td>${t.expiry?'<span class="text-muted text-sm">exp '+new Date(t.expiry).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:true})+'</span> ':''}${t.closed?'<span class="badge badge-neutral">closed</span>':'<span class="badge badge-green">open</span>'}</td>
     </tr>`).join('')}</tbody></table>
   </div>`;
 }

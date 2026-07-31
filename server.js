@@ -4,6 +4,14 @@ process.on('uncaughtException',function(err){console.error('Uncaught Exception:'
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+// NY-open scalp engine reads Oanda M5 candles + daily ATR from the
+// sidecar-maintained scalps.sqlite (see scalp_research/live_feed.py).
+let scalpsDb=null;
+try{
+  const {DatabaseSync}=require('node:sqlite');
+  scalpsDb=new DatabaseSync(process.env.SCALP_DB_PATH||'/Users/roz/scalp_research/data/scalps.sqlite',{readOnly:true});
+  console.log('NY-open scalp DB: open');
+}catch(e){console.warn('node:sqlite unavailable — NY-open scalp engine disabled: '+e.message);}
 let webpush=null;
 try{webpush=require('web-push');}catch(e){console.log('web-push not installed yet — push notifications disabled until package.json is updated');}
 const VAPID_PUBLIC=process.env.VAPID_PUBLIC_KEY||'';
@@ -64,12 +72,15 @@ const QMR_INSTS = [
   {id:'CHFJPY',sym:'CHF/JPY',name:'CHF/JPY',dec:3},
 ];
 const QMR_TFS=['1h','4h'];
-const SCALP_INSTS=[
-  {id:'EURUSD',sym:'EUR/USD',name:'EUR/USD',dec:5},
-  {id:'GBPUSD',sym:'GBP/USD',name:'GBP/USD',dec:5},
-  {id:'USDJPY',sym:'USD/JPY',name:'USD/JPY',dec:3},
-  {id:'EURCAD',sym:'EUR/CAD',name:'EUR/CAD',dec:5},
+// NY-open index scalp module (Phase 4) — US30 + NAS100 only.
+// Signals come from Oanda M5 candles + daily ATR read from scalps.sqlite.
+const NY_INSTS=[
+  {id:'US30',sym:'US30',name:'US30',dec:2},
+  {id:'NAS100',sym:'NAS100',name:'NAS100',dec:2},
 ];
+const NY_OPEN_MIN=9*60+30,NY_OR_END_MIN=9*60+45,NY_CLOSE_MIN=11*60+30;
+const NY_TARGET_MULT=0.10,NY_STOP_MULT=0.20,NY_MAX_HOLD_MIN=60,NY_SIGNAL_TIMEOUT_MIN=60;
+const NY_TZ='America/New_York';
 const CHECK_MS=30*60*1000,DELAY_MS=12000,PROX=0.007,IMPULSE=0.0015,MIN_FVG=0.0003;
 const QMR_MIN=3,WEEKLY_EVERY=24,LON_S=7,LON_E=16,NY_S=13,NY_E=22;
 
@@ -488,61 +499,106 @@ function detectSD(c){const s=[],d=[];for(let i=0;i<c.length-2;i++){const b=c[i],
 function detectOB(c){const bull=[],bear=[];for(let i=0;i<c.length-2;i++){const b=c[i],n=c[i+1];if(Math.abs(n.close-n.open)/n.open<IMPULSE)continue;if(n.close>n.open&&b.close<b.open)bull.push({top:Math.max(b.open,b.close),bottom:Math.min(b.open,b.close)});else if(n.close<n.open&&b.close>b.open)bear.push({top:Math.max(b.open,b.close),bottom:Math.min(b.open,b.close)});}return{bull:bull.slice(-4).reverse(),bear:bear.slice(-4).reverse()};}
 function detectFVG(c){const bull=[],bear=[];for(let i=0;i<c.length-2;i++){const a=c[i],z=c[i+2];if(z.low>a.high&&(z.low-a.high)/a.high>MIN_FVG)bull.push({top:z.low,bottom:a.high});if(z.high<a.low&&(a.low-z.high)/a.low>MIN_FVG)bear.push({top:a.low,bottom:z.high});}return{bull:bull.slice(-5).reverse(),bear:bear.slice(-5).reverse()};}
 function detectBRK(c,sdZ){const cp=c[c.length-1].close,bull=[],bear=[],near=(p,z)=>p>=z.bottom*(1-PROX)&&p<=z.top*(1+PROX);for(const z of sdZ.demand)if(c.some(x=>x.close<z.bottom)&&near(cp,z))bear.push(z);for(const z of sdZ.supply)if(c.some(x=>x.close>z.top)&&near(cp,z))bull.push(z);return{bull,bear};}
-function detectScalp(c,instId,t){
-  const d=t?new Date(t):new Date();
-  const h=d.getUTCHours();
-  let session=null;
-  if(h>=7&&h<11)session='LONDON';
-  else if(h>=13&&h<17)session='NY';
-  else return null;
-  const ss=session==='LONDON'?7:13;
-  let openIdx=-1;
-  for(let i=c.length-1;i>=0;i--){
-    const dt=c[i].dt;if(!dt)continue;
-    const tPart=dt.includes('T')?dt.split('T')[1]:dt.split(' ')[1];
-    if(!tPart)continue;
-    const parts=tPart.split(':');if(parts.length<2)continue;
-    if(parseInt(parts[0])===ss&&parseInt(parts[1])<=15){openIdx=i;break;}
+// ===== NY-OPEN INDEX SCALP ENGINE (Phase 4) =====
+// Mirrors phase3_trade.py: OR15 (09:30–09:45 NY), breakout = M5 close beyond
+// the OR, entry at the boundary, target +0.10×daily ATR, stop 0.20×daily ATR,
+// max hold 60 min, hard time-stop 11:30 NY. ATR comes from daily_atr table
+// (sidecar) — the value known at the day's open, byte-identical to the
+// backtest (phase3_replay.daily_atr_map).
+function nyNow(){return new Date(new Date().toLocaleString('en-US',{timeZone:NY_TZ}));}
+function nyDayStr(){const d=nyNow();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function estMin(est){return parseInt(est.slice(11,13))*60+parseInt(est.slice(14,16));}
+function nyAtrFor(pair,day){
+  if(!scalpsDb)return null;
+  try{const row=scalpsDb.prepare('SELECT atr14 FROM daily_atr WHERE instrument=? AND day=?').get(pair,day);return row?row.atr14:null;}
+  catch(e){return null;}
+}
+function nyCandlesFor(pair,day){
+  if(!scalpsDb)return[];
+  try{return scalpsDb.prepare("SELECT ts,est,open,high,low,close FROM candles WHERE instrument=? AND granularity='M5' AND est>=? AND est<=? ORDER BY ts ASC").all(pair,day+'T00:00:00',day+'T23:59:59');}
+  catch(e){return[];}
+}
+function nyLatestHilo(pair){
+  if(!scalpsDb)return null;
+  try{
+    const rows=scalpsDb.prepare("SELECT high,low,close,est FROM candles WHERE instrument=? AND granularity='M5' ORDER BY ts DESC LIMIT 3").all(pair);
+    if(!rows.length)return null;
+    return{high:Math.max(...rows.map(r=>r.high)),low:Math.min(...rows.map(r=>r.low)),close:rows[0].close};
+  }catch(e){return null;}
+}
+function nyOpenRange(candles){
+  const hs=[],ls=[];
+  for(const c of candles){
+    const m=estMin(c.est);
+    if(m>=NY_OPEN_MIN&&m<NY_OR_END_MIN){hs.push(c.high);ls.push(c.low);}
   }
-  if(openIdx===-1||c.length-1-openIdx<6)return null;
-  const rangeC=c.slice(openIdx,openIdx+6);if(rangeC.length<6)return null;
-  const rangeHigh=Math.max(...rangeC.map(x=>x.high)),rangeLow=Math.min(...rangeC.map(x=>x.low));
-  const lastC=c[c.length-1],prevC=c[c.length-2];
-  const brokeBull=prevC.close>rangeHigh||lastC.close>rangeHigh;
-  const brokeBear=prevC.close<rangeLow||lastC.close<rangeLow;
-  if(!brokeBull&&!brokeBear)return null;
-  const dir=brokeBull?'BULLISH':'BEARISH';
-  const postC=c.slice(openIdx+6);
-  const fvgs=detectFVG(postC);
-  const hits=dir==='BULLISH'?fvgs.bull:fvgs.bear;
-  if(!hits.length)return null;
-  const fvg=hits[0];
-  if(dir==='BULLISH'&&lastC.close>fvg.top)return null;
-  if(dir==='BEARISH'&&lastC.close<fvg.bottom)return null;
-  const rng=rangeHigh-rangeLow;if(!rng)return null;
-  const fibs={
-    f618:dir==='BULLISH'?rangeHigh-rng*0.618:rangeLow+rng*0.618,
-    f702:dir==='BULLISH'?rangeHigh-rng*0.702:rangeLow+rng*0.702,
-    f786:dir==='BULLISH'?rangeHigh-rng*0.786:rangeLow+rng*0.786,
-  };
-  const fvgMid=(fvg.top+fvg.bottom)/2;
-  const inZone=(p,zone)=>p>=zone.bottom&&p<=zone.top;
-  const fvgZone={bottom:fvg.bottom,top:fvg.top};
-  let fibScore=0,hitFib=null;
-  const fibPct=dir==='BULLISH'?((fvgMid-rangeLow)/rng*100):((rangeHigh-fvgMid)/rng*100);
-  if(inZone(fibs.f618,fvgZone)||Math.abs(fvgMid-fibs.f618)/rng<0.02){fibScore++;hitFib='61.8';}
-  if(inZone(fibs.f702,fvgZone)||Math.abs(fvgMid-fibs.f702)/rng<0.02){fibScore+=2;hitFib='70.2';}
-  if(inZone(fibs.f786,fvgZone)||Math.abs(fvgMid-fibs.f786)/rng<0.02){fibScore+=3;hitFib='78.6';}
-  let entry,sl,tp2;
-  if(dir==='BULLISH'){entry=fvg.bottom;sl=entry-(fvg.top-fvg.bottom);tp2=entry+Math.abs(entry-sl)*2;}
-  else{entry=fvg.top;sl=entry+(fvg.top-fvg.bottom);tp2=entry-Math.abs(entry-sl)*2;}
-  const rr=Math.abs(tp2-entry)/Math.abs(entry-sl);
-  let score=fibScore+1;
-  if(rr>=2)score++;
-  if(score<2)return null;
-  const avgVol=rangeC.reduce((s,x)=>s+x.volume,0)/rangeC.length;
-  const volRatio=avgVol>0?postC.slice(-5).reduce((s,x)=>s+x.volume,0)/5/avgVol:1;
-  return{type:dir,entry,sl,tp2,session,rangeHigh,rangeLow,score,rr,fib:hitFib,fibPct:Math.round(fibPct*10)/10,fvgTop:fvg.top,fvgBottom:fvg.bottom,volRatio:Math.round(volRatio*10)/10};
+  if(!hs.length)return null;
+  return{high:Math.max(...hs),low:Math.min(...ls),n:hs.length};
+}
+function nySignalFor(pair,atr14,candles){
+  if(!atr14||atr14<=0||!candles||candles.length<2)return null;
+  const or15=nyOpenRange(candles);
+  if(!or15||or15.n<2)return null;
+  const target=NY_TARGET_MULT*atr14,stopDist=NY_STOP_MULT*atr14;
+  let dir=null,at=null,boundary=null;
+  for(const c of candles){
+    const m=estMin(c.est);
+    if(m<NY_OR_END_MIN)continue;
+    if(m>NY_OR_END_MIN+NY_SIGNAL_TIMEOUT_MIN)break;
+    if(c.close>or15.high){dir='UP';at=c.est;boundary=or15.high;break;}
+    if(c.close<or15.low){dir='DOWN';at=c.est;boundary=or15.low;break;}
+  }
+  if(!dir)return null;
+  const fill=boundary; // ENTRY_AT_BOUNDARY
+  const sl=dir==='UP'?fill-stopDist:fill+stopDist;
+  const tp2=dir==='UP'?fill+target:fill-target;
+  return{type:dir==='UP'?'BULLISH':'BEARISH',entry:fill,sl,tp2,atr14,orHigh:or15.high,orLow:or15.low,signalEst:at};
+}
+function nyExpiry(day){
+  const hh=String(Math.floor(NY_CLOSE_MIN/60)).padStart(2,'0');
+  const mm=String(NY_CLOSE_MIN%60).padStart(2,'0');
+  return day+'T'+hh+':'+mm+':00';
+}
+async function runNyScalp(){
+  if(!scalpsDb)return;
+  const day=nyDayStr();
+  // Clean expired trades first
+  checkNyTrades();
+  // Signal detection — at most one trade per pair per day
+  for(const inst of NY_INSTS){
+    const sKey=inst.id+'-'+day;
+    if(scalpSeen.has(sKey))continue;
+    const atr14=nyAtrFor(inst.id,day);
+    if(!atr14)continue;
+    const candles=nyCandlesFor(inst.id,day);
+    const signal=nySignalFor(inst.id,atr14,candles);
+    if(!signal)continue;
+    scalpSeen.add(sKey);
+    const id='SCALP-'+inst.id+'-'+Date.now();
+    const chartFile=await genScalpChart(inst.id,'5min',[
+      {price:signal.entry,text:'Entry',color:'#3B82F6'},
+      {price:signal.sl,text:'SL',color:'#EF4444'},
+      {price:signal.tp2,text:'TP2',color:'#A3E635'}
+    ],'scalp_'+inst.id+'_'+Date.now());
+    scalpSignals.unshift({
+      id,pair:inst.id,name:inst.name,type:signal.type,
+      entry:signal.entry,sl:signal.sl,tp2:signal.tp2,
+      session:'NY',atr14:signal.atr14,
+      orHigh:signal.orHigh,orLow:signal.orLow,signalEst:signal.signalEst,
+      chartFile,time:new Date().toISOString()
+    });
+    if(scalpSignals.length>50)scalpSignals=scalpSignals.slice(0,50);
+    activeScalpTrades.push({sigId:id,pair:inst.id,name:inst.name,type:signal.type,entry:signal.entry,sl:signal.sl,tp2:signal.tp2,beLevel:null,origSL:signal.sl,session:'NY',atr14:signal.atr14,openTime:Date.now(),closed:false,expiry:nyExpiry(day)});
+    try{sendScalpPushToAll(
+      (signal.type==='BULLISH'?'\uD83D\uDFE2 BUY':'\uD83D\uDD34 SELL')+' '+inst.id,
+      'NY-Open breakout '+(signal.type==='BULLISH'?'BUY':'SELL')+' — US session — Entry '+signal.entry.toFixed(inst.dec)+' · TP '+signal.tp2.toFixed(inst.dec)+' · SL '+signal.sl.toFixed(inst.dec),
+      '/'
+    );}catch(pushErr){log('Scalp push skipped: '+pushErr.message);}
+    log('Scalp signal: '+inst.id+' '+signal.type+' NY entry='+signal.entry.toFixed(inst.dec)+' sl='+signal.sl.toFixed(inst.dec)+' tp2='+signal.tp2.toFixed(inst.dec)+' atr='+signal.atr14.toFixed(2));
+    saveState();
+  }
+  // ScalpSeen cleanup — keep max 100 most recent
+  if(scalpSeen.size>100){const arr=[...scalpSeen];scalpSeen=new Set(arr.slice(-100));}
 }
 function detectStructure(c){if(c.length<12)return{trend:'RANGING'};const sH=[],sL=[];for(let i=2;i<c.length-2;i++){if(c[i].high>c[i-1].high&&c[i].high>c[i-2].high&&c[i].high>c[i+1].high&&c[i].high>c[i+2].high)sH.push(c[i].high);if(c[i].low<c[i-1].low&&c[i].low<c[i-2].low&&c[i].low<c[i+1].low&&c[i].low<c[i+2].low)sL.push(c[i].low);}if(sH.length<2||sL.length<2)return{trend:'RANGING'};const rH=sH.slice(-2),rL=sL.slice(-2);if(rH[1]>rH[0]&&rL[1]>rL[0])return{trend:'BULLISH'};if(rH[1]<rH[0]&&rL[1]<rL[0])return{trend:'BEARISH'};return{trend:'RANGING'};}
 function detectLiquidity(c,sweep,type){const tol=0.001,fp=PROX*2;const eqH=[],eqL=[];for(let i=0;i<c.length-4;i++){for(let j=i+3;j<c.length;j++){if(Math.abs(c[j].high-c[i].high)/c[i].high<tol){eqH.push(c[i].high);break;}}for(let j=i+3;j<c.length;j++){if(Math.abs(c[j].low-c[i].low)/c[i].low<tol){eqL.push(c[i].low);break;}}}if(type==='BEARISH')return eqH.some(h=>Math.abs(sweep-h)/sweep<fp);return eqL.some(l=>Math.abs(sweep-l)/sweep<fp);}
@@ -731,7 +787,7 @@ function checkCorrelationConflict(instId,type){
 // Telegram functions
 async function tgSend(text){if(!TG_TOKEN||!TG_CHAT)return;try{await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:TG_CHAT,text})});}catch(e){log('TG error: '+e.message);}}
 // Chart snapshots via chart-img.com (optional - only active when CHARTIMG_API_KEY is set)
-const CHART_SYMBOLS={EURUSD:'OANDA:EURUSD',XAUUSD:'OANDA:XAUUSD',BTCUSD:'COINBASE:BTCUSD',EURGBP:'OANDA:EURGBP',EURCAD:'OANDA:EURCAD',USDJPY:'OANDA:USDJPY',CHFJPY:'OANDA:CHFJPY',NAS100:'OANDA:NAS100USD'};
+const CHART_SYMBOLS={EURUSD:'OANDA:EURUSD',XAUUSD:'OANDA:XAUUSD',BTCUSD:'COINBASE:BTCUSD',EURGBP:'OANDA:EURGBP',EURCAD:'OANDA:EURCAD',USDJPY:'OANDA:USDJPY',CHFJPY:'OANDA:CHFJPY',NAS100:'OANDA:NAS100USD',US30:'OANDA:US30USD'};
 async function tgSendChart(instId,interval,lines,caption,saveForApp,noTg){
   // saveForApp: if provided, save the exact same image bytes for the app to display later
   let savedFile=null;
@@ -1080,83 +1136,55 @@ async function checkQMRTrades(instId,price,cHigh,cLow){
     }
   }
 }
-function checkScalpTrades(instId,cHigh,cLow){
-  const hi=cHigh||0,lo=cLow||0;
+function checkNyTrades(){
+  const now=Date.now();
   for(let i=activeScalpTrades.length-1;i>=0;i--){
-    const t=activeScalpTrades[i];if(t.pair!==instId||t.closed)continue;
+    const t=activeScalpTrades[i];if(t.closed)continue;
+    const hl=nyLatestHilo(t.pair);
+    if(!hl)continue;
+    const hi=hl.high,lo=hl.low;
     const isB=t.type==='BULLISH';
-    const slDist=Math.abs(t.entry-t.origSL);
-    const didHitTP1=isB?hi>=t.tp1:lo<=t.tp1;
-    const didHitTP2=isB?hi>=t.tp2:lo<=t.tp2;
+    const risk=Math.abs(t.entry-t.origSL);
+    const didHitTP=isB?hi>=t.tp2:lo<=t.tp2;
     const didHitSL=isB?lo<=t.sl:hi>=t.sl;
-    const didHitBE=isB?lo<=t.beLevel:hi>=t.beLevel;
+    const holdMin=(now-(t.openTime||now))/60000;
+    const pastExpiry=t.expiry&&now>new Date(t.expiry).getTime();
+    const timedOut=holdMin>NY_MAX_HOLD_MIN||pastExpiry;
 
-    // TP1 → record +1R immediately, move SL to BE, keep remainder open
-    if(!t.tp1Fired&&didHitTP1){
-      t.tp1Fired=true;
-      t.tp1Time=Date.now();
-      t.sl=t.beLevel;
-      const tp1R=slDist>0?Math.abs(t.tp1-t.entry)/slDist:1;
-      const durMin=t.openTime?Math.round((Date.now()-t.openTime)/60000):null;
-      scalpTradeHistory.push({pair:t.pair,type:t.type,outcome:'TP1',r:tp1R,entry:t.entry,sl:t.origSL,tp2:t.tp2,session:t.session,openTime:t.openTime,closeTime:Date.now()});
-      saveState();
-      log('Scalp TP1: '+t.pair+' '+t.type+' +'+tp1R.toFixed(2)+'R booked, SL moved to BE');
-      try{scalpJournalEntry(t,'TP1',tp1R,durMin,[t.session,'Score '+t.score+'/5','TP1 booked']);}catch(e){}
-      try{sendPushToTrackers(t.sigId,'\u2705 Scalp '+tp1R.toFixed(1)+'R Banked '+t.pair,t.name+' — TP1 hit, +'+tp1R.toFixed(2)+'R secured. Remainder running with BE SL.','scalp_tp1');}catch(e){}
-      // Don't continue — check if TP2 also hit in same candle
-    }
-
-    // TP2 — remainder closes here
-    if(!t.tp2Fired&&didHitTP2){
-      t.tp2Fired=true;t.closed=true;
-      const remR=slDist>0?Math.abs(t.tp2-t.tp1)/slDist:1;
-      const durMin=t.openTime?Math.round((Date.now()-t.openTime)/60000):null;
-      scalpTradeHistory.push({pair:t.pair,type:t.type,outcome:'WIN',r:remR,entry:t.tp1,sl:t.beLevel,tp2:t.tp2,session:t.session,openTime:t.tp1Fired?t.tp1Time||t.openTime:t.openTime,closeTime:Date.now(),remainder:true});
-      activeScalpTrades.splice(i,1);saveState();
-      log('Scalp WIN: '+t.pair+' '+t.type+' remainder +'+remR.toFixed(2)+'R (total '+(t.tp1Fired?1+remR:remR).toFixed(1)+'R)');
-      try{scalpJournalEntry(t,'WIN',remR,durMin,[t.session,'Remainder']);}catch(e){}
-      try{sendPushToTrackers(t.sigId,'\uD83D\uDCB0 Scalp Remainder TP2 '+t.pair,t.name+' — remainder hit TP2, +'+remR.toFixed(2)+'R.','scalp_tp2');}catch(e){}
-      continue;
-    }
-
-    // BE after TP1 — remainder closes at BE
-    if(t.tp1Fired&&!t.beFired&&didHitBE){
-      t.beFired=true;t.closed=true;
-      const durMin=t.openTime?Math.round((Date.now()-t.openTime)/60000):null;
-      scalpTradeHistory.push({pair:t.pair,type:t.type,outcome:'BE',r:0,entry:t.tp1,sl:t.beLevel,tp2:t.tp2,session:t.session,openTime:t.tp1Fired?t.tp1Time||t.openTime:t.openTime,closeTime:Date.now(),remainder:true});
-      activeScalpTrades.splice(i,1);saveState();
-      log('Scalp BE: '+t.pair+' '+t.type+' remainder 0R (TP1 already banked at +1R)');
-      try{scalpJournalEntry(t,'BE',0,durMin,[t.session,'TP1 secured','Remainder BE']);}catch(e){}
-      try{sendPushToTrackers(t.sigId,'\u2705 Scalp Remainder BE '+t.pair,t.name+' — remainder closed at entry. TP1 already banked.','scalp_be');}catch(e){}
-      continue;
-    }
-
-    // SL (only before TP1 fires — after TP1, SL=BE handled above)
-    if(!t.tp1Fired&&!t.slFired&&didHitSL){
-      t.slFired=true;t.closed=true;
-      const rLoss=slDist>0?-1:-1;
-      const durMin=t.openTime?Math.round((Date.now()-t.openTime)/60000):null;
-      scalpTradeHistory.push({pair:t.pair,type:t.type,outcome:'LOSS',r:rLoss,entry:t.entry,sl:t.origSL,tp2:t.tp2,session:t.session,openTime:t.openTime,closeTime:Date.now()});
-      activeScalpTrades.splice(i,1);saveState();
-      log('Scalp LOSS: '+t.pair+' '+t.type+' '+rLoss.toFixed(1)+'R');
-      try{scalpJournalEntry(t,'LOSS',rLoss,durMin,[t.session]);}catch(e){}
-      try{sendPushToTrackers(t.sigId,'\u274C Scalp SL '+t.pair,t.name+' — stop loss hit, '+rLoss.toFixed(1)+'R.','scalp_sl');}catch(e){}
-      continue;
-    }
-
-    // Expiry — auto-close after 4 hours
-    if(!t.closed&&t.openTime&&Date.now()-t.openTime>4*60*60*1000){
+    // TP2 → WIN
+    if(didHitTP){
       t.closed=true;
-      const exitPrice=isB?lo:hi;
-      const rExp=isB?(exitPrice-t.entry)/Math.abs(t.entry-t.origSL):(t.entry-exitPrice)/Math.abs(t.entry-t.origSL);
-      const outcome=rExp>0?'WIN':rExp===0?'BE':'LOSS';
-      const adjR=Math.round(rExp*100)/100;
-      scalpTradeHistory.push({pair:t.pair,type:t.type,outcome,entry:t.entry,sl:t.origSL,tp2:t.tp2,session:t.session,openTime:t.openTime,closeTime:Date.now(),r:adjR,expired:true});
-      const durMin=t.openTime?Math.round((Date.now()-t.openTime)/60000):null;
+      const r=risk>0?0.5:0; // target = 0.10×ATR, risk = 0.20×ATR
+      scalpTradeHistory.push({pair:t.pair,type:t.type,outcome:'WIN',r,entry:t.entry,sl:t.origSL,tp2:t.tp2,session:t.session,atr14:t.atr14,openTime:t.openTime,closeTime:Date.now()});
       activeScalpTrades.splice(i,1);saveState();
-      log('Scalp EXPIRED: '+t.pair+' '+t.type+' R='+adjR.toFixed(2)+' (open >4h)');
-      try{scalpJournalEntry(t,outcome,adjR,durMin,[t.session,'Expired']);}catch(e){}
-      try{sendPushToTrackers(t.sigId,'\u23F0 Scalp Expired '+t.pair,t.name+' — auto-closed after 4h, '+adjR.toFixed(2)+'R.','scalp_expiry');}catch(e){}
+      log('Scalp WIN: '+t.pair+' '+t.type+' +'+r.toFixed(2)+'R (TP2 at '+t.tp2+')');
+      try{scalpJournalEntry(t,'WIN',r,Math.round(holdMin),[t.session,'TP2']);}catch(e){}
+      try{sendPushToTrackers(t.sigId,'\uD83D\uDCB0 Scalp Target Hit '+t.pair,t.name+' — TP2 reached, +'+r.toFixed(2)+'R.','scalp_tp2');}catch(e){}
+      continue;
+    }
+    // SL → LOSS
+    if(didHitSL){
+      t.closed=true;
+      const r=-1;
+      scalpTradeHistory.push({pair:t.pair,type:t.type,outcome:'LOSS',r,entry:t.entry,sl:t.origSL,tp2:t.tp2,session:t.session,atr14:t.atr14,openTime:t.openTime,closeTime:Date.now()});
+      activeScalpTrades.splice(i,1);saveState();
+      log('Scalp LOSS: '+t.pair+' '+t.type+' '+r.toFixed(1)+'R');
+      try{scalpJournalEntry(t,'LOSS',r,Math.round(holdMin),[t.session]);}catch(e){}
+      try{sendPushToTrackers(t.sigId,'\u274C Scalp SL '+t.pair,t.name+' — stop loss hit, '+r.toFixed(1)+'R.','scalp_sl');}catch(e){}
+      continue;
+    }
+    // Time-stop → TIME
+    if(timedOut){
+      t.closed=true;
+      const exit=isB?lo:hi;
+      const rMove=risk>0?((isB?(exit-t.entry):(t.entry-exit))/risk):0;
+      const r=Math.round(rMove*100)/100;
+      const outcome=r>0?'WIN':r<0?'LOSS':'BE';
+      scalpTradeHistory.push({pair:t.pair,type:t.type,outcome,r,entry:t.entry,sl:t.origSL,tp2:t.tp2,session:t.session,atr14:t.atr14,openTime:t.openTime,closeTime:Date.now(),timedOut:true});
+      activeScalpTrades.splice(i,1);saveState();
+      log('Scalp TIMEOUT: '+t.pair+' '+t.type+' R='+r.toFixed(2)+' (max hold / 11:30 NY)');
+      try{scalpJournalEntry(t,outcome,r,Math.round(holdMin),[t.session,'Timed out']);}catch(e){}
+      try{sendPushToTrackers(t.sigId,'\u23F0 Scalp Timed Out '+t.pair,t.name+' — closed '+r.toFixed(2)+'R (hold window over).','scalp_expiry');}catch(e){}
     }
   }
 }
@@ -1229,7 +1257,7 @@ function scalpJournalEntry(t,outcome,rMultiple,durationMin,extraTags){
   if(rMultiple>3)flags.push('Home run');
   if(rMultiple<-1.5)flags.push('Wider SL needed');
   if(durationMin!=null&&durationMin<120&&(outcome==='LOSS'||outcome==='BE'))flags.push('Quick exit');
-  if(outcome==='LOSS'&&t.expired)flags.push('Expired');
+  if(outcome==='LOSS'&&(t.expired||t.timedOut))flags.push('Expired');
   const pairName=t.name||t.pair;
   const base={pair:pairName,direction:dir,tf:'SCALP',outcome:outcome,rMultiple:rMultiple,duration:durStr,notes:'Auto-logged from scalp trade',tags:extraTags||[],reviewFlags:flags,system:'scalp'};
   for(const member of memberCodes){
@@ -1332,7 +1360,7 @@ async function runScan(manual=false){
   // Quick trade monitor — runs EVERY scan (30min) to catch TP/SL/BE early
   // Fetches current price only for pairs with active trades (1 call each)
   if(activeQMRTrades.length){
-    const allInsts=[...QMR_INSTS,...SCALP_INSTS,...CRT_INSTS];
+    const allInsts=[...QMR_INSTS,...NY_INSTS,...CRT_INSTS];
     for(const trade of activeQMRTrades){
       const inst=allInsts.find(i=>i.id===trade.instId);
       if(!inst)continue;
@@ -1598,63 +1626,14 @@ async function runScan(manual=false){
     qmrSeen=new Set(qmrArr);
   }
   for(const k in recentQMRFires)if(Date.now()-recentQMRFires[k]>24*60*60*1000)delete recentQMRFires[k];
-  // Scalp scan — session momentum + FVG 5M, London/NY only
+  // NY-open scalp engine — runs during the US morning (09:30–11:30 NY).
+  // Reads Oanda M5 candles + daily ATR from scalps.sqlite (sidecar).
   if(!isWeekend()){
-    const sh=new Date().getUTCHours();
-    const inLondon=sh>=7&&sh<11;
-    const inNY=sh>=13&&sh<17;
-    if(inLondon||inNY){
-      for(const inst of SCALP_INSTS){
-        try{
-          const sres=await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym)}&interval=5min&outputsize=100&apikey=${API_KEY2}`);
-          const sj=await sres.json();
-          if(sj.status==='error'){await sleep(DELAY_MS);continue;}
-          const sc=parseC(sj);if(sc.length<25){await sleep(DELAY_MS);continue;}
-          const signal=detectScalp(sc,inst.id);
-          if(signal){
-            const sKey=inst.id+'-'+signal.type+'-'+signal.session+'-'+new Date().toISOString().slice(0,10);
-            if(!scalpSeen.has(sKey)){
-              scalpSeen.add(sKey);
-              const chartFile=await genScalpChart(inst.id,'5min',[
-                {price:signal.entry,text:'Entry',color:'#3B82F6'},
-                {price:signal.sl,text:'SL',color:'#EF4444'},
-                {price:signal.tp2,text:'TP2',color:'#A3E635'}
-              ],'scalp_'+inst.id+'_'+Date.now());
-              scalpSignals.unshift({
-                id:'SCALP-'+inst.id+'-'+Date.now(),
-                pair:inst.id,name:inst.name,type:signal.type,
-                entry:signal.entry,sl:signal.sl,tp2:signal.tp2,
-                session:signal.session,score:signal.score,rr:signal.rr,
-                fib:signal.fib,fibPct:signal.fibPct,
-                rangeHigh:signal.rangeHigh,rangeLow:signal.rangeLow,
-                fvgTop:signal.fvgTop,fvgBottom:signal.fvgBottom,
-                volRatio:signal.volRatio,
-                chartFile,time:new Date().toISOString()
-              });
-              if(scalpSignals.length>50)scalpSignals=scalpSignals.slice(0,50);
-              const slDist=Math.abs(signal.entry-signal.sl);
-              const tp1Price=signal.type==='BULLISH'?signal.entry+slDist:signal.entry-slDist;
-              activeScalpTrades.push({sigId:'SCALP-'+inst.id+'-'+Date.now(),pair:inst.id,name:inst.name,type:signal.type,entry:signal.entry,sl:signal.sl,tp2:signal.tp2,tp1:tp1Price,beLevel:signal.entry,origSL:signal.sl,session:signal.session,score:signal.score,openTime:Date.now(),closed:false,tp1Fired:false,beFired:false,tp2Fired:false,slFired:false});
-              try{sendScalpPushToAll(
-                (signal.type==='BULLISH'?'\uD83D\uDFE2 BUY':'\uD83D\uDD34 SELL')+' '+inst.id,
-                'Scalp '+(signal.type==='BULLISH'?'BUY':'SELL')+' \u2014 '+signal.session+' breakout \u2014 \uD83D\uDCA5Score '+signal.score+'/5 \u2014 RR '+signal.rr,
-                '/'
-              );}catch(pushErr){log('Scalp push skipped: '+pushErr.message);}
-              log(`Scalp signal: ${inst.id} ${signal.type} ${signal.session} score=${signal.score} fib=${signal.fib} RR=${signal.rr}`);
-            }
-          }
-          const scHigh=Math.max(...sc.slice(-3).map(x=>x.high));
-          const scLow=Math.min(...sc.slice(-3).map(x=>x.low));
-          checkScalpTrades(inst.id,scHigh,scLow);
-          await sleep(DELAY_MS);
-        }catch(e){log('Scalp '+inst.id+': '+e.message);await sleep(DELAY_MS);}
-      }
+    const nMin=nyNow().getHours()*60+nyNow().getMinutes();
+    if(nMin>=NY_OPEN_MIN-15&&nMin<=NY_CLOSE_MIN+15){
+      try{await runNyScalp();}
+      catch(e){log('NY scalp scan: '+e.message);}
     }
-  }
-  // ScalpSeen cleanup — keep max 100 most recent
-  if(scalpSeen.size>100){
-    const arr=[...scalpSeen];
-    scalpSeen=new Set(arr.slice(-100));
   }
   scanCount++;lastScanTime=new Date().toISOString();saveState();
   if(scalpTradeHistory.length>500)scalpTradeHistory=scalpTradeHistory.slice(-250);
@@ -1974,7 +1953,7 @@ app.post('/api/admin/close-trade/:pair',async(req,res)=>{
   // Fetch current price
   let price;
   try{
-    const allInsts=[...QMR_INSTS,...SCALP_INSTS,...CRT_INSTS];
+    const allInsts=[...QMR_INSTS,...NY_INSTS,...CRT_INSTS];
     const inst=allInsts.find(i=>i.id===pair)||{sym:pair};
     const pRes=await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym||pair)}&interval=1h&outputsize=1&apikey=${API_KEY}`);
     const pJson=await pRes.json();
@@ -2040,7 +2019,7 @@ app.post('/api/admin/backtest',async(req,res)=>{
   const strategy=strat||'qmr';
   if(!['qmr','donchian'].includes(strategy))return res.status(400).json({error:'Strategy must be "qmr" or "donchian"'});
   const id=pair.toUpperCase();
-  const allInsts=[...QMR_INSTS,...SCALP_INSTS,...CRT_INSTS];
+  const allInsts=[...QMR_INSTS,...NY_INSTS,...CRT_INSTS];
   const inst=allInsts.find(i=>i.id===id);
   if(!inst&&!symOverride)return res.status(400).json({error:'Unknown pair: '+id+'. For new pairs, provide "symbol" (Twelve Data symbol, e.g. USD/CHF) and "dec" (decimal places).'});
   const tf=interval.toLowerCase();
@@ -2170,7 +2149,7 @@ app.get('/api/admin/dashboard',(req,res)=>{
 });
 app.get('/api/admin/trades',async(req,res)=>{
   if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
-  const allInsts=[...QMR_INSTS,...SCALP_INSTS,...CRT_INSTS];
+  const allInsts=[...QMR_INSTS,...NY_INSTS,...CRT_INSTS];
   const tradesWithPrices=[];
   for(const trade of activeQMRTrades){
     const inst=allInsts.find(i=>i.id===trade.instId);
@@ -2218,7 +2197,7 @@ app.post('/api/admin/trades/:sigId/close',async(req,res)=>{
   const t=activeQMRTrades[idx];
   let price;
   try{
-    const allInsts=[...QMR_INSTS,...SCALP_INSTS,...CRT_INSTS];
+    const allInsts=[...QMR_INSTS,...NY_INSTS,...CRT_INSTS];
     const inst=allInsts.find(i=>i.id===t.instId)||{sym:t.instId};
     const pRes=await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym||t.instId)}&interval=1h&outputsize=1&apikey=${API_KEY}`);
     const pJson=await pRes.json();const c=parseC(pJson);
@@ -2352,7 +2331,20 @@ app.get('/api/scalp',(req,res)=>{
 });
 app.get('/api/scalp/active',(req,res)=>{
   const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
-  res.json({trades:activeScalpTrades.filter(t=>!t.closed),count:activeScalpTrades.filter(t=>!t.closed).length});
+  const open=activeScalpTrades.filter(t=>!t.closed);
+  res.json({trades:open.map(t=>{
+    const hl=nyLatestHilo(t.pair);
+    const live=hl?hl.close:null;
+    const risk=Math.abs(t.entry-t.origSL)||1;
+    let curR=null;
+    if(live!=null){
+      const move=t.type==='BULLISH'?live-t.entry:t.entry-live;
+      curR=Math.round(move/risk*100)/100;
+    }
+    let minsLeft=null;
+    if(t.expiry)minsLeft=Math.max(0,Math.round((new Date(t.expiry).getTime()-Date.now())/60000));
+    return{...t,livePrice:live,curR,minsLeft};
+  }),count:open.length});
 });
 app.get('/api/scalp/stats',(req,res)=>{
   const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
@@ -2360,9 +2352,11 @@ app.get('/api/scalp/stats',(req,res)=>{
 });
 app.get('/api/scalp/pulse',(req,res)=>{
   const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
-  const pulse=SCALP_INSTS.map(inst=>{
-    const dc=dailyCache[inst.id];let dir='NEUTRAL',price=null;
-    if(dc&&dc.c&&dc.c.length){const last=dc.c[dc.c.length-1];dir=last.close>last.open?'BULLISH':'BEARISH';price=last.close;}
+  const pulse=NY_INSTS.map(inst=>{
+    const hl=nyLatestHilo(inst.id);let dir='NEUTRAL',price=null;
+    if(hl){price=hl.close;}
+    const last=scalpSignals.find(s=>s.pair===inst.id);
+    if(last)dir=last.type;
     return{id:inst.id,name:inst.name,direction:dir,price};
   });
   res.json({pairs:pulse});
@@ -2520,78 +2514,6 @@ app.post('/api/settings',(req,res)=>{
 app.get('/api/briefing',(req,res)=>{
   const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
   res.json({pairs:lastBriefingSnapshot,generatedAt:lastBriefingTime});
-});
-app.get('/api/backtest-scalp',async(req,res)=>{
-  const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
-  const results=[],allTrades=[],batches=Math.min(Math.max(parseInt(req.query.batches)||2,1),4);
-  for(const inst of SCALP_INSTS){
-    let allCandles=[];
-    for(let b=0;b<batches;b++){
-      try{
-        const url=`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym)}&interval=5min&outputsize=5000&apikey=${API_KEY2}`+(b>0&&allCandles.length?('&date='+new Date(allCandles[0].dt.replace(' ','T')+'Z').toISOString().slice(0,10)):'');
-        const resp=await fetch(url),j=await resp.json();
-        if(j.status==='ok'&&j.values?.length){
-          const p=parseC(j);
-          if(p.some(c=>!allCandles.some(e=>e.dt===c.dt)))allCandles.push(...p);
-        }
-      }catch(e){/* skip */}
-      if(b<batches-1)await sleep(2000);
-    }
-    if(!allCandles.length){results.push({id:inst.id,sym:inst.sym,trades:0,reason:'no data'});await sleep(2000);continue;}
-    allCandles.sort((a,b)=>a.dt.localeCompare(b.dt));
-    const deduped=[];const seen=new Set();
-    for(const c of allCandles){if(!seen.has(c.dt)){seen.add(c.dt);deduped.push(c);}}
-    allCandles=deduped;
-    if(allCandles.length<100){results.push({id:inst.id,sym:inst.sym,trades:0,reason:'insufficient data: '+allCandles.length+' candles'});await sleep(2000);continue;}
-    const btSeen=new Set();
-    for(let i=100;i<allCandles.length;i++){
-      const window=allCandles.slice(i-100,i+1),cc=allCandles[i];
-      const dtStr=(cc.dt.includes('T')?cc.dt:cc.dt.replace(' ','T'))+'Z',cd=new Date(dtStr),h=cd.getUTCHours();
-      if(h<7||(h>=11&&h<13)||h>=17)continue;
-      const signal=detectScalp(window,inst.id,cd.getTime());
-      if(!signal)continue;
-      const sKey=inst.id+'-'+signal.type+'-'+signal.session+'-'+cc.dt.slice(0,10);
-      if(btSeen.has(sKey))continue;
-      btSeen.add(sKey);
-      const lh=allCandles.slice(i+1);
-      if(lh.length<3)continue;
-      const isLong=signal.type==='BULLISH',fvgW=Math.abs(signal.entry-signal.sl),tp1=isLong?signal.entry+fvgW:signal.entry-fvgW;
-      let outcome='TIMEOUT',bars=0,tp1Hit=false;
-      for(let k=0;k<Math.min(lh.length,48);k++){
-        const bar=lh[k];bars=k+1;
-        if(isLong){
-          if(bar.low<=signal.sl&&tp1Hit){outcome='BE';break;}
-          if(bar.low<=signal.sl){outcome='SL';break;}
-          if(bar.high>=signal.tp2){outcome='WIN';break;}
-          if(bar.high>=tp1)tp1Hit=true;
-        }else{
-          if(bar.high>=signal.sl&&tp1Hit){outcome='BE';break;}
-          if(bar.high>=signal.sl){outcome='SL';break;}
-          if(bar.low<=signal.tp2){outcome='WIN';break;}
-          if(bar.low<=tp1)tp1Hit=true;
-        }
-      }
-      allTrades.push({dt:cc.dt,type:signal.type,session:signal.session,outcome,inst:inst.id,
-        r:outcome==='WIN'?1.5:outcome==='BE'?0:outcome==='SL'?-1:0,
-        entry:Math.round(signal.entry*1e5)/1e5,rr:signal.rr,score:signal.score,fib:signal.fib,bars});
-    }
-    const ws=allTrades.filter(t=>t.outcome==='WIN'&&t.inst===inst.id),
-      ls=allTrades.filter(t=>t.outcome==='SL'&&t.inst===inst.id),
-      bs=allTrades.filter(t=>t.outcome==='BE'&&t.inst===inst.id),
-      ts=allTrades.filter(t=>t.outcome==='TIMEOUT'&&t.inst===inst.id);
-    results.push({id:inst.id,sym:inst.sym,trades:(ws.length+ls.length+bs.length+ts.length),wins:ws.length,losses:ls.length,be:bs.length,timeout:ts.length,
-      totalR:Math.round((ws.reduce((s,t)=>s+t.r,0)+ls.reduce((s,t)=>s+t.r,0)+bs.reduce((s,t)=>s+t.r,0))*100)/100,
-      candles:allCandles.length,from:allCandles[0]?.dt,to:allCandles[allCandles.length-1]?.dt});
-    await sleep(3000);
-  }
-  const ws=allTrades.filter(t=>t.outcome==='WIN'),ls=allTrades.filter(t=>t.outcome==='SL'),closed=ws.length+ls.length;
-  const totalR=Math.round(allTrades.reduce((s,t)=>s+t.r,0)*100)/100;
-  res.json({totalTrades:allTrades.length,wins:ws.length,losses:ls.length,be:allTrades.filter(t=>t.outcome==='BE').length,timeout:allTrades.filter(t=>t.outcome==='TIMEOUT').length,
-    winRate:closed>0?Math.round(ws.length/closed*1e4)/100:0,totalR,expectancy:allTrades.length>0?Math.round(totalR/allTrades.length*100)/100:0,
-    profitFactor:ls.length>0?Math.round(ws.length*1.5/ls.length*100)/100:0,
-    avgWinBars:ws.length>0?Math.round(ws.reduce((s,t)=>s+t.bars,0)/ws.length):0,
-    avgLossBars:ls.length>0?Math.round(ls.reduce((s,t)=>s+t.bars,0)/ls.length):0,
-    instruments:results});
 });
 // Weekly stats for in-app summary card
 app.get('/api/stats/weekly',(req,res)=>{
@@ -2882,25 +2804,11 @@ loadState().then(()=>{
   fetchNewsFeed().then(function(){log('News feed: initial fetch complete ('+newsFeedCache.length+' articles)');checkIntelChangeAndPush().catch(function(){});});
   setInterval(function(){fetchNewsFeed().then(function(){checkIntelChangeAndPush().catch(function(){});}).catch(function(){});},10*60*1000);
   runScan(true).then(function(){setInterval(function(){runScan(false).catch(function(){});},CHECK_MS);log('Scanning every '+CHECK_MS/60000+' minutes');});
-  // Scalp trade check loop — runs every 2 min during active sessions
+  // NY-open scalp engine loop — signal detection + trade management.
+  // Runs every 2 min; internal time-window gating keeps DB reads cheap
+  // outside the US morning (09:30–11:30 NY).
   setInterval(async function(){
-    const sh=new Date().getUTCHours();
-    const inLondon=(sh===7)||(sh>7&&sh<11);
-    const inNY=(sh===13)||(sh>13&&sh<17);
-    if(!inLondon&&!inNY)return;
-    const openPairs=new Set(activeScalpTrades.filter(t=>!t.closed).map(t=>t.pair));
-    if(!openPairs.size)return;
-    for(const pid of openPairs){
-      try{
-        const inst=SCALP_INSTS.find(i=>i.id===pid);if(!inst)continue;
-        const res=await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym)}&interval=5min&outputsize=5&apikey=${API_KEY2}`);
-        const j=await res.json();
-        if(j.status==='error')continue;
-        const c=parseC(j);if(c.length<3)continue;
-        const hi=Math.max(...c.slice(-3).map(x=>x.high));
-        const lo=Math.min(...c.slice(-3).map(x=>x.low));
-        checkScalpTrades(pid,hi,lo);
-      }catch(e){log('Scalp check '+pid+': '+e.message);}
-    }
+    try{await runNyScalp();}
+    catch(e){log('NY scalp loop: '+e.message);}
   },120000);
 });
