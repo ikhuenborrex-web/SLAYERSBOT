@@ -17,9 +17,8 @@ if [ -n "${SCALP_DB_PATH:-}" ]; then
   fi
 fi
 
-# Install the single Python dep if missing (Render images may not ship it).
+# Sidecar uses only the Python standard library (urllib) — no pip install needed.
 if command -v python3 >/dev/null 2>&1; then
-  python3 -c "import requests" 2>/dev/null || pip3 install -r scalp_sidecar/requirements.txt --quiet
   (cd scalp_sidecar && exec python3 live_feed.py --every 60) &
   SIDECAR_PID=$!
   echo "sidecar started (pid $SIDECAR_PID)"

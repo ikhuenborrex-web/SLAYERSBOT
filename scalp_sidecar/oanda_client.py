@@ -1,11 +1,14 @@
 """Oanda v20 REST client — historical candle fetcher.
 
 Pure data access. No strategy logic.
+Uses only the Python standard library (urllib) so no pip install is needed
+on the deploy host.
 """
 import time
+import urllib.error
+import urllib.parse
+import urllib.request
 from datetime import datetime, timedelta, timezone
-
-import requests
 
 from config import (
     OANDA_BASE,
@@ -72,14 +75,29 @@ def fetch_candles(instrument: str, granularity: str,
             "price": "M",  # mid prices
             "count": str(chunk),
         }
-        resp = requests.get(url, headers=headers, params=params, timeout=30)
-        if resp.status_code == 429:
-            time.sleep(5)
-            continue
-        resp.raise_for_status()
+        resp = urllib.request.Request(
+            f"{url}?{urllib.parse.urlencode(params)}",
+            headers=headers,
+        )
+        try:
+            with urllib.request.urlopen(resp, timeout=30) as r:
+                body = r.read()
+                status = r.status
+        except urllib.error.HTTPError as e:
+            status = e.code
+            if status == 429:
+                time.sleep(5)
+                continue
+            raise RuntimeError(f"Oanda HTTP {status}: {e.reason}")
+        except urllib.error.URLError as e:
+            raise RuntimeError(f"Oanda connection error: {e.reason}")
+        if status != 200:
+            raise RuntimeError(f"Oanda HTTP {status}")
 
-        body = resp.json()
-        candles = body.get("candles", [])
+        try:
+            candles = _json(body).get("candles", [])
+        except Exception:
+            raise RuntimeError("Oanda returned non-JSON response")
         if not candles:
             break
 
@@ -106,6 +124,12 @@ def _step(granularity: str) -> timedelta:
     num = int(granularity[1:])
     secs = {"S": 1, "M": 60, "H": 3600, "D": 86400, "W": 604800}[unit]
     return timedelta(seconds=secs * num)
+
+
+def _json(data: bytes):
+    """Parse JSON from response bytes."""
+    import json
+    return json.loads(data.decode("utf-8"))
 
 
 def clean_number(value):
