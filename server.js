@@ -524,6 +524,7 @@ function detectBRK(c,sdZ){const cp=c[c.length-1].close,bull=[],bear=[],near=(p,z
 // backtest (phase3_replay.daily_atr_map).
 function nyNow(){return new Date(new Date().toLocaleString('en-US',{timeZone:NY_TZ}));}
 function nyDayStr(){const d=nyNow();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function nyEstCut(ms){if(!ms)return'';const d=new Date(new Date(ms).toLocaleString('en-US',{timeZone:NY_TZ}));const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());}
 function estMin(est){return parseInt(est.slice(11,13))*60+parseInt(est.slice(14,16));}
 function nyAtrFor(pair,day){
   const d=getScalpsDb();if(!d)return null;
@@ -605,7 +606,7 @@ async function runNyScalp(){
       chartFile,time:new Date().toISOString()
     });
     if(scalpSignals.length>50)scalpSignals=scalpSignals.slice(0,50);
-    activeScalpTrades.push({sigId:id,pair:inst.id,name:inst.name,type:signal.type,entry:signal.entry,sl:signal.sl,tp2:signal.tp2,beLevel:null,origSL:signal.sl,session:'NY',atr14:signal.atr14,openTime:Date.now(),closed:false,expiry:nyExpiry(day)});
+    activeScalpTrades.push({sigId:id,pair:inst.id,name:inst.name,type:signal.type,entry:signal.entry,sl:signal.sl,tp2:signal.tp2,beLevel:null,origSL:signal.sl,session:'NY',atr14:signal.atr14,signalEst:signal.signalEst,openTime:Date.now(),closed:false,expiry:nyExpiry(day)});
     try{sendScalpPushToAll(
       (signal.type==='BULLISH'?'\uD83D\uDFE2 BUY':'\uD83D\uDD34 SELL')+' '+inst.id,
       'NY-Open breakout '+(signal.type==='BULLISH'?'BUY':'SELL')+' — US session — Entry '+signal.entry.toFixed(inst.dec)+' · TP '+signal.tp2.toFixed(inst.dec)+' · SL '+signal.sl.toFixed(inst.dec),
@@ -1162,12 +1163,23 @@ function checkNyTrades(){
     const holdMin=(now-(t.openTime||now))/60000;
     const pastExpiry=t.expiry&&now>new Date(t.expiry).getTime();
     const timedOut=holdMin>NY_MAX_HOLD_MIN||pastExpiry;
-    const hl=nyLatestHilo(t.pair);
-    const hi=hl?hl.high:null,lo=hl?hl.low:null;
+    // Evaluate ONLY candles at/after the signal candle. The backtest
+    // (phase3_trade.simulate) does `if t < sig_t: continue` so pre-signal
+    // candles can never trip SL/TP. nyLatestHilo's trailing-3 window could
+    // include OR-period candles whose far-side extreme exceeds the stop
+    // (e.g. SELL at OR low, OR high > SL), falsely calling LOSS. Walk the
+    // same candles the backtest walks, in order, TP before SL per candle.
+    const dayStr=nyDayStr();
+    // Legacy/restored trades may lack signalEst — fall back to the trade's
+    // openTime (NY wall clock), which is seconds after the signal candle.
+    const estCut=t.signalEst||nyEstCut(t.openTime);
+    const cs=nyCandlesFor(t.pair,dayStr).filter(c=>c.est>=estCut);
+    const hi=cs.length?Math.max(...cs.map(c=>c.high)):null;
+    const lo=cs.length?Math.min(...cs.map(c=>c.low)):null;
     // A timed-out/expired trade must close even if the live DB feed is
-    // temporarily unavailable (hl null). Otherwise it lingers in the active
-    // list forever. Exit flat at entry.
-    if(timedOut&&!hl){
+    // temporarily unavailable (no signal candles yet). Otherwise it lingers
+    // in the active list forever. Exit flat at entry.
+    if(timedOut&&!cs.length){
       t.closed=true;
       scalpTradeHistory.push({sigId:t.sigId,pair:t.pair,type:t.type,outcome:'TIME',r:0,entry:t.entry,sl:t.origSL,tp2:t.tp2,session:t.session,atr14:t.atr14,openTime:t.openTime,closeTime:now,timedOut:true});
       activeScalpTrades.splice(i,1);saveState();
@@ -1177,9 +1189,19 @@ function checkNyTrades(){
       try{sendPushToTrackers(t.sigId,'\u23F0 Scalp Timed Out '+t.pair,t.name+' — hold window over, closed flat.','scalp_expiry');}catch(e){}
       continue;
     }
-    if(!hl)continue;
-    const didHitTP=isB?hi>=t.tp2:lo<=t.tp2;
-    const didHitSL=isB?lo<=t.sl:hi>=t.sl;
+    if(!cs.length)continue;
+    // First touch wins — TP checked before SL within a candle, exactly like
+    // phase3_trade.simulate's per-candle walk.
+    let didHitTP=false,didHitSL=false;
+    for(const c of cs){
+      if(isB){
+        if(c.high>=t.tp2){didHitTP=true;break;}
+        if(c.low<=t.sl){didHitSL=true;break;}
+      }else{
+        if(c.low<=t.tp2){didHitTP=true;break;}
+        if(c.high>=t.sl){didHitSL=true;break;}
+      }
+    }
 
     // TP2 → WIN
     if(didHitTP){
