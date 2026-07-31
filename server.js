@@ -2378,11 +2378,12 @@ app.get('/api/scalp',(req,res)=>{
   const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
   const myCode=req.query.code||req.headers['x-access-code'];
   const limit=Math.min(parseInt(req.query.limit)||20,50);
-  const sorted=[...scalpSignals].sort((a,b)=>new Date(b.time)-new Date(a.time));
+  const closedIds=new Set((scalpTradeHistory||[]).map(h=>h.sigId).filter(Boolean));
+  const sorted=[...scalpSignals].filter(s=>!closedIds.has(s.id)).sort((a,b)=>new Date(b.time)-new Date(a.time));
   res.json({signals:sorted.slice(0,limit).map(s=>{
     const tracked=trackedTrades[s.id]&&trackedTrades[s.id].includes(myCode);
     return {...s,isTracked:!!tracked,chartUrl:s.chartFile?'/api/chart/'+s.chartFile:null};
-  }),count:Math.min(limit,sorted.length),total:scalpSignals.length});
+  }),count:Math.min(limit,sorted.length),total:sorted.length});
 });
 app.get('/api/scalp/active',(req,res)=>{
   const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
