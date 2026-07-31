@@ -369,6 +369,15 @@ async function loadState(){
     if(Array.isArray(st.activeScalpTrades))activeScalpTrades=st.activeScalpTrades;
     if(Array.isArray(st.scalpTradeHistory))scalpTradeHistory=st.scalpTradeHistory;
     if(Array.isArray(st.scalpSeen))scalpSeen=new Set(st.scalpSeen);
+    // Sweep: drop any restored active scalp trade whose sigId was already
+    // closed (stale Redis restore) so it can't linger in the active list.
+    if(Array.isArray(st.activeScalpTrades)&&Array.isArray(st.scalpTradeHistory)){
+      const closedIds=new Set(st.scalpTradeHistory.map(h=>h.sigId).filter(Boolean));
+      if(closedIds.size&&st.activeScalpTrades.some(t=>closedIds.has(t.sigId))){
+        activeScalpTrades=st.activeScalpTrades.filter(t=>!closedIds.has(t.sigId));
+        log('Startup cleanup: removed '+ (st.activeScalpTrades.length-activeScalpTrades.length) +' stale active scalp trade(s) already closed in history');
+      }
+    }
     const ageMin=st.savedAt?Math.round((Date.now()-st.savedAt)/60000):'?';
     log('State restored from '+src+': '+activeQMRTrades.length+' active trades, '+tradeHistory.length+' history ('+ageMin+'m old)');
     tradeHistory=(tradeHistory||[]).filter(t=>t.instId!=='EURGBP');
@@ -1148,25 +1157,39 @@ function checkNyTrades(){
   const now=Date.now();
   for(let i=activeScalpTrades.length-1;i>=0;i--){
     const t=activeScalpTrades[i];if(t.closed)continue;
-    const hl=nyLatestHilo(t.pair);
-    if(!hl)continue;
-    const hi=hl.high,lo=hl.low;
     const isB=t.type==='BULLISH';
     const risk=Math.abs(t.entry-t.origSL);
-    const didHitTP=isB?hi>=t.tp2:lo<=t.tp2;
-    const didHitSL=isB?lo<=t.sl:hi>=t.sl;
     const holdMin=(now-(t.openTime||now))/60000;
     const pastExpiry=t.expiry&&now>new Date(t.expiry).getTime();
     const timedOut=holdMin>NY_MAX_HOLD_MIN||pastExpiry;
+    const hl=nyLatestHilo(t.pair);
+    const hi=hl?hl.high:null,lo=hl?hl.low:null;
+    // A timed-out/expired trade must close even if the live DB feed is
+    // temporarily unavailable (hl null). Otherwise it lingers in the active
+    // list forever. Exit flat at entry.
+    if(timedOut&&!hl){
+      t.closed=true;
+      scalpTradeHistory.push({sigId:t.sigId,pair:t.pair,type:t.type,outcome:'TIME',r:0,entry:t.entry,sl:t.origSL,tp2:t.tp2,session:t.session,atr14:t.atr14,openTime:t.openTime,closeTime:now,timedOut:true});
+      activeScalpTrades.splice(i,1);saveState();
+      log('Scalp TIMEOUT (no feed): '+t.pair+' '+t.type+' closed flat at expiry');
+      try{scalpJournalEntry(t,'BE',0,Math.round(holdMin),[t.session,'Timed out']);}catch(e){}
+      try{sendScalpPushToAll('\u23F0 Scalp Timed Out '+t.pair,t.name+' — hold window over, closed flat.','/');}catch(e){}
+      try{sendPushToTrackers(t.sigId,'\u23F0 Scalp Timed Out '+t.pair,t.name+' — hold window over, closed flat.','scalp_expiry');}catch(e){}
+      continue;
+    }
+    if(!hl)continue;
+    const didHitTP=isB?hi>=t.tp2:lo<=t.tp2;
+    const didHitSL=isB?lo<=t.sl:hi>=t.sl;
 
     // TP2 → WIN
     if(didHitTP){
       t.closed=true;
       const r=risk>0?0.5:0; // target = 0.10×ATR, risk = 0.20×ATR
-      scalpTradeHistory.push({pair:t.pair,type:t.type,outcome:'WIN',r,entry:t.entry,sl:t.origSL,tp2:t.tp2,session:t.session,atr14:t.atr14,openTime:t.openTime,closeTime:Date.now()});
+      scalpTradeHistory.push({sigId:t.sigId,pair:t.pair,type:t.type,outcome:'WIN',r,entry:t.entry,sl:t.origSL,tp2:t.tp2,session:t.session,atr14:t.atr14,openTime:t.openTime,closeTime:Date.now()});
       activeScalpTrades.splice(i,1);saveState();
       log('Scalp WIN: '+t.pair+' '+t.type+' +'+r.toFixed(2)+'R (TP2 at '+t.tp2+')');
       try{scalpJournalEntry(t,'WIN',r,Math.round(holdMin),[t.session,'TP2']);}catch(e){}
+      try{sendScalpPushToAll('\uD83D\uDCB0 Scalp Target Hit '+t.pair,t.name+' — TP2 reached, +'+r.toFixed(2)+'R.','/');}catch(e){}
       try{sendPushToTrackers(t.sigId,'\uD83D\uDCB0 Scalp Target Hit '+t.pair,t.name+' — TP2 reached, +'+r.toFixed(2)+'R.','scalp_tp2');}catch(e){}
       continue;
     }
@@ -1174,10 +1197,11 @@ function checkNyTrades(){
     if(didHitSL){
       t.closed=true;
       const r=-1;
-      scalpTradeHistory.push({pair:t.pair,type:t.type,outcome:'LOSS',r,entry:t.entry,sl:t.origSL,tp2:t.tp2,session:t.session,atr14:t.atr14,openTime:t.openTime,closeTime:Date.now()});
+      scalpTradeHistory.push({sigId:t.sigId,pair:t.pair,type:t.type,outcome:'LOSS',r,entry:t.entry,sl:t.origSL,tp2:t.tp2,session:t.session,atr14:t.atr14,openTime:t.openTime,closeTime:Date.now()});
       activeScalpTrades.splice(i,1);saveState();
       log('Scalp LOSS: '+t.pair+' '+t.type+' '+r.toFixed(1)+'R');
       try{scalpJournalEntry(t,'LOSS',r,Math.round(holdMin),[t.session]);}catch(e){}
+      try{sendScalpPushToAll('\u274C Scalp SL '+t.pair,t.name+' — stop loss hit, '+r.toFixed(1)+'R.','/');}catch(e){}
       try{sendPushToTrackers(t.sigId,'\u274C Scalp SL '+t.pair,t.name+' — stop loss hit, '+r.toFixed(1)+'R.','scalp_sl');}catch(e){}
       continue;
     }
@@ -1188,10 +1212,11 @@ function checkNyTrades(){
       const rMove=risk>0?((isB?(exit-t.entry):(t.entry-exit))/risk):0;
       const r=Math.round(rMove*100)/100;
       const outcome=r>0?'WIN':r<0?'LOSS':'BE';
-      scalpTradeHistory.push({pair:t.pair,type:t.type,outcome,r,entry:t.entry,sl:t.origSL,tp2:t.tp2,session:t.session,atr14:t.atr14,openTime:t.openTime,closeTime:Date.now(),timedOut:true});
+      scalpTradeHistory.push({sigId:t.sigId,pair:t.pair,type:t.type,outcome,r,entry:t.entry,sl:t.origSL,tp2:t.tp2,session:t.session,atr14:t.atr14,openTime:t.openTime,closeTime:Date.now(),timedOut:true});
       activeScalpTrades.splice(i,1);saveState();
       log('Scalp TIMEOUT: '+t.pair+' '+t.type+' R='+r.toFixed(2)+' (max hold / 11:30 NY)');
       try{scalpJournalEntry(t,outcome,r,Math.round(holdMin),[t.session,'Timed out']);}catch(e){}
+      try{sendScalpPushToAll('\u23F0 Scalp Timed Out '+t.pair,t.name+' — closed '+r.toFixed(2)+'R (hold window over).','/');}catch(e){}
       try{sendPushToTrackers(t.sigId,'\u23F0 Scalp Timed Out '+t.pair,t.name+' — closed '+r.toFixed(2)+'R (hold window over).','scalp_expiry');}catch(e){}
     }
   }
@@ -2339,7 +2364,11 @@ app.get('/api/scalp',(req,res)=>{
 });
 app.get('/api/scalp/active',(req,res)=>{
   const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
-  const open=activeScalpTrades.filter(t=>!t.closed);
+  const myCode=req.query.code||req.headers['x-access-code'];
+  // Belt-and-braces: drop any active trade whose sigId was already closed
+  // (handles stale Redis restores where a closed trade lingered in the array).
+  const closedIds=new Set((scalpTradeHistory||[]).map(h=>h.sigId).filter(Boolean));
+  const open=activeScalpTrades.filter(t=>!t.closed&&!closedIds.has(t.sigId));
   res.json({trades:open.map(t=>{
     const hl=nyLatestHilo(t.pair);
     const live=hl?hl.close:null;
@@ -2351,7 +2380,8 @@ app.get('/api/scalp/active',(req,res)=>{
     }
     let minsLeft=null;
     if(t.expiry)minsLeft=Math.max(0,Math.round((new Date(t.expiry).getTime()-Date.now())/60000));
-    return{...t,livePrice:live,curR,minsLeft};
+    const tracked=trackedTrades[t.sigId]&&trackedTrades[t.sigId].includes(myCode);
+    return{...t,livePrice:live,curR,minsLeft,isTracked:!!tracked};
   }),count:open.length});
 });
 app.get('/api/scalp/stats',(req,res)=>{

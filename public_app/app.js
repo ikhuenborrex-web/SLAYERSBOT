@@ -346,6 +346,34 @@ function miniChart(entries){
         '<circle cx="'+lx.toFixed(1)+'" cy="'+ly.toFixed(1)+'" r="5" fill="none" stroke="'+col+'" stroke-width="2"/></svg></div></div>';
 }
 
+// Fallback static chart for scalp trades when the chart-img render is
+// unavailable — draws entry/SL/TP2 vs the NY-open range as an inline SVG.
+function scalpSvgChart(s){
+  var isB=s.type==='BULLISH';
+  var entry=s.entry!=null?s.entry:null,sl=s.sl!=null?s.sl:null,tp=s.tp2!=null?s.tp2:null;
+  var orH=s.orHigh!=null?s.orHigh:null,orL=s.orLow!=null?s.orLow:null;
+  var vals=[entry,sl,tp,orH,orL].filter(function(v){return v!=null;});
+  if(!vals.length)return '<div style="height:160px;background:#0C0C0C;display:flex;align-items:center;justify-content:center;color:#5F5F5F;font-size:11px;font-weight:500">Chart unavailable</div>';
+  var min=Math.min.apply(null,vals),max=Math.max.apply(null,vals);
+  var pad=(max-min)*0.15||1;
+  min-=pad;max+=pad;
+  var W=340,H=150;
+  function py(v){return H-((v-min)/(max-min))*H;}
+  var col=isB?'#3B82F6':'#EF4444';
+  var bars='',zone='';
+  if(orH!=null&&orL!=null)zone='<rect x="0" y="'+py(orH)+'" width="'+W+'" height="'+(py(orL)-py(orH))+'" fill="rgba(59,130,246,0.08)"/>';
+  function lvl(v,c,label){
+    var yy=py(v).toFixed(1);
+    return '<line x1="0" x2="'+W+'" y1="'+yy+'" y2="'+yy+'" stroke="'+c+'" stroke-width="1" stroke-dasharray="4 3"/>'+
+      '<text x="6" y="'+(parseFloat(yy)-4)+'" fill="'+c+'" font-size="8" font-weight="700">'+label+' '+v.toFixed(s.dec!=null?s.dec:2)+'</text>';
+  }
+  if(entry!=null)bars+=lvl(entry,col,'ENTRY');
+  if(tp!=null)bars+=lvl(tp,'#A3E635','TP');
+  if(sl!=null)bars+=lvl(sl,'#F87171','SL');
+  return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:170px;display:block;background:#0A0A0A">'+
+    zone+bars+'</svg>';
+}
+
 function calcPos(s){
   var e=parseFloat(document.getElementById('pc-entry')?.value)||0,sl=parseFloat(document.getElementById('pc-sl')?.value)||0;
   var b=parseFloat(document.getElementById('pc-bal')?.value)||0,rp=parseFloat(document.getElementById('pc-rp')?.value)||0,t=parseFloat(document.getElementById('pc-tp')?.value)||0;
@@ -512,6 +540,30 @@ function scalpScreen(){
     '<div class="card" style="flex:1;text-align:center;padding:12px 8px;animation-delay:0s"><div style="font-size:9px;color:'+C.text2+'">Total R</div><div class="count-up" style="font-size:18px;font-weight:800;color:'+(ss.totalR>=0?C.lime:C.red)+';margin-top:4px">'+(ss.totalR>0?'+':'')+(ss.totalR||0)+'</div></div>'+
     '<div class="card" style="flex:1;text-align:center;padding:12px 8px;animation-delay:0s"><div style="font-size:9px;color:'+C.text2+'">Active</div><div class="count-up" style="font-size:18px;font-weight:800;color:'+C.white+';margin-top:4px">'+state.scalpActive.length+'</div></div></div>';
   var act=state.scalpActive||[];
+  var myScalpAct=[];
+  if(act.length){
+    var trackedIds={};
+    for(var j=0;j<(state.scalpSignals||[]).length;j++)if(state.scalpSignals[j].isTracked)trackedIds[state.scalpSignals[j].id]=true;
+    for(var j=0;j<act.length;j++)if(trackedIds[act[j].sigId]||act[j].isTracked)myScalpAct.push(act[j]);
+  }
+  var myActHtml='';
+  if(myScalpAct.length){
+    myActHtml='<div style="display:flex;align-items:center;justify-content:space-between;margin:18px 0 10px"><span style="font-size:12px;font-weight:600;color:#8E8E8E;letter-spacing:0.04em;text-transform:uppercase">My Trades</span><span style="font-size:10px;color:'+C.lime+';opacity:0.6;font-weight:600">'+myScalpAct.length+' tracking</span></div>'+
+      '<div class="h-scroll">'+myScalpAct.map(function(t){
+        var isB=t.type==='BULLISH';var col=isB?C.lime:C.red;
+        var rVal=t.curR!=null?(t.curR>0?'+':'')+t.curR.toFixed(2)+'R':'—';
+        return '<div class="card" style="flex-shrink:0;width:230px;padding:14px;margin-bottom:0;cursor:pointer" onclick="openScalpDetail(&#39;'+t.sigId+'&#39;)">'+
+          '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="font-size:14px;font-weight:800;color:#FFF">'+(t.name||t.pair)+'</span>'+
+          '<span style="font-size:8px;font-weight:700;padding:2px 6px;border-radius:3px;background:'+(isB?C.limeSoft:C.redSoft)+';color:'+col+'">'+(isB?'BUY':'SELL')+'</span></div>'+
+          '<div style="display:flex;gap:12px;font-size:10px;color:rgba(255,255,255,0.3);margin-bottom:6px">'+
+          '<div><div style="font-size:8px;font-weight:600">Entry</div><div style="font-size:12px;font-weight:700;color:#FFF">'+fmt(t.entry)+'</div></div>'+
+          '<div><div style="font-size:8px;font-weight:600">Now</div><div style="font-size:12px;font-weight:700;color:'+col+'">'+fmt(t.livePrice!=null?t.livePrice:'—')+'</div></div>'+
+          '<div><div style="font-size:8px;font-weight:600">SL</div><div style="font-size:12px;font-weight:700;color:'+C.red+'">'+fmt(t.sl)+'</div></div>'+
+          '<div><div style="font-size:8px;font-weight:600">TP2</div><div style="font-size:12px;font-weight:700;color:'+C.lime+'">'+fmt(t.tp2)+'</div></div>'+
+          '<div style="margin-left:auto;text-align:right"><div style="font-size:8px;color:'+C.text3+'">P/L</div><div style="font-size:12px;font-weight:800;color:'+(t.curR>=0?C.lime:C.red)+'">'+rVal+'</div></div></div>'+
+          '<div style="display:flex;justify-content:space-between;font-size:8px;color:rgba(255,255,255,0.3)"><span>'+(t.minsLeft!=null?'⏱ '+t.minsLeft+'m left':'')+'</span><span style="color:'+col+'">NY-open breakout</span></div></div>';
+      }).join('')+'</div>';
+  }
   var actHtml=act.length?'<div style="display:flex;align-items:center;justify-content:space-between;margin:18px 0 10px"><span style="font-size:12px;font-weight:600;color:#8E8E8E;letter-spacing:0.04em;text-transform:uppercase">Live Trades</span><span style="font-size:10px;color:'+C.lime+';opacity:0.6;font-weight:600">'+act.length+' active</span></div>'+act.map(function(t){
     var isB=t.type==='BULLISH';var col=isB?C.lime:C.red;
     var rVal=t.curR!=null?(t.curR>0?'+':'')+t.curR.toFixed(2)+'R':'—';
@@ -548,7 +600,7 @@ function scalpScreen(){
     '<div class="sc" style="flex:1;overflow-y:auto;padding:calc(30px + env(safe-area-inset-top)) 16px calc(100px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch">'+
     '<div style="font-size:22px;font-weight:700;color:#FFF;margin-bottom:2px">Scalp</div>'+
     '<div style="font-size:12px;color:#5F5F5F;margin-bottom:20px">US30 · NAS100 — NY-open breakout</div>'+
-    pulseHtml+statsHtml+actHtml+(sigs||emptyState('No scalp signals yet'))+
+    pulseHtml+statsHtml+myActHtml+actHtml+(sigs||emptyState('No scalp signals yet'))+
     '</div>'+navBar()+'</div>';
 }
 
@@ -1522,7 +1574,7 @@ function detailPage(s){
       '</div>';
   }else{
     chartImg='<div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">'+
-      (s.chartUrl?'<img src="'+withCode(s.chartUrl)+'" style="width:100%;display:block">':'<div style="height:160px;background:#0C0C0C;display:flex;align-items:center;justify-content:center;color:#5F5F5F;font-size:11px;font-weight:500">Chart</div>')+
+      (s.chartUrl?'<img src="'+withCode(s.chartUrl)+'" style="width:100%;display:block">':(isNY?scalpSvgChart(s):'<div style="height:160px;background:#0C0C0C;display:flex;align-items:center;justify-content:center;color:#5F5F5F;font-size:11px;font-weight:500">Chart</div>'))+
       '</div>';
   }
 
