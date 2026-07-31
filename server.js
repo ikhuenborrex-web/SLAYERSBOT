@@ -1839,7 +1839,7 @@ async function checkIntelChangeAndPush(){
 // Dashboard
 app.use(express.json());
 // Server-side notification queue for the bell panel in the app
-let serverNotifQueue=[];
+let serverNotifQueue=[],pushSendLog=[];
 
 async function sendPushToAll(title,body,url){
   if(!webpush||!VAPID_PUBLIC||!VAPID_PRIVATE||!pushSubscriptions.length)return;
@@ -1910,6 +1910,7 @@ async function sendScalpPushToAll(title,body,url){
     }
   }
   if(dead.length){pushSubscriptions=pushSubscriptions.filter(s=>!dead.includes(s));saveState();}
+  pushSendLog.push({t:new Date().toISOString(),kind:'scalp',title,sent,subs:pushSubscriptions.length});if(pushSendLog.length>20)pushSendLog=pushSendLog.slice(-20);
   log('Scalp push sent to '+sent+' device(s): '+title);
 }
 
@@ -2255,6 +2256,39 @@ app.get('/api/admin/scalp-trades',(req,res)=>{
   if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
   res.json({trades:activeScalpTrades.filter(t=>!t.closed),count:activeScalpTrades.filter(t=>!t.closed).length});
 });
+// Edit an open scalp trade (entry/SL/TP2) — backend control so the admin can
+// correct a bad signal or align levels before it closes.
+app.post('/api/admin/scalp/:sigId/edit',(req,res)=>{
+  if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
+  const t=activeScalpTrades.find(x=>x.sigId===req.params.sigId&&!x.closed);
+  if(!t)return res.status(404).json({error:'Open scalp trade not found'});
+  const b=req.body||{};
+  if(b.entry!=null&&isFinite(b.entry)){t.entry=Number(b.entry);}
+  if(b.sl!=null&&isFinite(b.sl)){t.sl=Number(b.sl);if(t.origSL==null)t.origSL=t.sl;else t.origSL=Number(b.sl);}
+  if(b.tp2!=null&&isFinite(b.tp2)){t.tp2=Number(b.tp2);}
+  saveState();
+  log('Admin edited scalp '+t.sigId+' -> entry='+t.entry+' sl='+t.sl+' tp2='+t.tp2);
+  res.json({ok:true,trade:t});
+});
+// Force-close an open scalp trade with a manual outcome (WIN/LOSS/BE/TIME) so
+// it's removed from the page and recorded in history immediately.
+app.post('/api/admin/scalp/:sigId/close',(req,res)=>{
+  if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
+  const idx=activeScalpTrades.findIndex(x=>x.sigId===req.params.sigId&&!x.closed);
+  if(idx===-1)return res.status(404).json({error:'Open scalp trade not found'});
+  const t=activeScalpTrades[idx];
+  const outcome=(req.body&&req.body.outcome)||'WIN';
+  const risk=Math.abs(t.entry-t.origSL)||1;
+  const r=outcome==='WIN'?0.5:outcome==='LOSS'?-1:outcome==='BE'?0:0;
+  t.closed=true;
+  scalpTradeHistory.push({sigId:t.sigId,pair:t.pair,type:t.type,outcome,r,entry:t.entry,sl:t.origSL,tp2:t.tp2,session:t.session,atr14:t.atr14,openTime:t.openTime,closeTime:Date.now(),manual:true});
+  activeScalpTrades.splice(idx,1);saveState();
+  log('Admin closed scalp '+t.sigId+' as '+outcome+' ('+r+'R)');
+  try{scalpJournalEntry(t,outcome,r,Math.round((Date.now()-t.openTime)/60000),[t.session,'Manual close']);}catch(e){}
+  try{sendScalpPushToAll('\u2705 Scalp Closed '+t.pair,t.name+' — closed '+r+'R by admin.','/app/');}catch(e){}
+  try{sendPushToTrackers(t.sigId,'\u2705 Scalp Closed '+t.pair,t.name+' — closed '+r+'R by admin.','scalp_sl');}catch(e){}
+  res.json({ok:true,outcome,r});
+});
 app.get('/api/admin/trade-history',(req,res)=>{
   if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
   const limit=Math.min(parseInt(req.query.limit)||50,200);
@@ -2324,7 +2358,9 @@ app.get('/api/admin/logs',(req,res)=>{
   res.json({
     alertLog:alertLog.slice(-20),
     notifications:serverNotifQueue.slice(-20),
-    dailyOutcomeLog:[...dailyOutcomeLog].reverse().slice(0,20)
+    dailyOutcomeLog:[...dailyOutcomeLog].reverse().slice(0,20),
+    pushSendLog:pushSendLog.slice(-10),
+    pushConfig:{webpushLoaded:!!webpush,vapidPublic:!!VAPID_PUBLIC,vapidPrivate:!!VAPID_PRIVATE,subscribers:pushSubscriptions.length}
   });
 });
 app.get('/api/admin/services',(req,res)=>{
@@ -2335,7 +2371,7 @@ app.get('/api/admin/services',(req,res)=>{
     marketScanner:{status:scanCount>0?'running':'idle',lastScan:lastScanTime,label:'Market Scanner'},
     aiEngine:{status:lastIntelBriefing?'running':'idle',lastAnalysis:lastIntelBriefingTime,label:'AI Engine'},
     telegramBot:{status:TG_TOKEN?'running':'offline',label:'Telegram Bot'},
-    pushNotifications:{status:webpush&&VAPID_PUBLIC?'running':'offline',subscribers:pushSubscriptions.length,label:'Push Notifications'},
+    pushNotifications:{status:webpush&&VAPID_PUBLIC&&VAPID_PRIVATE?'running':(!VAPID_PUBLIC||!VAPID_PRIVATE)?'misconfigured':'offline',subscribers:pushSubscriptions.length,label:'Push Notifications',vapidPublic:!!VAPID_PUBLIC,vapidPrivate:!!VAPID_PRIVATE,webpushLoaded:!!webpush,lastSendLog:pushSendLog.slice(-3)},
     database:{status:redis?'running':STATE_FILE?'running':'offline',label:'Database'},
     apiServer:{status:'running',uptime:up,label:'API Server'}
   });

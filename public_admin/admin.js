@@ -210,7 +210,7 @@ async function renderDashboardContent(data,perf,top,ai,svc){
       <div class="card-body" style="padding:0">
         <div class="system-status">
           <div class="system-ring"><svg width="80" height="80"><circle class="track" cx="40" cy="40" r="36"/><circle class="arc" cx="40" cy="40" r="36" stroke-dashoffset="${56.5}" stroke-dasharray="226"/></svg><div class="center"><div class="num">${Object.values(svc||{}).filter(s=>s.status==='running').length}</div><div class="lbl">Services</div></div></div>
-          <div class="services-list">${Object.values(svc||{}).map(s=>`<div class="service-item"><span class="s-dot ${s.status}"></span><span class="s-name">${s.label}</span><span class="s-status ${s.status==='running'?'text-green':'text-red'}">${s.status}</span></div>`).join('')}</div>
+          <div class="services-list">${Object.values(svc||{}).map(s=>{const dotC=s.status==='running'?'running':s.status==='misconfigured'?'warning':'offline';const sText=s.status==='running'?'running':s.status==='misconfigured'?(s.label==='Push Notifications'?'VAPID keys missing':'misconfigured'):'offline';return `<div class="service-item"><span class="s-dot ${dotC}"></span><span class="s-name">${s.label}${s.subscribers!=null?' <span class="text-muted text-sm">('+s.subscribers+' subs)</span>':''}</span><span class="s-status ${s.status==='running'?'text-green':'text-red'}">${sText}</span></div>`}).join('')}</div>
         </div>
       </div>
     </div>
@@ -359,12 +359,14 @@ function updateTradeTable(trades){
 }
 
 // ===== SCALP =====
+let _scalpTrades=[];
 async function renderScalp(){
   renderShell('','Scalp Trades');
   const cont=document.getElementById('pageContent');
   cont.innerHTML='<div class="empty-state">Loading scalp trades...</div>';
   const data=await api('/api/admin/scalp-trades');
   if(!data)return;
+  _scalpTrades=data.trades||[];
   if(!data.trades||!data.trades.length){
     cont.innerHTML='<div class="empty-state">No active scalp trades. NY-open breakout runs 09:30–11:30 NY.</div>';
     return
@@ -372,18 +374,38 @@ async function renderScalp(){
   cont.innerHTML=`
   <div class="section-header"><h2>Active Scalp Trades <span class="text-muted text-sm">(${data.count})</span></h2><div><button class="btn-secondary btn-sm" onclick="S.refresh()">${I.refresh} Refresh</button></div></div>
   <div class="card" style="overflow-x:auto;padding:0">
-    <table class="compact-table"><thead><tr><th>Pair</th><th>Type</th><th>Entry</th><th>SL</th><th>TP2</th><th>Session</th><th>ATR14</th><th>Status</th></tr></thead>
+    <table class="compact-table"><thead><tr><th>Pair</th><th>Type</th><th>Entry</th><th>SL</th><th>TP2</th><th>Session</th><th>Status</th><th>Actions</th></tr></thead>
     <tbody>${data.trades.map(t=>`<tr>
       <td style="font-weight:600">${t.name||t.pair}</td>
       <td class="${t.type==='BULLISH'?'text-green':'text-red'}">${t.type==='BULLISH'?'BUY':'SELL'}</td>
       <td class="mono">${fmtN(t.entry,5)}</td><td class="mono text-muted">${fmtN(t.sl,5)}</td>
       <td class="mono text-muted">${fmtN(t.tp2,5)}</td>
       <td class="text-muted text-sm">${t.session||'—'}</td>
-      <td class="mono text-muted text-sm">${t.atr14!=null?fmtN(t.atr14,2):'—'}</td>
-      <td>${t.expiry?'<span class="text-muted text-sm">exp '+new Date(t.expiry).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:true})+'</span> ':''}${t.closed?'<span class="badge badge-neutral">closed</span>':'<span class="badge badge-green">open</span>'}</td>
+      <td>${t.expiry?'<span class="text-muted text-sm">exp '+new Date(t.expiry).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:true})+'</span> ':''}<span class="badge badge-green">open</span></td>
+      <td style="white-space:nowrap">
+        <button class="btn-secondary btn-sm" onclick="S.editScalp('${t.sigId}')">Edit</button>
+        <button class="btn-secondary btn-sm" onclick="S.closeScalp('${t.sigId}')">Close</button>
+      </td>
     </tr>`).join('')}</tbody></table>
   </div>`;
 }
+S.editScalp=function(sigId){
+  const t=(_scalpTrades||[]).find(x=>x.sigId===sigId);
+  const entry=prompt('Entry price',t?t.entry:'');
+  if(entry===null)return;
+  const sl=prompt('SL price',t?t.sl:'');
+  if(sl===null)return;
+  const tp2=prompt('TP2 price',t?t.tp2:'');
+  if(tp2===null)return;
+  api('/api/admin/scalp/'+sigId+'/edit',{method:'POST',body:JSON.stringify({entry:parseFloat(entry),sl:parseFloat(sl),tp2:parseFloat(tp2)})}).then(function(d){toast(d&&d.ok?'Scalp levels updated':'Edit failed',d&&d.ok?'success':'error');S.refresh();});
+};
+S.closeScalp=function(sigId){
+  const outcome=prompt('Outcome (WIN / LOSS / BE / TIME):','WIN');
+  if(outcome===null)return;
+  const o=(outcome||'').toUpperCase();
+  if(!['WIN','LOSS','BE','TIME'].includes(o)){toast('Outcome must be WIN, LOSS, BE or TIME','error');return;}
+  api('/api/admin/scalp/'+sigId+'/close',{method:'POST',body:JSON.stringify({outcome:o})}).then(function(d){toast(d&&d.ok?'Closed as '+o+' ('+d.r+'R)':'Close failed',d&&d.ok?'success':'error');S.refresh();});
+};
 
 // ===== LOGS =====
 async function renderLogs(){
@@ -402,6 +424,19 @@ async function renderLogs(){
       ${data.notifications&&data.notifications.length?data.notifications.map(n=>`<div class="activity-item"><span class="a-dot running"></span><div class="a-body"><div class="a-title"><span style="font-weight:600">${n.title}</span>${n.body?'<span class="text-muted"> — '+n.body+'</span>':''}</div></div><div class="a-time">${fmtTime(n.time)}</div></div>`).join(''):'<div class="empty-state">No notifications yet</div>'}
     </div></div>
   </div>
+  <div class="card" style="margin-top:16px"><div class="card-header"><h3>Push Health</h3></div><div class="card-body" style="padding:12px 18px">
+    ${(()=>{const pc=data.pushConfig||{};const ok=pc.webpushLoaded&&pc.vapidPublic&&pc.vapidPrivate;return `
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+        <span class="badge ${ok?'badge-green':pc.vapidPublic?'badge-orange':'badge-red'}">web-push lib: ${pc.webpushLoaded?'loaded':'missing'}</span>
+        <span class="badge ${pc.vapidPublic?'badge-green':'badge-red'}">VAPID public: ${pc.vapidPublic?'set':'MISSING'}</span>
+        <span class="badge ${pc.vapidPrivate?'badge-green':'badge-red'}">VAPID private: ${pc.vapidPrivate?'set':'MISSING'}</span>
+        <span class="badge badge-neutral">${pc.subscribers||0} subscriber(s)</span>
+      </div>
+      ${ok?'':'<div style="font-size:11px;color:var(--red);margin-bottom:10px">Push notifications are disabled — set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY env vars on Render.</div>'}
+      <div style="font-size:10px;color:var(--text3);font-weight:600;margin-bottom:6px">Last sends</div>
+      ${data.pushSendLog&&data.pushSendLog.length?data.pushSendLog.slice().reverse().map(p=>`<div class="activity-item"><span class="a-dot ${p.sent>0?'running':'warning'}"></span><div class="a-body"><div class="a-title" style="font-size:11px"><span style="font-weight:600">${p.title}</span> <span class="text-muted">— ${p.kind} push · sent to ${p.sent}/${p.subs} device(s)</span></div></div><div class="a-time">${fmtTime(p.t)}</div></div>`).join(''):'<div class="empty-state">No pushes attempted yet</div>'}
+    `})()}
+  </div></div>
   <div class="card" style="margin-top:16px"><div class="card-header"><h3>Daily Trade Outcomes</h3></div><div class="card-body" style="padding:0">
     ${data.dailyOutcomeLog&&data.dailyOutcomeLog.length?`<table class="compact-table"><thead><tr><th>Time</th><th>Pair</th><th>TF</th><th>Type</th><th>Outcome</th></tr></thead><tbody>${data.dailyOutcomeLog.map(o=>`<tr><td class="text-muted text-sm">${fmtTime(o.time)}</td><td style="font-weight:600">${o.name||o.id}</td><td class="text-muted">${o.tf||''}</td><td class="${o.type==='BULLISH'?'text-green':'text-red'}">${o.type||''}</td><td><span class="badge ${o.outcome==='WIN'||o.outcome==='TP1'||o.outcome==='TP2'?'badge-green':o.outcome==='SL'?'badge-red':'badge-neutral'}">${o.outcome||''}</span></td></tr>`).join('')}</tbody></table>`:'<div class="empty-state">No outcomes today</div>'}
   </div>`;
