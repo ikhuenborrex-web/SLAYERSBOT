@@ -378,6 +378,18 @@ async function loadState(){
         log('Startup cleanup: removed '+ (st.activeScalpTrades.length-activeScalpTrades.length) +' stale active scalp trade(s) already closed in history');
       }
     }
+    // Force-clear scalp signal cards whose trade is no longer open. Keeps the
+    // feed aligned with active trades and wipes any played-out NAS100/US30
+    // cards left over from stale state.
+    if(Array.isArray(scalpSignals)&&Array.isArray(activeScalpTrades)){
+      const openIds=new Set(activeScalpTrades.filter(t=>!t.closed).map(t=>t.sigId));
+      const before=scalpSignals.length;
+      scalpSignals=scalpSignals.filter(s=>openIds.has(s.id));
+      if(before!==scalpSignals.length){
+        log('Startup cleanup: pruned '+ (before-scalpSignals.length) +' scalp signal card(s) with no open trade');
+        saveState();
+      }
+    }
     const ageMin=st.savedAt?Math.round((Date.now()-st.savedAt)/60000):'?';
     log('State restored from '+src+': '+activeQMRTrades.length+' active trades, '+tradeHistory.length+' history ('+ageMin+'m old)');
     tradeHistory=(tradeHistory||[]).filter(t=>t.instId!=='EURGBP');
@@ -2378,8 +2390,14 @@ app.get('/api/scalp',(req,res)=>{
   const codeCheck=checkMemberCode(req);if(codeCheck!=='ok')return res.status(401).json({error:codeCheck==='device_mismatch'?'This code is already active on another device. Ask your admin to reset it.':'Invalid or expired access code',reason:codeCheck});
   const myCode=req.query.code||req.headers['x-access-code'];
   const limit=Math.min(parseInt(req.query.limit)||20,50);
+  // Only surface signals whose trade is STILL OPEN. Every signal pushed to
+  // scalpSignals also gets an activeScalpTrades entry with the same id
+  // (see runNyScalp), so a card whose trade closed — however it closed — is
+  // dropped here regardless of history state. This force-clears played-out
+  // NAS100/US30 cards that older state never recorded into scalpTradeHistory.
   const closedIds=new Set((scalpTradeHistory||[]).map(h=>h.sigId).filter(Boolean));
-  const sorted=[...scalpSignals].filter(s=>!closedIds.has(s.id)).sort((a,b)=>new Date(b.time)-new Date(a.time));
+  const openIds=new Set(activeScalpTrades.filter(t=>!t.closed&&!closedIds.has(t.sigId)).map(t=>t.sigId));
+  const sorted=[...scalpSignals].filter(s=>openIds.has(s.id)).sort((a,b)=>new Date(b.time)-new Date(a.time));
   res.json({signals:sorted.slice(0,limit).map(s=>{
     const tracked=trackedTrades[s.id]&&trackedTrades[s.id].includes(myCode);
     return {...s,isTracked:!!tracked,chartUrl:s.chartFile?'/api/chart/'+s.chartFile:null};
