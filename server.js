@@ -2892,7 +2892,18 @@ app.get('/',(req,res)=>{
 app.listen(PORT,()=>log(`Port ${PORT}`));
 // Keep-alive: ping own public URL every 10 min so Render free tier never sleeps
 const SELF_URL=process.env.RENDER_EXTERNAL_URL||'';
-if(SELF_URL)setInterval(()=>{fetch(SELF_URL+'/').catch(()=>{});},10*60*1000);
+// Last-Saturday-of-month maintenance window (Sat 00:00 -> Sun 00:00 NY):
+// pauses self-ping + scans so the Render free instance can spin down and save hours.
+function inMaintenanceWindow(){
+  const d=nyNow();
+  if(d.getDay()!==6)return false;
+  const nextSat=new Date(d.getFullYear(),d.getMonth(),d.getDate()+7);
+  return nextSat.getMonth()!==d.getMonth();
+}
+if(SELF_URL)setInterval(()=>{
+  if(inMaintenanceWindow())return;
+  fetch(SELF_URL+'/').catch(()=>{});
+},10*60*1000);
 log('Slayers Alert System v8.2 starting...');
 loadState().then(()=>{
   // Seed member codes from env var if state was lost (e.g. after a cold deploy)
@@ -2927,12 +2938,16 @@ loadState().then(()=>{
   for(var sigId in trackedTrades){if(!activeSet.has(sigId)){delete trackedTrades[sigId];cleaned++;}}
   if(cleaned)log(`Startup cleanup: removed ${cleaned} stale tracking entr(ies) from closed trades`);
   fetchNewsFeed().then(function(){log('News feed: initial fetch complete ('+newsFeedCache.length+' articles)');checkIntelChangeAndPush().catch(function(){});});
-  setInterval(function(){fetchNewsFeed().then(function(){checkIntelChangeAndPush().catch(function(){});}).catch(function(){});},10*60*1000);
-  runScan(true).then(function(){setInterval(function(){runScan(false).catch(function(){});},CHECK_MS);log('Scanning every '+CHECK_MS/60000+' minutes');});
+  setInterval(function(){
+    if(inMaintenanceWindow())return;
+    fetchNewsFeed().then(function(){checkIntelChangeAndPush().catch(function(){});}).catch(function(){});
+  },10*60*1000);
+  runScan(true).then(function(){setInterval(function(){if(inMaintenanceWindow())return;runScan(false).catch(function(){});},CHECK_MS);log('Scanning every '+CHECK_MS/60000+' minutes');});
   // NY-open scalp engine loop — signal detection + trade management.
   // Runs every 2 min; internal time-window gating keeps DB reads cheap
   // outside the US morning (09:30–11:30 NY).
   setInterval(async function(){
+    if(inMaintenanceWindow())return;
     try{await runNyScalp();}
     catch(e){log('NY scalp loop: '+e.message);}
   },120000);
