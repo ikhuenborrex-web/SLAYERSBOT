@@ -622,7 +622,7 @@ async function runNyScalp(){
     try{sendScalpPushToAll(
       (signal.type==='BULLISH'?'\uD83D\uDFE2 BUY':'\uD83D\uDD34 SELL')+' '+inst.id,
       'NY-Open breakout '+(signal.type==='BULLISH'?'BUY':'SELL')+' — US session — Entry '+signal.entry.toFixed(inst.dec)+' · TP '+signal.tp2.toFixed(inst.dec)+' · SL '+signal.sl.toFixed(inst.dec),
-      '/'
+      '/app/'
     );}catch(pushErr){log('Scalp push skipped: '+pushErr.message);}
     log('Scalp signal: '+inst.id+' '+signal.type+' NY entry='+signal.entry.toFixed(inst.dec)+' sl='+signal.sl.toFixed(inst.dec)+' tp2='+signal.tp2.toFixed(inst.dec)+' atr='+signal.atr14.toFixed(2));
     saveState();
@@ -1865,9 +1865,11 @@ async function sendPushToAll(title,body,url){
 
 // Sends only to members who marked themselves as tracking this specific trade
 async function sendPushToTrackers(signalId,title,body,level){
-  if(!webpush||!VAPID_PUBLIC||!VAPID_PRIVATE||!signalId)return;
+  if(!webpush||!VAPID_PUBLIC||!VAPID_PRIVATE){log('Tracked push SKIPPED — web-push not configured: '+title);return;}
   const codes=trackedTrades[signalId];
   if(!codes||!codes.length)return;
+  serverNotifQueue.push({id:'srv_'+Date.now(),type:level==='tp2'?'trade':'info',icon:level==='tp2'?'\uD83D\uDCC8':'\uD83D\uDD14',title:title,body:body||'',time:Date.now(),unread:true,url:'/app/'});
+  if(serverNotifQueue.length>50)serverNotifQueue=serverNotifQueue.slice(-50);
   const payload=JSON.stringify({title,body,url:'/app/'});
   const dead=[];
   for(const entry of pushSubscriptions){
@@ -1887,20 +1889,28 @@ async function sendPushToTrackers(signalId,title,body,level){
   if(dead.length){pushSubscriptions=pushSubscriptions.filter(s=>!dead.includes(s));saveState();}
 }
 async function sendScalpPushToAll(title,body,url){
-  if(!webpush||!VAPID_PUBLIC||!VAPID_PRIVATE||!pushSubscriptions.length)return;
+  if(!webpush||!VAPID_PUBLIC||!VAPID_PRIVATE){log('Scalp push SKIPPED — web-push not configured (VAPID keys missing on server)');return;}
+  // Always record the notification in the in-app bell queue, even if no device
+  // is currently subscribed to web push — otherwise scalp signals are invisible
+  // to anyone who opens the app later.
+  serverNotifQueue.push({id:'srv_scalp_'+Date.now(),type:'scalp',icon:'\u26A1',title:title,body:body||'',time:Date.now(),unread:true,url:url||'/app/'});
+  if(serverNotifQueue.length>50)serverNotifQueue=serverNotifQueue.slice(-50);
+  if(!pushSubscriptions.length){log('Scalp push queued for bell but no devices subscribed: '+title);return;}
   const payload=JSON.stringify({title,body,url:url||'/app/'});
+  let sent=0;
   const dead=[];
   for(const entry of pushSubscriptions){
     const {code,...sub}=entry;
     const member=memberCodes.find(m=>m.code===code);
     if(member&&member.notifPrefs&&member.notifPrefs.scalpAlerts===false)continue;
-    try{await webpush.sendNotification(sub,payload);}
+    try{await webpush.sendNotification(sub,payload);sent++;}
     catch(e){
       if(e.statusCode===410||e.statusCode===404)dead.push(entry);
       else log('Push error: '+e.message);
     }
   }
   if(dead.length){pushSubscriptions=pushSubscriptions.filter(s=>!dead.includes(s));saveState();}
+  log('Scalp push sent to '+sent+' device(s): '+title);
 }
 
 // Short push title/body per trade event, mirrors tgQMRUpdate's content
