@@ -212,14 +212,14 @@ var _progExp={};
 var _journalExp={};
 var _rp=null;
 var _journalDisplayEntries=[];
+var _fetchTimeoutMs=15000;
+var ft=function(url){
+  return Promise.race([fetch(url),new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'));},_fetchTimeoutMs);})]);
+};
+var j=function(r){return r&&r.json?r.json().catch(function(){return{};}):Promise.resolve({});};
 
 async function fetchAll(bg){
   if(bg&&state.userBusy)return;
-  var TIMEOUT_MS=15000;
-  var ft=function(url){
-    return Promise.race([fetch(url),new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout'));},TIMEOUT_MS);})]);
-  };
-  var j=function(r){return r&&r.json?r.json().catch(function(){return{};}):Promise.resolve({});};
   var promises=[];
   var sigUrl='/api/signals?limit=20';
   if(state.filter.pair)sigUrl+='&pair='+encodeURIComponent(state.filter.pair);
