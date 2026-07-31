@@ -5,13 +5,21 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 // NY-open scalp engine reads Oanda M5 candles + daily ATR from the
-// sidecar-maintained scalps.sqlite (see scalp_research/live_feed.py).
+// sidecar-maintained scalps.sqlite (see scalp_sidecar/live_feed.py).
+// Opened LAZILY and re-tried on demand: on a fresh deploy the sidecar may
+// create the DB after the bot boots, so we keep trying instead of giving up.
 let scalpsDb=null;
-try{
-  const {DatabaseSync}=require('node:sqlite');
-  scalpsDb=new DatabaseSync(process.env.SCALP_DB_PATH||'/Users/roz/scalp_research/data/scalps.sqlite',{readOnly:true});
-  console.log('NY-open scalp DB: open');
-}catch(e){console.warn('node:sqlite unavailable — NY-open scalp engine disabled: '+e.message);}
+let scalpsDbPath=process.env.SCALP_DB_PATH||'/Users/roz/scalp_research/data/scalps.sqlite';
+function getScalpsDb(){
+  if(scalpsDb)return scalpsDb;
+  try{
+    const {DatabaseSync}=require('node:sqlite');
+    if(!require('fs').existsSync(scalpsDbPath))return null;
+    scalpsDb=new DatabaseSync(scalpsDbPath,{readOnly:true});
+    console.log('NY-open scalp DB: open');
+  }catch(e){return null;}
+  return scalpsDb;
+}
 let webpush=null;
 try{webpush=require('web-push');}catch(e){console.log('web-push not installed yet — push notifications disabled until package.json is updated');}
 const VAPID_PUBLIC=process.env.VAPID_PUBLIC_KEY||'';
@@ -509,19 +517,19 @@ function nyNow(){return new Date(new Date().toLocaleString('en-US',{timeZone:NY_
 function nyDayStr(){const d=nyNow();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function estMin(est){return parseInt(est.slice(11,13))*60+parseInt(est.slice(14,16));}
 function nyAtrFor(pair,day){
-  if(!scalpsDb)return null;
-  try{const row=scalpsDb.prepare('SELECT atr14 FROM daily_atr WHERE instrument=? AND day=?').get(pair,day);return row?row.atr14:null;}
+  const d=getScalpsDb();if(!d)return null;
+  try{const row=d.prepare('SELECT atr14 FROM daily_atr WHERE instrument=? AND day=?').get(pair,day);return row?row.atr14:null;}
   catch(e){return null;}
 }
 function nyCandlesFor(pair,day){
-  if(!scalpsDb)return[];
-  try{return scalpsDb.prepare("SELECT ts,est,open,high,low,close FROM candles WHERE instrument=? AND granularity='M5' AND est>=? AND est<=? ORDER BY ts ASC").all(pair,day+'T00:00:00',day+'T23:59:59');}
+  const d=getScalpsDb();if(!d)return[];
+  try{return d.prepare("SELECT ts,est,open,high,low,close FROM candles WHERE instrument=? AND granularity='M5' AND est>=? AND est<=? ORDER BY ts ASC").all(pair,day+'T00:00:00',day+'T23:59:59');}
   catch(e){return[];}
 }
 function nyLatestHilo(pair){
-  if(!scalpsDb)return null;
+  const d=getScalpsDb();if(!d)return null;
   try{
-    const rows=scalpsDb.prepare("SELECT high,low,close,est FROM candles WHERE instrument=? AND granularity='M5' ORDER BY ts DESC LIMIT 3").all(pair);
+    const rows=d.prepare("SELECT high,low,close,est FROM candles WHERE instrument=? AND granularity='M5' ORDER BY ts DESC LIMIT 3").all(pair);
     if(!rows.length)return null;
     return{high:Math.max(...rows.map(r=>r.high)),low:Math.min(...rows.map(r=>r.low)),close:rows[0].close};
   }catch(e){return null;}
@@ -560,7 +568,7 @@ function nyExpiry(day){
   return day+'T'+hh+':'+mm+':00';
 }
 async function runNyScalp(){
-  if(!scalpsDb)return;
+  if(!getScalpsDb())return;
   const day=nyDayStr();
   // Clean expired trades first
   checkNyTrades();

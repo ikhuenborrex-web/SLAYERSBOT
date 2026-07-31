@@ -5,9 +5,16 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 if [ -n "${SCALP_DB_PATH:-}" ]; then
-  export SCALP_DB_PATH
-  mkdir -p "$(dirname "$SCALP_DB_PATH")"
-  echo "sidecar: using SCALP_DB_PATH=$SCALP_DB_PATH"
+  if mkdir -p "$(dirname "$SCALP_DB_PATH")" 2>/dev/null; then
+    export SCALP_DB_PATH
+    echo "sidecar: using SCALP_DB_PATH=$SCALP_DB_PATH"
+  else
+    # Directory not writable (e.g. no Render Disk mounted at /data yet).
+    # Fall back to a writable location and export the SAME path so the bot
+    # reads the identical DB file. History is lost on redeploy without a Disk.
+    export SCALP_DB_PATH="${HOME:-/tmp}/scalps.sqlite"
+    echo "WARNING: cannot create dir for SCALP_DB_PATH — falling back to $SCALP_DB_PATH (mount a Render Disk at /data to persist history)"
+  fi
 fi
 
 # Install the single Python dep if missing (Render images may not ship it).
