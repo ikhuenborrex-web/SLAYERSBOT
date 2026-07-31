@@ -389,23 +389,6 @@ async function renderScalp(){
     </tr>`).join('')}</tbody></table>
   </div>`;
 }
-S.editScalp=function(sigId){
-  const t=(_scalpTrades||[]).find(x=>x.sigId===sigId);
-  const entry=prompt('Entry price',t?t.entry:'');
-  if(entry===null)return;
-  const sl=prompt('SL price',t?t.sl:'');
-  if(sl===null)return;
-  const tp2=prompt('TP2 price',t?t.tp2:'');
-  if(tp2===null)return;
-  api('/api/admin/scalp/'+sigId+'/edit',{method:'POST',body:JSON.stringify({entry:parseFloat(entry),sl:parseFloat(sl),tp2:parseFloat(tp2)})}).then(function(d){toast(d&&d.ok?'Scalp levels updated':'Edit failed',d&&d.ok?'success':'error');S.refresh();});
-};
-S.closeScalp=function(sigId){
-  const outcome=prompt('Outcome (WIN / LOSS / BE / TIME):','WIN');
-  if(outcome===null)return;
-  const o=(outcome||'').toUpperCase();
-  if(!['WIN','LOSS','BE','TIME'].includes(o)){toast('Outcome must be WIN, LOSS, BE or TIME','error');return;}
-  api('/api/admin/scalp/'+sigId+'/close',{method:'POST',body:JSON.stringify({outcome:o})}).then(function(d){toast(d&&d.ok?'Closed as '+o+' ('+d.r+'R)':'Close failed',d&&d.ok?'success':'error');S.refresh();});
-};
 
 // ===== LOGS =====
 async function renderLogs(){
@@ -631,6 +614,23 @@ const S={
     if(res)toast('Device reset for '+code,'success');renderMembers()
   },
   copyCode(code){navigator.clipboard.writeText(code).then(()=>toast('Copied: '+code,'success'))},
+  editScalp(sigId){
+    const t=(_scalpTrades||[]).find(x=>x.sigId===sigId);
+    const entry=prompt('Entry price',t?t.entry:'');
+    if(entry===null)return;
+    const sl=prompt('SL price',t?t.sl:'');
+    if(sl===null)return;
+    const tp2=prompt('TP2 price',t?t.tp2:'');
+    if(tp2===null)return;
+    api('/api/admin/scalp/'+sigId+'/edit',{method:'POST',body:JSON.stringify({entry:parseFloat(entry),sl:parseFloat(sl),tp2:parseFloat(tp2)})}).then(function(d){toast(d&&d.ok?'Scalp levels updated':'Edit failed',d&&d.ok?'success':'error');S.refresh();});
+  },
+  closeScalp(sigId){
+    const outcome=prompt('Outcome (WIN / LOSS / BE / TIME):','WIN');
+    if(outcome===null)return;
+    const o=(outcome||'').toUpperCase();
+    if(!['WIN','LOSS','BE','TIME'].includes(o)){toast('Outcome must be WIN, LOSS, BE or TIME','error');return;}
+    api('/api/admin/scalp/'+sigId+'/close',{method:'POST',body:JSON.stringify({outcome:o})}).then(function(d){toast(d&&d.ok?'Closed as '+o+' ('+d.r+'R)':'Close failed',d&&d.ok?'success':'error');S.refresh();});
+  },
   // Subscriber methods
   subFilter(f,btn){_subFilter=f;document.querySelectorAll('.sub-fbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');subRender()},
   subOpen(){_subEdit=null;document.getElementById('subModalTitle').textContent='Add Subscriber';document.getElementById('subFName').value='';document.getElementById('subFTg').value='';document.getElementById('subFPlan').value='monthly';document.getElementById('subFDate').value=new Date().toISOString().slice(0,10);document.getElementById('subFNotes').value='';S.subPrev();document.getElementById('subModal').style.display='flex'},
