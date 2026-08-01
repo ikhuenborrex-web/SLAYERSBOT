@@ -1,14 +1,15 @@
 name: uptime-window
 on:
   schedule:
-    - cron: ')/15 * * * *'
-  workflow_dispatch:jobs:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Sync UptimeRobot monitor to maintenance window
         env:
-          UPTYmEROBOT_API_KEY: $ {{ secrets.UPTIMEROBOT_API_KEY }}
+          UPTIMEROBOT_API_KEY: ${{ secrets.UPTIMEROBOT_API_KEY }}
           UPTIMEROBOT_MONITOR_ID: '803163555'
         run: node .github/scripts/uptime-window.js
