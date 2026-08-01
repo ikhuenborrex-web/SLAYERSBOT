@@ -1486,6 +1486,13 @@ async function runScan(manual=false){
             const slDistForRR=Math.abs(entryForRR-sl_q);
             const rr1_q=slDistForRR>0?Math.abs(tp1_q-entryForRR)/slDistForRR:0;
             if(rr1_q<MIN_RR){log('QMR suppressed (weak TP1 reward '+rr1_q.toFixed(2)+'R from '+(earlyRefined?'refined':'zone')+' entry): '+inst.id+' '+qmr.type);continue;}
+            // A+D rule (validated: holdout 20tr 80% WR +1.06R +21.1R vs baseline 37tr 59% +0.58R +21.5R)
+            if(tf==='1h'){
+              const wkBias=weeklyCache[inst.id]?.bias||'NEUTRAL';
+              if(qmr.type==='BEARISH'&&wkBias==='BULLISH'){log('QMR suppressed (A: sell into bullish week): '+inst.id+' '+qmr.type);continue;}
+              const hUtc=new Date().getUTCHours();
+              if(hUtc>=13&&hUtc<16){log('QMR suppressed (D: London/NY overlap '+hUtc+':00 UTC): '+inst.id+' '+qmr.type);continue;}
+            }
             qmr.structuralTP2=slD_q>0?findStructuralTP2(c,qmr.type,qmr.qmLevel,slD_q,tp1_q):null;
             // Cap structural TP2 at 2.5R — prevents TP2 being too far if structure is beyond 2.5R
             if(qmr.structuralTP2){
@@ -1648,6 +1655,10 @@ async function runScan(manual=false){
               if(isWeekend()&&inst.id!=='BTCUSD')continue;
               if(!inKillzone(inst.id)){log('QMR Early outside killzone: '+inst.id+' '+eQ.type);}
               if(isNewsBlocked(inst.id)){log('QMR Early blocked (news): '+inst.id);continue;}
+              const eWkBias=weeklyCache[inst.id]?.bias||'NEUTRAL';
+              if(eQ.type==='BEARISH'&&eWkBias==='BULLISH'){log('QMR Early suppressed (A: sell into bullish week): '+inst.id+' '+eQ.type);continue;}
+              const ehUtc=new Date().getUTCHours();
+              if(ehUtc>=13&&ehUtc<16){log('QMR Early suppressed (D: London/NY overlap '+ehUtc+':00 UTC): '+inst.id+' '+eQ.type);continue;}
               const eKey=inst.id+'-'+eQ.type+'-AGG-'+Date.now()+'-'+eQ.qmLevel.toFixed(3);
               if(qmrSeen.has(eKey))continue;
               if(suppressedPairs.has(inst.id)){log('QMR Early suppressed (pair underperforming): '+inst.id+' '+eQ.type);continue;}
