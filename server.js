@@ -74,10 +74,10 @@ const QMR_INSTS = [
   {id:'EURUSD',sym:'EUR/USD',name:'EUR/USD',dec:5},
   {id:'XAUUSD',sym:'XAU/USD',name:'XAU/USD',dec:2},
   {id:'BTCUSD',sym:'BTC/USD',name:'BTC/USD',dec:2},
-  {id:'EURGBP',sym:'EUR/GBP',name:'EUR/GBP',dec:5},
+  {id:'GBPUSD',sym:'GBP/USD',name:'GBP/USD',dec:5},
   {id:'EURCAD',sym:'EUR/CAD',name:'EUR/CAD',dec:5},
-  {id:'USDJPY',sym:'USD/JPY',name:'USD/JPY',dec:3},
-  {id:'CHFJPY',sym:'CHF/JPY',name:'CHF/JPY',dec:3},
+  {id:'EURAUD',sym:'EUR/AUD',name:'EUR/AUD',dec:5},
+  {id:'GBPCAD',sym:'GBP/CAD',name:'GBP/CAD',dec:5},
 ];
 const QMR_TFS=['1h','4h'];
 // NY-open index scalp module (Phase 4) — US30 + NAS100 only.
@@ -94,24 +94,24 @@ const QMR_MIN=3,WEEKLY_EVERY=24,LON_S=7,LON_E=16,NY_S=13,NY_E=22;
 
 // Correlation groups — pairs that move together; opposite-direction signals on correlated pairs flag a warning
 const CORRELATION_GROUPS=[
-  ['EURUSD','EURCAD','EURGBP'],
-  ['USDJPY','CHFJPY'],
+  ['EURUSD','EURCAD','EURAUD'],
+  ['GBPUSD','GBPCAD'],
 ];
 const PAIR_SESSIONS={
   EURUSD:{s:7,e:22},XAUUSD:{s:7,e:22},BTCUSD:{s:0,e:24},
-  EURGBP:{s:7,e:16},EURCAD:{s:7,e:22},USDJPY:{s:0,e:22},
-  CHFJPY:{s:0,e:22},
+  GBPUSD:{s:7,e:22},EURCAD:{s:7,e:22},EURAUD:{s:0,e:22},
+  GBPCAD:{s:7,e:22},
 };
 const PAIR_CURRENCIES={
   EURUSD:['EUR','USD'],XAUUSD:['XAU','USD'],BTCUSD:['BTC'],
-  EURGBP:['EUR','GBP'],EURCAD:['EUR','CAD'],USDJPY:['USD','JPY'],
-  CHFJPY:['CHF','JPY'],
+  GBPUSD:['GBP','USD'],EURCAD:['EUR','CAD'],EURAUD:['EUR','AUD'],
+  GBPCAD:['GBP','CAD'],
 };
 // Per-pair killzones (UTC hours) for 1H QMR signals. null = no restriction (24/7)
 // Asian-active pairs include Tokyo killzone 0-4; EU/US pairs are London + NY open only
 const PAIR_KILLZONES={
-  EURUSD:[[7,10],[13,16]],EURGBP:[[7,10],[13,16]],EURCAD:[[7,10],[13,16]],XAUUSD:[[7,10],[13,16]],
-  USDJPY:[[0,4],[7,10],[13,16]],CHFJPY:[[0,4],[7,10],[13,16]],
+  EURUSD:[[7,10],[13,16]],GBPUSD:[[7,10],[13,16]],EURCAD:[[7,10],[13,16]],XAUUSD:[[7,10],[13,16]],
+  EURAUD:[[0,4],[7,10],[13,16]],GBPCAD:[[7,10],[13,16]],
   BTCUSD:null,
 };
 function inKillzone(id){const kz=PAIR_KILLZONES[id];if(!kz)return true;const h=new Date().getUTCHours();return kz.some(w=>h>=w[0]&&h<w[1]);}
@@ -392,9 +392,9 @@ async function loadState(){
     }
     const ageMin=st.savedAt?Math.round((Date.now()-st.savedAt)/60000):'?';
     log('State restored from '+src+': '+activeQMRTrades.length+' active trades, '+tradeHistory.length+' history ('+ageMin+'m old)');
-    tradeHistory=(tradeHistory||[]).filter(t=>t.instId!=='EURGBP');
-    dailyOutcomeLog=(dailyOutcomeLog||[]).filter(t=>t.id!=='EURGBP');
-    appSignalFeed=(appSignalFeed||[]).filter(s=>s.pair!=='EURGBP');
+    tradeHistory=(tradeHistory||[]).filter(t=>!['EURGBP','USDJPY','CHFJPY'].includes(t.instId));
+    dailyOutcomeLog=(dailyOutcomeLog||[]).filter(t=>!['EURGBP','USDJPY','CHFJPY'].includes(t.id));
+    appSignalFeed=(appSignalFeed||[]).filter(s=>!['EURGBP','USDJPY','CHFJPY'].includes(s.pair));
     if(tradeHistory.length!==st?.tradeHistory?.length||appSignalFeed.length!==st?.appSignalFeed?.length)saveState();
   }catch(e){log('loadState error (starting fresh): '+e.message);}
 }
@@ -817,7 +817,7 @@ function checkCorrelationConflict(instId,type){
 // Telegram functions
 async function tgSend(text){if(!TG_TOKEN||!TG_CHAT)return;try{await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:TG_CHAT,text})});}catch(e){log('TG error: '+e.message);}}
 // Chart snapshots via chart-img.com (optional - only active when CHARTIMG_API_KEY is set)
-const CHART_SYMBOLS={EURUSD:'OANDA:EURUSD',XAUUSD:'OANDA:XAUUSD',BTCUSD:'COINBASE:BTCUSD',EURGBP:'OANDA:EURGBP',EURCAD:'OANDA:EURCAD',USDJPY:'OANDA:USDJPY',CHFJPY:'OANDA:CHFJPY',NAS100:'OANDA:NAS100USD',US30:'OANDA:US30USD'};
+const CHART_SYMBOLS={EURUSD:'OANDA:EURUSD',XAUUSD:'OANDA:XAUUSD',BTCUSD:'COINBASE:BTCUSD',GBPUSD:'OANDA:GBPUSD',EURCAD:'OANDA:EURCAD',EURAUD:'OANDA:EURAUD',GBPCAD:'OANDA:GBPCAD',NAS100:'OANDA:NAS100USD',US30:'OANDA:US30USD'};
 async function tgSendChart(instId,interval,lines,caption,saveForApp,noTg){
   // saveForApp: if provided, save the exact same image bytes for the app to display later
   let savedFile=null;
@@ -1542,7 +1542,7 @@ async function runScan(manual=false){
               const h4c=tf==='1h'?build4HFrom1H(c):c;
               const div=checkRSIDivergence(h4c,qmr.type);
               if(div)qmr.rsiDivergence=div;
-              const STRICT_PAIRS=['EURGBP','USDJPY'];
+              const STRICT_PAIRS=['GBPUSD','EURAUD','GBPCAD'];
               if(STRICT_PAIRS.includes(inst.id)&&qmr.criteria.score<4){
                 log('QMR suppressed (strict pair requires 4/4, has '+qmr.criteria.score+'/4): '+inst.id+' '+qmrTF+' '+qmr.type);
                 continue;
