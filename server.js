@@ -452,8 +452,12 @@ async function fetchNewsEvents(){
   }
 }
 function isNewsBlocked(instId){
+  // Before-only: block only UPCOMING events (next 30 min). Entries after a
+  // release are allowed — this keeps pre-event protection (no entry before a
+  // major release that could gap through the stop) without forfeiting
+  // post-release entries that performed well in backtest.
   const cur=PAIR_CURRENCIES[instId]||[],now=Date.now(),win=30*60*1000;
-  return newsCache.some(ev=>{if(!cur.includes(ev.country))return false;try{return Math.abs(now-new Date(ev.date).getTime())<win;}catch{return false;}});
+  return newsCache.some(ev=>{if(!cur.includes(ev.country))return false;try{const t=new Date(ev.date).getTime();return t>=now&&t-now<win;}catch{return false;}});
 }
 
 // RSS news feed

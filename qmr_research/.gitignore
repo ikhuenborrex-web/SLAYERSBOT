@@ -1,0 +1,13 @@
+# Secrets — never commit
+.env
+
+# Python caches
+__pycache__/
+*.pyc
+
+# Pulled OHLC data (re-generated via pull_data.py) — keep news_events.csv
+data/*_H1.csv
+data/*_H4.csv
+
+# Generated backtest output
+output/
