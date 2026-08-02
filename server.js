@@ -2356,7 +2356,8 @@ app.get('/api/admin/results',(req,res)=>{
         }
       }
     }
-    const results=[...rows.values()].sort((a,b)=>(b.time||'').localeCompare(a.time||''));
+    const sortT=v=>{if(typeof v==='number')return v;if(v instanceof Date)return v.getTime();const t=Date.parse(v||'');return isNaN(t)?0:t;};
+    const results=[...rows.values()].sort((a,b)=>sortT(b.time)-sortT(a.time));
     res.json({results,total:results.length});
   }catch(e){
     log('Admin results error: '+e.stack||e.message);
