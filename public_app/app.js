@@ -241,6 +241,46 @@ function refreshAuto(){
   _lastFetchAll=Date.now();
   fetchAll(true);
 }
+// ---- Last-known-good guards ---------------------------------------------
+// A bad/empty response must never wipe existing valid data (the app was
+// blanking because a transient 5xx or empty body was parsed and overwrote
+// state with [] / {}). Empty values are only allowed through after the same
+// key has been consistently empty for 60s, so real "went to zero" transitions
+// (e.g. a trade closing) still eventually clear.
+var _emptySince={};
+function _dbg(msg){try{if(window.console&&console.debug)console.debug('[fetch] '+msg);}catch(e){}}
+function setArr(key,val){
+  var cur=state[key],haveCur=Array.isArray(cur)&&cur.length>0;
+  var empty=!Array.isArray(val)||val.length===0;
+  if(empty){
+    if(haveCur){
+      if(!_emptySince[key])_emptySince[key]=Date.now();
+      if(Date.now()-_emptySince[key]<60000){_dbg(key+' empty -> kept last-good ('+cur.length+')');return;}
+    }
+    _emptySince[key]=null;
+    state[key]=[];
+  }else{
+    _emptySince[key]=null;
+    state[key]=val;
+  }
+  scheduleRender();
+}
+function setObj(key,val){
+  if(!val||typeof val!=='object')return;
+  var empty=Object.keys(val).length===0;
+  if(empty){
+    if(state[key]){
+      if(!_emptySince[key])_emptySince[key]=Date.now();
+      if(Date.now()-_emptySince[key]<60000){_dbg(key+' empty object -> kept last-good');return;}
+    }
+    _emptySince[key]=null;
+    state[key]=val;
+  }else{
+    _emptySince[key]=null;
+    state[key]=val;
+  }
+  scheduleRender();
+}
 
 async function fetchAll(bg){
   if(bg&&state.userBusy)return;
@@ -256,47 +296,61 @@ async function fetchAll(bg){
   if(state.filter.sort!=='time')sigUrl+='&sort='+state.filter.sort;
   promises.push(ft(withCode(sigUrl)).then(function(r){
     if(r.status===401){clearCode();state.loading=false;_firstLoad=false;renderLogin('Your access code has expired or is no longer valid.');return;}
+    if(!r.ok)return; // transient 5xx (deploy/restart/proxy) -> keep last-known-good
     return j(r).then(function(d){
-      var sigs=d.signals||[];
+      var sigs=Array.isArray(d.signals)?d.signals:[];
       if(lastSignalIds.length&&sigs.length>lastSignalIds.length&&!bg){
         for(var si=0;si<sigs.length;si++){if(lastSignalIds.indexOf(sigs[si].id)===-1){showToast((sigs[si].type==='BULLISH'?'\uD83D\uDCC8 ':'\uD83D\uDCC9 ')+(sigs[si].dualEntry?'Dual ':'')+sigs[si].pair+' \u00b7 '+sigs[si].tier+(sigs[si].score?' ('+sigs[si].score+'/4)':''));break;}}
       }
       lastSignalIds=sigs.map(function(s){return s.id;});
-      state.signals=sigs;scheduleRender();
+      setArr('signals',sigs);
     });
   }).catch(function(){}));
-  promises.push(ft(withCode('/api/active')).then(function(r){return j(r).then(function(d){state.active=d.trades||[];scheduleRender();});}).catch(function(){}));
-  promises.push(ft(withCode('/api/confluence')).then(function(r){return j(r).then(function(d){state.confluence=d.pairs||[];state.dailyBias=state.confluence.map(function(p){return{pair:p.name,dir:p.signalDir&&p.signalDir!=='NONE'?p.signalDir:p.weeklyBias||'NEUTRAL',conf:Math.round((p.conviction||0)*10)};});scheduleRender();});}).catch(function(){}));
-  promises.push(ft(withCode('/api/stats')).then(function(r){return j(r).then(function(d){state.stats=d;scheduleRender();});}).catch(function(){}));
-  promises.push(ft(withCode('/api/stats/detailed')).then(function(r){return j(r).then(function(d){state.detailedStats=d;scheduleRender();});}).catch(function(){}));
-  promises.push(ft(withCode('/api/stats/weekly')).then(function(r){return j(r).then(function(d){state.weeklyStats=d;scheduleRender();});}).catch(function(){}));
+  promises.push(ft(withCode('/api/active')).then(function(r){if(!r.ok)return;return j(r).then(function(d){setArr('active',d.trades||[]);});}).catch(function(){}));
+  promises.push(ft(withCode('/api/confluence')).then(function(r){if(!r.ok)return;return j(r).then(function(d){
+    var pairs=Array.isArray(d.pairs)?d.pairs:[];
+    setArr('confluence',pairs);
+    if(pairs.length||!state.confluence.length)state.dailyBias=pairs.map(function(p){return{pair:p.name,dir:p.signalDir&&p.signalDir!=='NONE'?p.signalDir:p.weeklyBias||'NEUTRAL',conf:Math.round((p.conviction||0)*10)};});
+  });}).catch(function(){}));
+  promises.push(ft(withCode('/api/stats')).then(function(r){if(!r.ok)return;return j(r).then(function(d){setObj('stats',d);});}).catch(function(){}));
+  promises.push(ft(withCode('/api/stats/detailed')).then(function(r){if(!r.ok)return;return j(r).then(function(d){setObj('detailedStats',d);});}).catch(function(){}));
+  promises.push(ft(withCode('/api/stats/weekly')).then(function(r){if(!r.ok)return;return j(r).then(function(d){setObj('weeklyStats',d);});}).catch(function(){}));
   promises.push(ft(withCode('/api/member/stats')).then(function(r){
-    if(r.status===200)return j(r).then(function(d){
-      state.myStats=d.myStats||null;
+    if(r.status!==200||!r.ok)return;
+    return j(r).then(function(d){
+      if(d&&d.myStats)state.myStats=d.myStats;
       var local=JSON.parse(localStorage.getItem('notifPrefs')||'{}');
       state.notifPrefs=Object.assign({},d.notifPrefs||{},local);
       scheduleRender();
     });
   }).catch(function(){}));
-  promises.push(ft(withCode('/api/journal')).then(function(r){return j(r).then(function(d){state.journal=d.entries||[];scheduleRender();});}).catch(function(){}));
-  promises.push(ft(withCode('/api/news')).then(function(r){return j(r).then(function(d){state.news=d.events||[];scheduleRender();});}).catch(function(){}));
-  promises.push(ft(withCode('/api/news-feed')).then(function(r){return j(r).then(function(d){state.articles=d.articles||d.data||d.news||d.items||(Array.isArray(d)?d:[])||[];scheduleRender();});}).catch(function(){}));
-  promises.push(ft(withCode('/api/settings')).then(function(r){return j(r).then(function(d){state.settings=d.settings||null;scheduleRender();});}).catch(function(){}));
-  promises.push(ft(withCode('/api/trade-history')).then(function(r){return j(r).then(function(d){state.botHistory=d.outcomes||[];scheduleRender();});}).catch(function(){}));
-  promises.push(ft(withCode('/api/weekly-summary')).then(function(r){return j(r).then(function(d){state.weeklySummary=d.summary||null;scheduleRender();});}).catch(function(){}));
-  promises.push(ft(withCode('/api/weekly-report')).then(function(r){return j(r).then(function(d){state.weeklyReportData=d;scheduleRender();});}).catch(function(){}));
-  promises.push(ft(withCode('/api/notifications')).then(function(r){return j(r).then(function(d){
-    var notifs=d.notifications||[];
+  promises.push(ft(withCode('/api/journal')).then(function(r){if(!r.ok)return;return j(r).then(function(d){setArr('journal',d.entries||[]);});}).catch(function(){}));
+  promises.push(ft(withCode('/api/news')).then(function(r){if(!r.ok)return;return j(r).then(function(d){setArr('news',d.events||[]);});}).catch(function(){}));
+  promises.push(ft(withCode('/api/news-feed')).then(function(r){if(!r.ok)return;return j(r).then(function(d){
+    var arts=d.articles||d.data||d.news||d.items||(Array.isArray(d)?d:[]);
+    setArr('articles',Array.isArray(arts)?arts:[]);
+  });}).catch(function(){}));
+  promises.push(ft(withCode('/api/settings')).then(function(r){if(!r.ok)return;return j(r).then(function(d){setObj('settings',d.settings||null);});}).catch(function(){}));
+  promises.push(ft(withCode('/api/trade-history')).then(function(r){if(!r.ok)return;return j(r).then(function(d){setArr('botHistory',d.outcomes||[]);});}).catch(function(){}));
+  promises.push(ft(withCode('/api/weekly-summary')).then(function(r){if(!r.ok)return;return j(r).then(function(d){setObj('weeklySummary',d.summary||null);});}).catch(function(){}));
+  promises.push(ft(withCode('/api/weekly-report')).then(function(r){if(!r.ok)return;return j(r).then(function(d){setObj('weeklyReportData',d);});}).catch(function(){}));
+  promises.push(ft(withCode('/api/notifications')).then(function(r){if(!r.ok)return;return j(r).then(function(d){
+    var notifs=Array.isArray(d.notifications)?d.notifications:[];
     for(var ni=0;ni<notifs.length;ni++){addNotification(notifs[ni]);}
     if(notifs.length)scheduleRender();
   });}).catch(function(){}));
-  promises.push(ft(withCode('/api/scalp')).then(function(r){return j(r).then(function(d){var ss=d.signals||[];
+  promises.push(ft(withCode('/api/scalp')).then(function(r){if(!r.ok)return;return j(r).then(function(d){var ss=Array.isArray(d.signals)?d.signals:[];
     if(lastScalpIds.length&&ss.length>lastScalpIds.length&&!bg){for(var si=0;si<ss.length;si++){if(lastScalpIds.indexOf(ss[si].id)===-1){showToast('\u26A1 Scalp '+(ss[si].type==='BULLISH'?'\uD83D\uDCC8 ':'\uD83D\uDCC9 ')+(ss[si].name||ss[si].pair)+' \u00b7 NY-open breakout');break;}}}
-    lastScalpIds=ss.map(function(s){return s.id;});state.scalpSignals=ss;scheduleRender();});}).catch(function(){}));
-  promises.push(ft(withCode('/api/scalp/active')).then(function(r){return j(r).then(function(d){state.scalpActive=d.trades||[];scheduleRender();});}).catch(function(){}));
-  promises.push(ft(withCode('/api/scalp/stats')).then(function(r){return j(r).then(function(d){state.scalpStats=d;scheduleRender();});}).catch(function(){}));
-  promises.push(ft(withCode('/api/scalp/pulse')).then(function(r){return j(r).then(function(d){state.scalpPulse=d.pairs||[];scheduleRender();});}).catch(function(){}));
-  promises.push(ft(withCode('/api/intel-summary')).then(function(r){return j(r).then(function(d){state.briefing=d.briefing||d.summary||d.text||d.content||null;lastRefreshTime=Date.now();scheduleRender();});}).catch(function(){}));
+    lastScalpIds=ss.map(function(s){return s.id;});setArr('scalpSignals',ss);});}).catch(function(){}));
+  promises.push(ft(withCode('/api/scalp/active')).then(function(r){if(!r.ok)return;return j(r).then(function(d){setArr('scalpActive',d.trades||[]);});}).catch(function(){}));
+  promises.push(ft(withCode('/api/scalp/stats')).then(function(r){if(!r.ok)return;return j(r).then(function(d){setObj('scalpStats',d);});}).catch(function(){}));
+  promises.push(ft(withCode('/api/scalp/pulse')).then(function(r){if(!r.ok)return;return j(r).then(function(d){setArr('scalpPulse',d.pairs||[]);});}).catch(function(){}));
+  promises.push(ft(withCode('/api/intel-summary')).then(function(r){if(!r.ok)return;return j(r).then(function(d){
+    var b=d&&(d.briefing||d.summary||d.text||d.content);
+    if(b)state.briefing=b;
+    lastRefreshTime=Date.now();
+    scheduleRender();
+  });}).catch(function(){}));
   state.loading=false;
   if(promises.length){
     Promise.allSettled(promises).then(function(){
