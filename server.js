@@ -2338,10 +2338,10 @@ app.get('/api/admin/results',(req,res)=>{
     const rows=new Map();
     const put=(key,row)=>{if(!rows.has(key))rows.set(key,row);else{const r=rows.get(key);r.journalCount=(r.journalCount||0)+(row.journalCount||0);if(!r.refId&&row.refId)r.refId=row.refId;}};
     for(const t of tradeHistory){
-      put(resultKeyForHistory(t),{refId:t.refId||null,legacy:!t.refId,system:'QMR',pair:instNameOf(t.instId)||t.instId,direction:t.type==='BULLISH'?'BUY':'SELL',tf:t.tf,outcome:t.outcome,rMultiple:typeof t.rMultiple==='number'?t.rMultiple:0,time:t.time,duration:t.duration,inHistory:true,journalCount:0,edited:!!t.edited});
+      put(resultKeyForHistory(t),{key:resultKeyForHistory(t),refId:t.refId||null,legacy:!t.refId,system:'QMR',pair:instNameOf(t.instId)||t.instId,direction:t.type==='BULLISH'?'BUY':'SELL',tf:t.tf,outcome:t.outcome,rMultiple:typeof t.rMultiple==='number'?t.rMultiple:0,time:t.time,duration:t.duration,inHistory:true,journalCount:0,edited:!!t.edited});
     }
     for(const t of scalpTradeHistory){
-      put(resultKeyForScalp(t),{refId:t.refId||null,legacy:!t.refId,system:'SCALP',pair:instNameOf(t.pair)||t.pair,direction:t.type==='BULLISH'?'BUY':'SELL',tf:'SCALP',outcome:t.outcome,rMultiple:typeof t.r==='number'?t.r:(typeof t.rMultiple==='number'?t.rMultiple:0),time:t.closeTime,duration:null,inHistory:true,journalCount:0,edited:!!t.edited});
+      put(resultKeyForScalp(t),{key:resultKeyForScalp(t),refId:t.refId||null,legacy:!t.refId,system:'SCALP',pair:instNameOf(t.pair)||t.pair,direction:t.type==='BULLISH'?'BUY':'SELL',tf:'SCALP',outcome:t.outcome,rMultiple:typeof t.r==='number'?t.r:(typeof t.rMultiple==='number'?t.rMultiple:0),time:t.closeTime,duration:null,inHistory:true,journalCount:0,edited:!!t.edited});
     }
     for(const m of memberCodes){
       if(!m||!Array.isArray(m.journal))continue;
@@ -2352,7 +2352,7 @@ app.get('/api/admin/results',(req,res)=>{
         if(rows.has(key)){
           rows.get(key).journalCount++;
         }else{
-          rows.set(key,{refId:e.refId||null,legacy:!e.refId,system:e.system==='scalp'?'SCALP':'QMR',pair:e.pair||'',direction:e.direction||'',tf:e.tf||'',outcome:e.outcome,rMultiple:typeof e.rMultiple==='number'?e.rMultiple:0,time:e.createdAt||e.time,duration:null,inHistory:false,journalCount:1,edited:!!e.edited});
+          rows.set(key,{key:key,refId:e.refId||null,legacy:!e.refId,system:e.system==='scalp'?'SCALP':'QMR',pair:e.pair||'',direction:e.direction||'',tf:e.tf||'',outcome:e.outcome,rMultiple:typeof e.rMultiple==='number'?e.rMultiple:0,time:e.createdAt||e.time,duration:null,inHistory:false,journalCount:1,edited:!!e.edited});
         }
       }
     }
