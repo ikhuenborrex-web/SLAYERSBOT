@@ -1683,7 +1683,7 @@ async function attemptLogin(){
   }catch(e){clearCode();renderLogin('Connection error.');}
 }
 
-window.setTab=function(t){if(_rp)closeReplay();state.tab=t;state.selected=null;render();};
+window.setTab=function(t){if(_rp)closeReplay();state.tab=t;state.selected=null;render();if(t==='dash'||t==='journal')fetchAll(true);};
 window.openDetail=function(id){state.showCalc=false;for(var i=0;i<state.signals.length;i++)if(state.signals[i].id===id){state.selected=state.signals[i];break;}render();};
 window.closeDetail=function(){state.selected=null;state.showCalc=false;render();};
 window.toggleCalc=function(){state.showCalc=!state.showCalc;render();};
@@ -2490,6 +2490,8 @@ function checkHash(){
 // Auto-start on first launch
 if(getCode()){preloadMascot();try{var _localP=JSON.parse(localStorage.getItem('notifPrefs')||'{}');state.notifPrefs=Object.assign({},state.notifPrefs,_localP);}catch(e){}loadNotifs();checkHash();render();fetchAll();setTimeout(function(){try{if(!localStorage.getItem('wt_done'))startOnboarding();}catch(e){}},1500);}else{renderLogin();}
 setInterval(function(){if(getCode())fetchAll(true);},300000);
+document.addEventListener('visibilitychange',function(){if(!document.hidden&&getCode())fetchAll(true);});
+window.addEventListener('focus',function(){if(getCode())fetchAll(true);});
 setInterval(function(){
   if(!getCode()||state.tab!=='scalp')return;
   ft(withCode('/api/scalp/pulse')).then(function(r){return j(r).then(function(d){state.scalpPulse=d.pairs||[];if(state.tab==='scalp')render();});}).catch(function(){});
