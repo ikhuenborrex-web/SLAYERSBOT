@@ -48,7 +48,9 @@ class QMRBacktest:
         self.require_4_4 = bool(cfg.get("require_4_4", True))  # all 1H signals need 4/4
         self.use_4h = bool(cfg.get("use_4h", False))
         self.use_news_filter = bool(cfg.get("use_news_filter", False))
-        self.news_before_only = bool(cfg.get("news_before_only", False))
+        # Before-only is the live operating default (matches updated isNewsBlocked);
+        # symmetric (+-30 min before AND after) is the legacy mode via news_before_only=False.
+        self.news_before_only = bool(cfg.get("news_before_only", True))
         # Experiment knob: override SL sizing with entry +- k*ATR. None = live rule.
         self.sl_atr_mult = cfg.get("sl_atr_mult")
         # Experiment knobs (all default to live behavior):
