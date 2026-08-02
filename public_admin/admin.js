@@ -424,7 +424,7 @@ async function renderResults(){
       <td class="text-muted text-sm">${fmtTime(t.time)}</td>
       <td class="text-muted text-sm">${t.journalCount||0}</td>
       <td><span class="badge ${t.system==='SCALP'?'badge-neutral':'badge-green'}">${t.system==='SCALP'?'Scalp':'QMR'}</span>${t.inHistory?'':' <span class="badge badge-neutral">past</span>'}</td>
-      <td><button class="btn-primary btn-sm" onclick="S.editResult('${escJs(t.key)}',${i})">Edit</button></td>
+      <td><button class="btn-primary btn-sm" onclick="S.editResult('${escJs(t.key)}',${i})">Edit</button> <button class="btn-danger btn-sm" onclick="S.deleteResult('${escJs(t.key)}',${i})">Delete</button></td>
     </tr>`).join('')}</tbody></table>
   </div>`;
 }
@@ -699,6 +699,16 @@ const S={
       toast(d&&d.ok?'Updated '+d.outcome+' '+(d.rMultiple!=null?fmtR(d.rMultiple,2):'')+' — '+((d.updated&&d.updated.journals)||0)+' card(s) synced':((d&&d.error)||'Edit failed'),d&&d.ok?'success':'error');
       if(d&&d.ok)renderResults();
     };
+  },
+  deleteResult(key,i){
+    const t=_resultRows[i];
+    if(!t)return;
+    confirmDlg('Delete '+t.pair+' result?','Remove '+t.outcome+' '+fmtR(t.rMultiple,2)+' from the system, the app dashboard, and every member\'s shareable journal card ('+t.journalCount+' card'+(t.journalCount===1?'':'s')+'). This cannot be undone.').then(async ok=>{
+      if(!ok)return;
+      const d=await api('/api/admin/results/delete',{method:'POST',body:JSON.stringify({key})});
+      toast(d&&d.ok?'Deleted '+t.pair+' — removed '+((d.removed&&d.removed.journals)||0)+' card(s)':((d&&d.error)||'Delete failed'),d&&d.ok?'success':'error');
+      if(d&&d.ok)renderResults();
+    });
   },
   // Subscriber methods
   subFilter(f,btn){_subFilter=f;document.querySelectorAll('.sub-fbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');subRender()},

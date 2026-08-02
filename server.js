@@ -1301,6 +1301,22 @@ function updateMemberStats(sigId,outcome,rMultiple){
     else if(outcome==='BE')memberStats[code].bes++;
   }
 }
+function recomputeMemberStats(){
+  for(const code of Object.keys(memberStats))delete memberStats[code];
+  for(const m of memberCodes){
+    if(!m||!m.code||m.code==='admin'||!Array.isArray(m.journal))continue;
+    let s=null;
+    for(const e of m.journal){
+      if(!e||typeof e!=='object'||!isAutoJournalEntry(e))continue;
+      if(!s)memberStats[m.code]=s={total:0,wins:0,losses:0,bes:0,totalR:0};
+      s.total++;
+      s.totalR+=(typeof e.rMultiple==='number')?e.rMultiple:0;
+      if(e.outcome==='WIN'||e.outcome==='TP1'||e.outcome==='TP2')s.wins++;
+      else if(e.outcome==='SL')s.losses++;
+      else if(e.outcome==='BE')s.bes++;
+    }
+  }
+}
 
 // Auto-create journal entries for all members on every trade close
 function autoJournalEntry(t,outcome,rMultiple,durationMin){
@@ -2423,6 +2439,40 @@ app.post('/api/admin/force-scan',async(req,res)=>{
   if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
   try{await runScan(true);res.json({ok:true,message:'Scan completed',time:new Date().toISOString()});}
   catch(e){res.status(500).json({error:e.message});}
+});
+app.post('/api/admin/results/delete',(req,res)=>{
+  if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
+  try{
+  const {key}=req.body||{};
+  if(!key)return res.status(400).json({error:'key required'});
+  const removed={history:0,journals:0,feed:0};
+  tradeHistory=tradeHistory.filter(t=>{if(key!==resultKeyForHistory(t))return true;removed.history++;return false;});
+  scalpTradeHistory=scalpTradeHistory.filter(t=>{if(key!==resultKeyForScalp(t))return true;removed.history++;return false;});
+  for(const m of memberCodes){
+    if(!m||!Array.isArray(m.journal))continue;
+    m.journal=m.journal.filter(e=>{
+      if(!e||typeof e!=='object'||!isAutoJournalEntry(e))return true;
+      if(key!==resultKeyForJournal(e))return true;
+      removed.journals++;return false;
+    });
+  }
+  const refId=key.startsWith('ref:')?key.slice(4):null;
+  if(refId){
+    const base=refId.replace(/-(agg|cons)$/,'');
+    appSignalFeed=appSignalFeed.filter(s=>{
+      if(s.id!==refId&&s.id!==base)return true;
+      removed.feed++;return false;
+    });
+  }
+  if(!removed.history&&!removed.journals&&!removed.feed)return res.status(404).json({error:'No matching trade found'});
+  recomputeMemberStats();
+  saveState();
+  log(`Admin deleted result ${key} (history:${removed.history}, journals:${removed.journals}, feed:${removed.feed})`);
+  res.json({ok:true,removed});
+  }catch(e){
+    log('Admin result delete error: '+e.stack||e.message);
+    res.status(500).json({error:'Could not delete result: '+(e&&e.message||e)});
+  }
 });
 app.post('/api/admin/trades/:sigId/close',async(req,res)=>{
   if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
