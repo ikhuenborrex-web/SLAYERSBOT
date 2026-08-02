@@ -751,13 +751,17 @@ function calcFibConfluence(price,type,weeklyLvls,dailyLvls){
 function isLevelAlreadySeen(instId,type,qmLevel,variant){
   for(const key of qmrSeen){
     if(!key.startsWith(instId+'-'+type+'-'))continue;
-    var parts=key.split('-');
+    const parts=key.split('-');
     if(parts.length<4)continue;
-    // New format (>=5 parts): instId-type-variant-timestamp-level
-    // Old format (4 parts):   instId-type-timestamp-level
-    var hasVariant=parts.length>=5,pVariant=hasVariant?parts[2]:null,ts=parseFloat(hasVariant?parts[3]:parts[2]),level=parseFloat(hasVariant?parts[4]:parts[3]);
+    // Key formats:
+    //   5 parts: instId-type-variant-timestamp-level
+    //   6 parts: instId-type-variant-tf-timestamp-level  (tf inserted)
+    // Parse ts/level from the END so both formats work regardless of the tf field.
+    const pVariant=parts[2];
     if(variant&&pVariant&&pVariant!==variant)continue;
-    if(Date.now()-ts>48*60*60*1000)continue;
+    const ts=parseFloat(parts[parts.length-2]);
+    const level=parseFloat(parts[parts.length-1]);
+    if(isNaN(ts)||Date.now()-ts>48*60*60*1000)continue;
     if(!isNaN(level)&&Math.abs(level-qmLevel)/qmLevel<0.005)return true;
   }
   return false;
@@ -1703,7 +1707,7 @@ async function runScan(manual=false){
   // Aggressive qmrSeen cleanup — drop entries older than 72h, keep max 50 most recent
   if(qmrSeen.size){
     var qmrNow=Date.now(),qmrArr=[...qmrSeen];
-    qmrArr=qmrArr.filter(function(k){var parts=k.split('-');if(parts.length<4)return false;var ts=parseFloat(parts.length>=5?parts[3]:parts[2]);return qmrNow-ts<=72*60*60*1000;});
+    qmrArr=qmrArr.filter(function(k){var parts=k.split('-');if(parts.length<4)return false;var ts=parseFloat(parts[parts.length-2]);return qmrNow-ts<=72*60*60*1000;});
     if(qmrArr.length>50)qmrArr=qmrArr.slice(-50);
     qmrSeen=new Set(qmrArr);
   }
