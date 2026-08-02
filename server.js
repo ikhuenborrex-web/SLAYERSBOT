@@ -804,7 +804,7 @@ function tfWeight(tf){if(tf==='DAILY')return 3;if(tf==='4H')return 2;if(tf==='1H
 async function tgTradeInvalidated(trade,reason,weeklyBias){const isB=trade.type==='BULLISH';const biasLine=weeklyBias&&weeklyBias!=='NEUTRAL'?'\nWeekly Bias: '+weeklyBias+' - market aligned with new direction':'';await tgSend('\u26A0\uFE0F TRADE INVALIDATED\n'+'='.repeat(28)+'\n\uD83D\uDCCA '+trade.instName+' | '+(isB?'BUY':'SELL')+' QMR '+trade.tf+'\n\n\uD83D\uDD34 Reason: '+reason+biasLine+'\n\n'+(isB?'Close any open BUY positions on '+trade.instName+'.':'Close any open SELL positions on '+trade.instName+'.')+'\n\n\u2014 The Slayers Model by Rexroz');}
 async function resolveConflicts(instId,newType,newTf,source,weeklyBias){const newW=tfWeight(newTf);let blocked=false;for(let i=activeQMRTrades.length-1;i>=0;i--){const t=activeQMRTrades[i];if(t.instId!==instId||t.type===newType)continue;const exW=tfWeight(t.tf);if(newW>exW){// Fib protection: don't invalidate trades at 61.8%+ HTF zones
 const wLvls=weeklyCache[instId]?.lvls;if(wLvls&&wLvls.high&&wLvls.low){const fd=getFibDepth(t.qmLevel,wLvls.high,wLvls.low,t.type);if(fd.zone==='STRONG'||fd.zone==='DEEP'){log(`FIB PROTECTED: ${t.instName} ${t.type} at ${fd.level} — not invalidating`);blocked=true;continue;}}
-const reason=source==='CRT'?'Daily CRT confirmed '+newType+' - structure shifted on Daily timeframe':newTf+' QMR '+newType+' - '+newTf+' overrides '+t.tf;log(`INVALIDATING: ${t.instName} ${t.type} ${t.tf}`);await tgTradeInvalidated(t,reason,weeklyBias);tradeHistory.push({instId:t.instId,type:t.type,tf:t.tf,outcome:'INVALIDATED',rMultiple:0,time:new Date().toISOString()});delete trackedTrades[t.sigId];activeQMRTrades.splice(i,1);}else{log(`BLOCKED: ${instId} ${newTf} ${newType} by ${t.tf} ${t.type}`);blocked=true;}}return blocked;}
+const reason=source==='CRT'?'Daily CRT confirmed '+newType+' - structure shifted on Daily timeframe':newTf+' QMR '+newType+' - '+newTf+' overrides '+t.tf;log(`INVALIDATING: ${t.instName} ${t.type} ${t.tf}`);await tgTradeInvalidated(t,reason,weeklyBias);tradeHistory.push({instId:t.instId,type:t.type,tf:t.tf,outcome:'INVALIDATED',rMultiple:0,time:new Date().toISOString(),refId:t.sigId});delete trackedTrades[t.sigId];activeQMRTrades.splice(i,1);}else{log(`BLOCKED: ${instId} ${newTf} ${newType} by ${t.tf} ${t.type}`);blocked=true;}}return blocked;}
 function checkCorrelationConflict(instId,type){
   // Returns array of active trade descriptions that conflict with this new signal
   const conflicts=[];
@@ -1037,7 +1037,7 @@ async function checkQMRTrades(instId,price,cHigh,cLow){
       t.slFired=true;
       await tgQMRUpdate(t,'tp2');try{const[pt,pb]=pushTextFor('tp2',t);sendPushToTrackers(t.sigId,pt,pb,'tp2');}catch(e){}
       const winR=computeR(t,t.tp2);
-      tradeHistory.push({instId:t.instId,type:t.type,tf:t.tf,outcome:'WIN',rMultiple:winR,time:new Date().toISOString(),duration});
+      tradeHistory.push({instId:t.instId,type:t.type,tf:t.tf,outcome:'WIN',rMultiple:winR,time:new Date().toISOString(),duration,refId:t.sigId});
       updateMemberStats(t.sigId,'WIN',winR);
       autoJournalEntry(t,'WIN',winR,duration);
       if(t.isElite&&winR>=2.5){t.rMultiple=winR;await tgTradeOfWeek(t);}
@@ -1060,14 +1060,14 @@ async function checkQMRTrades(instId,price,cHigh,cLow){
       await tgQMRUpdate(t,'tp1');try{const[pt,pb]=pushTextFor('tp1',t);sendPushToTrackers(t.sigId,pt,pb,'tp1');}catch(e){}
       // Record TP1 partial win immediately so app shows +1R
       const tp1R=computeR(t,t.tp1);
-      tradeHistory.push({instId:t.instId,type:t.type,tf:t.tf,outcome:'TP1',rMultiple:tp1R,time:new Date().toISOString(),duration,partial:true});
+        tradeHistory.push({instId:t.instId,type:t.type,tf:t.tf,outcome:'TP1',rMultiple:tp1R,time:new Date().toISOString(),duration,partial:true,refId:t.sigId});
       updateMemberStats(t.sigId,'TP1',tp1R);
       // Same-candle check: if this candle also touches buffer SL, close remainder immediately
       if(isB?lo<=t.sl:hi>=t.sl){
         t.slFired=true;
         await tgQMRUpdate(t,'be_close');try{const[pt,pb]=pushTextFor('be_close',t);sendPushToTrackers(t.sigId,pt,pb,'be_close');}catch(e){}
         const winR=computeR(t,t.tp1);
-        tradeHistory.push({instId:t.instId,type:t.type,tf:t.tf,outcome:'WIN',rMultiple:winR,time:new Date().toISOString(),duration});
+        tradeHistory.push({instId:t.instId,type:t.type,tf:t.tf,outcome:'WIN',rMultiple:winR,time:new Date().toISOString(),duration,refId:t.sigId});
         updateMemberStats(t.sigId,'WIN',winR);
         autoJournalEntry(t,'WIN',winR,duration);
         if(t.isElite&&winR>=2.5){t.rMultiple=winR;await tgTradeOfWeek(t);}
@@ -1116,7 +1116,7 @@ async function checkQMRTrades(instId,price,cHigh,cLow){
         t.slFired=true;
         var expiryR=computeR(t,t.tp1);
         await tgSend('\u23F3 TRADE AUTO-CLOSED\n'+'='.repeat(28)+'\n\uD83D\uDCCA '+t.instName+' | '+(t.type==='BULLISH'?'BUY':'SELL')+' '+t.tf+'\n\nTP1 was reached '+Math.round((Date.now()-tp1Age)/86400000)+' days ago but TP2 was not reached.\n\n\u2705 Auto-closing as WIN (+'+expiryR.toFixed(t.dec||1)+'R)\n\n\uD83D\uDCAC Members who haven\'t closed yet should consider exiting.\n\n\u2014 The Slayers Model by Rexroz');
-        tradeHistory.push({instId:t.instId,type:t.type,tf:t.tf,outcome:'WIN',rMultiple:expiryR,time:new Date().toISOString(),duration:t.openTime?Math.round((Date.now()-t.openTime)/60000):null});
+        tradeHistory.push({instId:t.instId,type:t.type,tf:t.tf,outcome:'WIN',rMultiple:expiryR,time:new Date().toISOString(),duration:t.openTime?Math.round((Date.now()-t.openTime)/60000):null,refId:t.sigId});
         updateMemberStats(t.sigId,'WIN',expiryR);
         autoJournalEntry(t,'WIN',expiryR,duration);
         dailyOutcomeLog.push({id:t.instId,name:t.instName,tf:t.tf,type:t.type,outcome:'WIN',time:new Date().toISOString()});
@@ -1141,7 +1141,7 @@ async function checkQMRTrades(instId,price,cHigh,cLow){
         // TP1 was already banked — remainder hit buffer, record as TP1 achievement
         await tgQMRUpdate(t,'be_close');try{const[pt,pb]=pushTextFor('be_close',t);sendPushToTrackers(t.sigId,pt,pb,'be_close');}catch(e){}
         const winR=computeR(t,t.tp1);
-        tradeHistory.push({instId:t.instId,type:t.type,tf:t.tf,outcome:'WIN',rMultiple:winR,time:new Date().toISOString(),duration});
+        tradeHistory.push({instId:t.instId,type:t.type,tf:t.tf,outcome:'WIN',rMultiple:winR,time:new Date().toISOString(),duration,refId:t.sigId});
         updateMemberStats(t.sigId,'WIN',winR);
         autoJournalEntry(t,'WIN',winR,duration);
         if(t.isElite&&winR>=2.5){t.rMultiple=winR;await tgTradeOfWeek(t);}
@@ -1151,14 +1151,14 @@ async function checkQMRTrades(instId,price,cHigh,cLow){
       } else if(t.beFired){
         // SL moved to entry and price returned — breakeven
         await tgQMRUpdate(t,'be_sl');try{const[pt,pb]=pushTextFor('be_sl',t);sendPushToTrackers(t.sigId,pt,pb,'be_sl');}catch(e){}
-        tradeHistory.push({instId:t.instId,type:t.type,tf:t.tf,outcome:'BE',rMultiple:0,time:new Date().toISOString(),duration});
+        tradeHistory.push({instId:t.instId,type:t.type,tf:t.tf,outcome:'BE',rMultiple:0,time:new Date().toISOString(),duration,refId:t.sigId});
         updateMemberStats(t.sigId,'BE',0);
         autoJournalEntry(t,'BE',0,duration);
         dailyOutcomeLog.push({id:t.instId,name:t.instName,tf:t.tf,type:t.type,outcome:'BE',time:new Date().toISOString()});
       } else {
         // Clean stop loss — trade never reached BE
         await tgQMRUpdate(t,'sl');try{const[pt,pb]=pushTextFor('sl',t);sendPushToTrackers(t.sigId,pt,pb,'sl');}catch(e){}
-        tradeHistory.push({instId:t.instId,type:t.type,tf:t.tf,outcome:'SL',rMultiple:-1,time:new Date().toISOString(),duration});
+        tradeHistory.push({instId:t.instId,type:t.type,tf:t.tf,outcome:'SL',rMultiple:-1,time:new Date().toISOString(),duration,refId:t.sigId});
         updateMemberStats(t.sigId,'SL',-1);
         autoJournalEntry(t,'SL',-1,duration);
         dailyOutcomeLog.push({id:t.instId,name:t.instName,tf:t.tf,type:t.type,outcome:'SL',time:new Date().toISOString()});
@@ -1310,7 +1310,7 @@ function autoJournalEntry(t,outcome,rMultiple,durationMin){
   if(rMultiple>3)flags.push('Home run');
   if(rMultiple<-1.5)flags.push('Wider SL needed');
   if(durationMin!=null&&durationMin<120&&(outcome==='SL'||outcome==='BE'))flags.push('Quick exit');
-  const base={pair:t.instName||t.instId,direction:dir,tf:tf,outcome:outcome,rMultiple:rMultiple,duration:durStr,notes:'Auto-logged from bot trade',tags:[],reviewFlags:flags};
+  const base={pair:t.instName||t.instId,direction:dir,tf:tf,outcome:outcome,rMultiple:rMultiple,duration:durStr,notes:'Auto-logged from bot trade',tags:[],reviewFlags:flags,refId:t.sigId||null};
   for(const member of memberCodes){
     if(!member.code||member.code==='admin')continue;
     if(!member.journal)member.journal=[];
@@ -1330,7 +1330,7 @@ function scalpJournalEntry(t,outcome,rMultiple,durationMin,extraTags){
   if(durationMin!=null&&durationMin<120&&(outcome==='LOSS'||outcome==='BE'))flags.push('Quick exit');
   if(outcome==='LOSS'&&(t.expired||t.timedOut))flags.push('Expired');
   const pairName=t.name||t.pair;
-  const base={pair:pairName,direction:dir,tf:'SCALP',outcome:outcome,rMultiple:rMultiple,duration:durStr,notes:'Auto-logged from scalp trade',tags:extraTags||[],reviewFlags:flags,system:'scalp'};
+  const base={pair:pairName,direction:dir,tf:'SCALP',outcome:outcome,rMultiple:rMultiple,duration:durStr,notes:'Auto-logged from scalp trade',tags:extraTags||[],reviewFlags:flags,system:'scalp',refId:t.sigId||null};
   for(const member of memberCodes){
     if(!member.code||member.code==='admin')continue;
     if(!member.journal)member.journal=[];
@@ -2060,7 +2060,7 @@ app.post('/api/admin/close-trade/:pair',async(req,res)=>{
   const outcome=inProfit?'WIN':'SL';
   const duration=t.openTime?Math.round((Date.now()-t.openTime)/60000):null;
   // Record trade
-  tradeHistory.push({instId:t.instId,type:t.type,tf:t.tf,outcome,rMultiple,time:new Date().toISOString(),duration,manualClose:true});
+  tradeHistory.push({instId:t.instId,type:t.type,tf:t.tf,outcome,rMultiple,time:new Date().toISOString(),duration,manualClose:true,refId:t.sigId});
   updateMemberStats(t.sigId,outcome,rMultiple);
   autoJournalEntry(t,outcome,rMultiple,duration);
   dailyOutcomeLog.push({id:t.instId,name:t.instName,tf:t.tf,type:t.type,outcome,time:new Date().toISOString()});
@@ -2296,7 +2296,7 @@ app.post('/api/admin/scalp/:sigId/close',(req,res)=>{
   const risk=Math.abs(t.entry-t.origSL)||1;
   const r=outcome==='WIN'?0.5:outcome==='LOSS'?-1:outcome==='BE'?0:0;
   t.closed=true;
-  scalpTradeHistory.push({sigId:t.sigId,pair:t.pair,type:t.type,outcome,r,entry:t.entry,sl:t.origSL,tp2:t.tp2,session:t.session,atr14:t.atr14,openTime:t.openTime,closeTime:Date.now(),manual:true});
+  scalpTradeHistory.push({sigId:t.sigId,pair:t.pair,type:t.type,outcome,r,entry:t.entry,sl:t.origSL,tp2:t.tp2,session:t.session,atr14:t.atr14,openTime:t.openTime,closeTime:Date.now(),manual:true,refId:t.sigId});
   activeScalpTrades.splice(idx,1);saveState();
   log('Admin closed scalp '+t.sigId+' as '+outcome+' ('+r+'R)');
   try{scalpJournalEntry(t,outcome,r,Math.round((Date.now()-t.openTime)/60000),[t.session,'Manual close']);}catch(e){}
@@ -2309,6 +2309,97 @@ app.get('/api/admin/trade-history',(req,res)=>{
   const limit=Math.min(parseInt(req.query.limit)||50,200);
   const history=[...tradeHistory].reverse().slice(0,limit);
   res.json({trades:history,count:history.length,total:tradeHistory.length});
+});
+// ---- Admin: completed trade RESULTS (correction of outcome / R multiple) ----
+// Every closed trade is stamped with a refId (= the signal sigId) in both the
+// system history and each member's journal, so an admin correction can be
+// propagated everywhere at once: this week's report, the app dashboard cards,
+// and the shareable journal cards.
+const ALL_INSTS=[...QMR_INSTS,...NY_INSTS,...CRT_INSTS];
+function instIdFromName(pair){const i=ALL_INSTS.find(x=>x.name===pair||x.sym===pair||x.id===pair);return i?i.id:(pair||'');}
+function instNameOf(id){const i=ALL_INSTS.find(x=>x.id===id);return i?i.name:id;}
+function normDir(v){return /BUY|BULLISH|LONG/i.test(String(v||''))?'BUY':'SELL';}
+function rHour(iso){try{return new Date(iso).toISOString().slice(0,13);}catch(e){return '';}}
+function legacyHistoryKey(t){return 'legacy:'+[t.instId,String(t.tf||'').toUpperCase(),normDir(t.type),rHour(t.time)].join('|');}
+function legacyJournalKey(e){return 'legacy:'+[instIdFromName(e.pair),String(e.tf||'').toUpperCase(),normDir(e.direction||e.type),rHour(e.createdAt||e.time)].join('|');}
+function legacyScalpKey(pair,type,closeTime){return 'legacy:'+[pair,'SCALP',normDir(type),rHour(closeTime)].join('|');}
+function isAutoJournalEntry(e){return !!e.refId||e.notes==='Auto-logged from bot trade'||e.notes==='Auto-logged from scalp trade';}
+function resultKeyForHistory(t){return t.refId?('ref:'+t.refId):legacyHistoryKey(t);}
+function resultKeyForScalp(t){return t.refId?('ref:'+t.refId):legacyScalpKey(t.pair,t.type,t.closeTime);}
+function resultKeyForJournal(e){if(e.refId)return 'ref:'+e.refId;return e.system==='scalp'?('legacy:'+[instIdFromName(e.pair),'SCALP',normDir(e.direction||e.type),rHour(e.createdAt||e.time)].join('|')):legacyJournalKey(e);}
+
+app.get('/api/admin/results',(req,res)=>{
+  if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
+  const rows=new Map();
+  const put=(key,row)=>{if(!rows.has(key))rows.set(key,row);else{const r=rows.get(key);r.journalCount=(r.journalCount||0)+(row.journalCount||0);if(!r.refId&&row.refId)r.refId=row.refId;}};
+  for(const t of tradeHistory){
+    put(resultKeyForHistory(t),{refId:t.refId||null,legacy:!t.refId,system:'QMR',pair:instNameOf(t.instId)||t.instId,direction:t.type==='BULLISH'?'BUY':'SELL',tf:t.tf,outcome:t.outcome,rMultiple:typeof t.rMultiple==='number'?t.rMultiple:0,time:t.time,duration:t.duration,inHistory:true,journalCount:0,edited:!!t.edited});
+  }
+  for(const t of scalpTradeHistory){
+    put(resultKeyForScalp(t),{refId:t.refId||null,legacy:!t.refId,system:'SCALP',pair:instNameOf(t.pair)||t.pair,direction:t.type==='BULLISH'?'BUY':'SELL',tf:'SCALP',outcome:t.outcome,rMultiple:typeof t.r==='number'?t.r:(typeof t.rMultiple==='number'?t.rMultiple:0),time:t.closeTime,duration:null,inHistory:true,journalCount:0,edited:!!t.edited});
+  }
+  for(const m of memberCodes){
+    for(const e of (m.journal||[])){
+      if(!isAutoJournalEntry(e))continue;
+      const key=resultKeyForJournal(e);
+      if(rows.has(key)){
+        rows.get(key).journalCount++;
+      }else{
+        rows.set(key,{refId:e.refId||null,legacy:!e.refId,system:e.system==='scalp'?'SCALP':'QMR',pair:e.pair||'',direction:e.direction||'',tf:e.tf||'',outcome:e.outcome,rMultiple:typeof e.rMultiple==='number'?e.rMultiple:0,time:e.createdAt||e.time,duration:null,inHistory:false,journalCount:1,edited:!!e.edited});
+      }
+    }
+  }
+  const results=[...rows.values()].sort((a,b)=>(b.time||'').localeCompare(a.time||''));
+  res.json({results,total:results.length});
+});
+
+app.post('/api/admin/results/edit',(req,res)=>{
+  if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
+  const {key,outcome,rMultiple}=req.body||{};
+  if(!key)return res.status(400).json({error:'key required'});
+  const oc=String(outcome||'').toUpperCase();
+  if(!['WIN','TP1','TP2','TP','SL','LOSS','BE','INVALIDATED'].includes(oc))return res.status(400).json({error:'Invalid outcome. Use WIN, TP1, TP2, BE, SL or INVALIDATED'});
+  let r=typeof rMultiple==='number'&&isFinite(rMultiple)?rMultiple:null;
+  if(r===null&&(oc==='SL'||oc==='LOSS'))r=-1;
+  if(r===null&&(oc==='BE'||oc==='INVALIDATED'))r=0;
+  const updated={history:0,journals:0,feed:0};
+  for(const arr of [tradeHistory,scalpTradeHistory]){
+    for(const t of arr){
+      const k=arr===tradeHistory?resultKeyForHistory(t):resultKeyForScalp(t);
+      if(key!==k)continue;
+      if(r===null&&typeof t.rMultiple==='number')r=t.rMultiple;
+      if(r===null&&typeof t.r==='number')r=t.r;
+      t.outcome=oc;
+      if(r!==null){t.rMultiple=r;if('r'in t)t.r=r;}
+      t.edited=true;t.editedAt=new Date().toISOString();
+      updated.history++;
+    }
+  }
+  for(const m of memberCodes){
+    for(const e of (m.journal||[])){
+      if(!isAutoJournalEntry(e))continue;
+      if(key!==resultKeyForJournal(e))continue;
+      if(r===null&&typeof e.rMultiple==='number')r=e.rMultiple;
+      e.outcome=oc;
+      if(r!==null)e.rMultiple=r;
+      e.edited=true;e.editedAt=new Date().toISOString();
+      if(!Array.isArray(e.reviewFlags))e.reviewFlags=[];
+      if(!e.reviewFlags.includes('Adjusted by admin'))e.reviewFlags.push('Adjusted by admin');
+      updated.journals++;
+    }
+  }
+  const refId=key.startsWith('ref:')?key.slice(4):null;
+  if(refId){
+    const base=refId.replace(/-(agg|cons)$/,'');
+    for(const s of appSignalFeed){
+      if(s.id===refId||s.id===base){s.outcome=oc;if(r!==null)s.rMultiple=r;s.edited=true;s.editedAt=new Date().toISOString();updated.feed++;}
+    }
+  }
+  if(!updated.history&&!updated.journals&&!updated.feed)return res.status(404).json({error:'No matching trade found'});
+  saveState();
+  log(`Admin edited result ${key} -> ${oc} ${r!==null?(r>0?'+':'')+r+'R':'outcome-only'} (history:${updated.history}, journals:${updated.journals}, feed:${updated.feed})`);
+  try{sendPushToAll('\uD83D\uDD04 Result Updated','A trade result was corrected to '+oc+(r!==null?' '+(r>0?'+':'')+r+'R':'')+'. Refresh the app to see the updated card.','/app/');}catch(e){}
+  res.json({ok:true,updated,outcome:oc,rMultiple:r});
 });
 app.post('/api/admin/force-scan',async(req,res)=>{
   if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
@@ -2335,7 +2426,7 @@ app.post('/api/admin/trades/:sigId/close',async(req,res)=>{
   const inProfit=isB?price>=t.qmLevel:price<=t.qmLevel;
   const outcome=inProfit?'WIN':'SL';
   const duration=t.openTime?Math.round((Date.now()-t.openTime)/60000):null;
-  tradeHistory.push({instId:t.instId,type:t.type,tf:t.tf,outcome,rMultiple,time:new Date().toISOString(),duration,manualClose:true});
+  tradeHistory.push({instId:t.instId,type:t.type,tf:t.tf,outcome,rMultiple,time:new Date().toISOString(),duration,manualClose:true,refId:t.sigId});
   updateMemberStats(t.sigId,outcome,rMultiple);
   autoJournalEntry(t,outcome,rMultiple,duration);
   dailyOutcomeLog.push({id:t.instId,name:t.instName,tf:t.tf,type:t.type,outcome,time:new Date().toISOString()});

@@ -133,11 +133,12 @@ function renderShell(content,title='Dashboard'){
     {id:'dashboard',icon:I.dashboard,label:'Dashboard'},
     {id:'trades',icon:I.trades,label:'Trade Management'},
     {id:'scalp',icon:I.scalp,label:'Scalp Trades'},
+    {id:'results',icon:I.report,label:'Results'},
     {id:'logs',icon:I.logs,label:'System Logs'},
     {id:'members',icon:I.members,label:'Users'},
     {id:'subscribers',icon:I.creditCard,label:'Subscribers'}
   ];
-  const g1=nav.slice(0,3),g2=nav.slice(3);
+  const g1=nav.slice(0,4),g2=nav.slice(4);
   document.getElementById('app').innerHTML=`
   <div class="sidebar">
     <div class="sidebar-brand"><div class="logo">SLAYERS<span>.</span></div><div class="tagline">Admin Control Center</div></div>
@@ -390,6 +391,40 @@ async function renderScalp(){
   </div>`;
 }
 
+// ===== RESULTS =====
+let _resultRows=[];
+async function renderResults(){
+  renderShell('','Trade Results');
+  const cont=document.getElementById('pageContent');
+  cont.innerHTML='<div class="empty-state">Loading completed results...</div>';
+  const data=await api('/api/admin/results');
+  if(!data)return;
+  _resultRows=data.results||[];
+  if(!_resultRows.length){
+    cont.innerHTML='<div class="empty-state">No completed results yet. When a trade closes it appears here so you can correct the outcome / R multiple.</div>';
+    return
+  }
+  cont.innerHTML=`
+  <div class="section-header"><h2>Completed Results <span class="text-muted text-sm">(${data.total})</span></h2><div><button class="btn-secondary btn-sm" onclick="S.refresh()">${I.refresh} Refresh</button></div></div>
+  <div class="text-xs text-muted" style="margin-bottom:12px">Editing a result updates the app dashboard card, every member's shareable journal card, and this week's report — everywhere at once.</div>
+  <div class="card" style="overflow-x:auto;padding:0">
+    <table class="compact-table"><thead><tr><th>Pair</th><th>Dir</th><th>TF</th><th>Outcome</th><th>R</th><th>Closed</th><th>Cards</th><th>Source</th><th></th></tr></thead>
+    <tbody>${_resultRows.map((t,i)=>`<tr>
+      <td style="font-weight:600">${t.pair}</td>
+      <td class="${t.direction==='BUY'?'text-green':'text-red'}">${t.direction||'—'}</td>
+      <td class="text-muted">${t.tf||'—'}</td>
+      <td><span class="badge ${isResWin(t.outcome)?'badge-green':(t.outcome==='SL'||t.outcome==='LOSS')?'badge-red':t.outcome==='BE'?'badge-neutral':'badge-orange'}">${t.outcome||'—'}</span>${t.edited?' <span class="badge badge-orange">edited</span>':''}</td>
+      <td class="mono ${(t.rMultiple||0)>0?'text-green':(t.rMultiple||0)<0?'text-red':'text-muted'}" style="font-weight:700">${fmtR(t.rMultiple,2)}</td>
+      <td class="text-muted text-sm">${fmtTime(t.time)}</td>
+      <td class="text-muted text-sm">${t.journalCount||0}</td>
+      <td><span class="badge ${t.system==='SCALP'?'badge-neutral':'badge-green'}">${t.system==='SCALP'?'Scalp':'QMR'}</span>${t.inHistory?'':' <span class="badge badge-neutral">past</span>'}</td>
+      <td><button class="btn-primary btn-sm" onclick="S.editResult('${escJs(t.key)}',${i})">Edit</button></td>
+    </tr>`).join('')}</tbody></table>
+  </div>`;
+}
+function isResWin(o){return o==='WIN'||o==='TP1'||o==='TP2'||o==='TP';}
+function escJs(s){return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
+
 // ===== LOGS =====
 async function renderLogs(){
   renderShell('','System Logs');
@@ -562,7 +597,7 @@ async function renderSubscribers(){
 // ===== GLOBAL ACTIONS =====
 const S={
   nav(h){window.location.hash='#'+h},
-  refresh(){const r=route();if(window._tradeUpdater){clearInterval(window._tradeUpdater);window._tradeUpdater=null}if(r==='trades')renderTrades();else if(r==='dashboard')renderDashboard();else if(r==='scalp')renderScalp();else if(r==='logs')renderLogs();else if(r==='members')renderMembers();else if(r==='subscribers')renderSubscribers()},
+  refresh(){const r=route();if(window._tradeUpdater){clearInterval(window._tradeUpdater);window._tradeUpdater=null}if(r==='trades')renderTrades();else if(r==='dashboard')renderDashboard();else if(r==='scalp')renderScalp();else if(r==='results')renderResults();else if(r==='logs')renderLogs();else if(r==='members')renderMembers();else if(r==='subscribers')renderSubscribers()},
   async triggerScan(){
     const btn=document.getElementById('scanBtn');
     const qbtn=document.querySelector('.quick-btn');
@@ -631,6 +666,33 @@ const S={
     if(!['WIN','LOSS','BE','TIME'].includes(o)){toast('Outcome must be WIN, LOSS, BE or TIME','error');return;}
     api('/api/admin/scalp/'+sigId+'/close',{method:'POST',body:JSON.stringify({outcome:o})}).then(function(d){toast(d&&d.ok?'Closed as '+o+' ('+d.r+'R)':'Close failed',d&&d.ok?'success':'error');S.refresh();});
   },
+  editResult(key,i){
+    const t=_resultRows[i];
+    if(!t)return;
+    const o=document.createElement('div');o.className='modal-overlay';
+    o.innerHTML=`<div class="modal"><h3>Edit Result — ${t.pair}</h3>
+      <p>Correct the outcome and R multiple. This updates the app card, every member's shareable card (${t.journalCount} card${t.journalCount===1?'':'s'}), and this week's report.${t.inHistory?'':' <b style="color:var(--orange)">This trade is from a past week — share cards will update, but the published report is unchanged.</b>'}</p>
+      <div style="margin-bottom:12px"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;font-weight:600">Outcome</label>
+        <select id="reOutcome">${['WIN','TP1','TP2','BE','SL','INVALIDATED'].map(oc=>`<option ${oc===t.outcome?'selected':''}>${oc}</option>`).join('')}</select></div>
+      <div style="margin-bottom:12px"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;font-weight:600">R multiple</label>
+        <input id="reR" type="number" step="0.1" value="${t.rMultiple??0}" placeholder="e.g. 2.0"></div>
+      <div style="font-size:11px;color:var(--text3)">Current: ${t.outcome||'—'} · ${fmtR(t.rMultiple,2)}</div>
+      <div class="modal-actions"><button class="btn-secondary" id="reC">Cancel</button><button class="btn-primary" id="reS">Save & Update Everywhere</button></div></div>`;
+    document.body.appendChild(o);
+    o.querySelector('#reC').onclick=()=>o.remove();
+    o.onclick=e=>{if(e.target===o)o.remove()};
+    o.querySelector('#reS').onclick=async()=>{
+      const oc=o.querySelector('#reOutcome').value;
+      const rv=parseFloat(o.querySelector('#reR').value);
+      if(!isFinite(rv)){toast('Enter a valid R multiple','error');return}
+      const btn=o.querySelector('#reS');btn.disabled=true;btn.textContent='Saving...';
+      const d=await api('/api/admin/results/edit',{method:'POST',body:JSON.stringify({key,outcome:oc,rMultiple:rv})});
+      btn.disabled=false;
+      o.remove();
+      toast(d&&d.ok?'Updated '+d.outcome+' '+(d.rMultiple!=null?fmtR(d.rMultiple,2):'')+' — '+((d.updated&&d.updated.journals)||0)+' card(s) synced':((d&&d.error)||'Edit failed'),d&&d.ok?'success':'error');
+      if(d&&d.ok)renderResults();
+    };
+  },
   // Subscriber methods
   subFilter(f,btn){_subFilter=f;document.querySelectorAll('.sub-fbtn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');subRender()},
   subOpen(){_subEdit=null;document.getElementById('subModalTitle').textContent='Add Subscriber';document.getElementById('subFName').value='';document.getElementById('subFTg').value='';document.getElementById('subFPlan').value='monthly';document.getElementById('subFDate').value=new Date().toISOString().slice(0,10);document.getElementById('subFNotes').value='';S.subPrev();document.getElementById('subModal').style.display='flex'},
@@ -650,6 +712,7 @@ function initApp(){
   const r=route();
   if(r==='trades')renderTrades();
   else if(r==='scalp')renderScalp();
+  else if(r==='results')renderResults();
   else if(r==='logs')renderLogs();
   else if(r==='members')renderMembers();
   else if(r==='subscribers')renderSubscribers();
