@@ -2412,7 +2412,7 @@ app.post('/api/admin/results/edit',(req,res)=>{
   if(!updated.history&&!updated.journals&&!updated.feed)return res.status(404).json({error:'No matching trade found'});
   saveState();
   log(`Admin edited result ${key} -> ${oc} ${r!==null?(r>0?'+':'')+r+'R':'outcome-only'} (history:${updated.history}, journals:${updated.journals}, feed:${updated.feed})`);
-  try{sendPushToAll('\uD83D\uDD04 Result Updated','A trade result was corrected to '+oc+(r!==null?' '+(r>0?'+':'')+r+'R':'')+'. Refresh the app to see the updated card.','/app/');}catch(e){}
+
   res.json({ok:true,updated,outcome:oc,rMultiple:r});
   }catch(e){
     log('Admin result edit error: '+e.stack||e.message);
