@@ -2334,31 +2334,39 @@ function resultKeyForJournal(e){if(e.refId)return 'ref:'+e.refId;return e.system
 
 app.get('/api/admin/results',(req,res)=>{
   if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
-  const rows=new Map();
-  const put=(key,row)=>{if(!rows.has(key))rows.set(key,row);else{const r=rows.get(key);r.journalCount=(r.journalCount||0)+(row.journalCount||0);if(!r.refId&&row.refId)r.refId=row.refId;}};
-  for(const t of tradeHistory){
-    put(resultKeyForHistory(t),{refId:t.refId||null,legacy:!t.refId,system:'QMR',pair:instNameOf(t.instId)||t.instId,direction:t.type==='BULLISH'?'BUY':'SELL',tf:t.tf,outcome:t.outcome,rMultiple:typeof t.rMultiple==='number'?t.rMultiple:0,time:t.time,duration:t.duration,inHistory:true,journalCount:0,edited:!!t.edited});
-  }
-  for(const t of scalpTradeHistory){
-    put(resultKeyForScalp(t),{refId:t.refId||null,legacy:!t.refId,system:'SCALP',pair:instNameOf(t.pair)||t.pair,direction:t.type==='BULLISH'?'BUY':'SELL',tf:'SCALP',outcome:t.outcome,rMultiple:typeof t.r==='number'?t.r:(typeof t.rMultiple==='number'?t.rMultiple:0),time:t.closeTime,duration:null,inHistory:true,journalCount:0,edited:!!t.edited});
-  }
-  for(const m of memberCodes){
-    for(const e of (m.journal||[])){
-      if(!isAutoJournalEntry(e))continue;
-      const key=resultKeyForJournal(e);
-      if(rows.has(key)){
-        rows.get(key).journalCount++;
-      }else{
-        rows.set(key,{refId:e.refId||null,legacy:!e.refId,system:e.system==='scalp'?'SCALP':'QMR',pair:e.pair||'',direction:e.direction||'',tf:e.tf||'',outcome:e.outcome,rMultiple:typeof e.rMultiple==='number'?e.rMultiple:0,time:e.createdAt||e.time,duration:null,inHistory:false,journalCount:1,edited:!!e.edited});
+  try{
+    const rows=new Map();
+    const put=(key,row)=>{if(!rows.has(key))rows.set(key,row);else{const r=rows.get(key);r.journalCount=(r.journalCount||0)+(row.journalCount||0);if(!r.refId&&row.refId)r.refId=row.refId;}};
+    for(const t of tradeHistory){
+      put(resultKeyForHistory(t),{refId:t.refId||null,legacy:!t.refId,system:'QMR',pair:instNameOf(t.instId)||t.instId,direction:t.type==='BULLISH'?'BUY':'SELL',tf:t.tf,outcome:t.outcome,rMultiple:typeof t.rMultiple==='number'?t.rMultiple:0,time:t.time,duration:t.duration,inHistory:true,journalCount:0,edited:!!t.edited});
+    }
+    for(const t of scalpTradeHistory){
+      put(resultKeyForScalp(t),{refId:t.refId||null,legacy:!t.refId,system:'SCALP',pair:instNameOf(t.pair)||t.pair,direction:t.type==='BULLISH'?'BUY':'SELL',tf:'SCALP',outcome:t.outcome,rMultiple:typeof t.r==='number'?t.r:(typeof t.rMultiple==='number'?t.rMultiple:0),time:t.closeTime,duration:null,inHistory:true,journalCount:0,edited:!!t.edited});
+    }
+    for(const m of memberCodes){
+      if(!m||!Array.isArray(m.journal))continue;
+      for(const e of m.journal){
+        if(!e||typeof e!=='object')continue;
+        if(!isAutoJournalEntry(e))continue;
+        const key=resultKeyForJournal(e);
+        if(rows.has(key)){
+          rows.get(key).journalCount++;
+        }else{
+          rows.set(key,{refId:e.refId||null,legacy:!e.refId,system:e.system==='scalp'?'SCALP':'QMR',pair:e.pair||'',direction:e.direction||'',tf:e.tf||'',outcome:e.outcome,rMultiple:typeof e.rMultiple==='number'?e.rMultiple:0,time:e.createdAt||e.time,duration:null,inHistory:false,journalCount:1,edited:!!e.edited});
+        }
       }
     }
+    const results=[...rows.values()].sort((a,b)=>(b.time||'').localeCompare(a.time||''));
+    res.json({results,total:results.length});
+  }catch(e){
+    log('Admin results error: '+e.stack||e.message);
+    res.status(500).json({error:'Could not load results: '+(e&&e.message||e)});
   }
-  const results=[...rows.values()].sort((a,b)=>(b.time||'').localeCompare(a.time||''));
-  res.json({results,total:results.length});
 });
 
 app.post('/api/admin/results/edit',(req,res)=>{
   if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
+  try{
   const {key,outcome,rMultiple}=req.body||{};
   if(!key)return res.status(400).json({error:'key required'});
   const oc=String(outcome||'').toUpperCase();
@@ -2380,8 +2388,9 @@ app.post('/api/admin/results/edit',(req,res)=>{
     }
   }
   for(const m of memberCodes){
-    for(const e of (m.journal||[])){
-      if(!isAutoJournalEntry(e))continue;
+    if(!m||!Array.isArray(m.journal))continue;
+    for(const e of m.journal){
+      if(!e||typeof e!=='object'||!isAutoJournalEntry(e))continue;
       if(key!==resultKeyForJournal(e))continue;
       if(r===null&&typeof e.rMultiple==='number')r=e.rMultiple;
       e.outcome=oc;
@@ -2404,6 +2413,10 @@ app.post('/api/admin/results/edit',(req,res)=>{
   log(`Admin edited result ${key} -> ${oc} ${r!==null?(r>0?'+':'')+r+'R':'outcome-only'} (history:${updated.history}, journals:${updated.journals}, feed:${updated.feed})`);
   try{sendPushToAll('\uD83D\uDD04 Result Updated','A trade result was corrected to '+oc+(r!==null?' '+(r>0?'+':'')+r+'R':'')+'. Refresh the app to see the updated card.','/app/');}catch(e){}
   res.json({ok:true,updated,outcome:oc,rMultiple:r});
+  }catch(e){
+    log('Admin result edit error: '+e.stack||e.message);
+    res.status(500).json({error:'Could not edit result: '+(e&&e.message||e)});
+  }
 });
 app.post('/api/admin/force-scan',async(req,res)=>{
   if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});

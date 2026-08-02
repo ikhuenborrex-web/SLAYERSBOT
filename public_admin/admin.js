@@ -72,7 +72,10 @@ function countUp(el,target,duration=800){
 // ===== API CLIENT =====
 async function api(path,opts){
   try{
-    const r=await fetch(path,{...opts,headers:{'Content-Type':'application/json','X-Admin-Password':getPw(),...((opts&&opts.headers)||{})}});
+    const ctrl=(typeof AbortController!=='undefined')?new AbortController():null;
+    const t=ctrl?setTimeout(()=>ctrl.abort(),25000):null;
+    const r=await fetch(path,{...opts,headers:{'Content-Type':'application/json','X-Admin-Password':getPw(),...((opts&&opts.headers)||{})},signal:ctrl?ctrl.signal:undefined});
+    if(t)clearTimeout(t);
     if(r.status===401){sessionStorage.removeItem('slayersPw');renderLogin();return null}
     return r.json();
   }catch(e){return null}
@@ -398,7 +401,10 @@ async function renderResults(){
   const cont=document.getElementById('pageContent');
   cont.innerHTML='<div class="empty-state">Loading completed results...</div>';
   const data=await api('/api/admin/results');
-  if(!data)return;
+  if(!data||data.error){
+    cont.innerHTML='<div class="empty-state">Could not load results.'+(data&&data.error?'<div style="margin-top:8px;color:var(--orange);font-size:11px">'+escHtml(data.error)+'</div>':'')+'<div style="margin-top:14px"><button class="btn-primary btn-sm" onclick="S.refresh()">Retry</button></div></div>';
+    return
+  }
   _resultRows=data.results||[];
   if(!_resultRows.length){
     cont.innerHTML='<div class="empty-state">No completed results yet. When a trade closes it appears here so you can correct the outcome / R multiple.</div>';
@@ -424,6 +430,7 @@ async function renderResults(){
 }
 function isResWin(o){return o==='WIN'||o==='TP1'||o==='TP2'||o==='TP';}
 function escJs(s){return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
+function escHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 
 // ===== LOGS =====
 async function renderLogs(){
