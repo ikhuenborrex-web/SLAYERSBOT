@@ -2027,7 +2027,8 @@ app.delete('/api/track/:signalId',(req,res)=>{
 });
 app.get('/api/admin/members',(req,res)=>{
   if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
-  res.json({members:memberCodes});
+  const withSubs=memberCodes.map(m=>Object.assign({},m,{pushSubs:pushSubscriptions.filter(s=>s.code===m.code).length}));
+  res.json({members:withSubs});
 });
 app.post('/api/admin/members',(req,res)=>{
   if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});

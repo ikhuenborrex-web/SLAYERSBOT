@@ -492,7 +492,7 @@ async function renderMembers(){
   </div></div>`:''}
   <div class="card" style="overflow:hidden">
     ${_members.length?_members.map(m=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border)">
-      <div><div style="font-weight:600">${m.name}</div><div class="mono text-muted text-sm">${m.code}</div>${m.boundDevice?`<div class="text-xs text-accent" style="margin-top:2px">● Device locked</div>`:'<div class="text-xs text-muted2">Not activated</div>'}</div>
+      <div><div style="font-weight:600">${m.name}</div><div class="mono text-muted text-sm">${m.code}</div>${m.boundDevice?`<div class="text-xs text-accent" style="margin-top:2px">● Device locked</div>`:'<div class="text-xs text-muted2">Not activated</div>'}<div class="text-xs" style="margin-top:2px;color:${m.notifPrefs&&m.notifPrefs.scalpAlerts===false?'var(--red)':'var(--green)'}">Scalp push (server): ${m.notifPrefs&&m.notifPrefs.scalpAlerts===false?'OFF':'ON'}</div><div class="text-xs text-muted2" style="margin-top:2px">Push subs: ${m.pushSubs||0}</div></div>
       <div class="flex gap-2">${m.boundDevice?`<button class="btn-sm" style="background:var(--orange);color:#000" onclick="S.resetDevice('${m.code}')">Reset Device</button>`:''}<button class="btn-sm btn-secondary" onclick="S.removeMember('${m.code}')" style="color:var(--red)">Remove</button></div>
     </div>`).join(''):'<div class="empty-state">No members registered. Generate a code above to get started.</div>'}
   </div>`;
