@@ -558,7 +558,7 @@ function overviewScreen(){
   for(var i=0;i<state.active.length;i++)actSigIds[state.active[i].sigId]=true;
   for(var i=0;i<state.signals.length;i++){
     var s=state.signals[i];
-    if(s.outcome||(s.isTracked&&!actSigIds[s.id]))continue;
+    if(!actSigIds[s.id]&&(s.outcome||s.isTracked))continue;
     sigCount++;
     var isB=s.type==='BULLISH',isE=s.tier==='ELITE',isD=s.dualEntry;
     var tc=isE?C.white:'rgba(255,255,255,0.5)';

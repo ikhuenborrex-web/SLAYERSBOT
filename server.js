@@ -2422,7 +2422,10 @@ app.post('/api/admin/results/edit',(req,res)=>{
   if(refId){
     const base=refId.replace(/-(agg|cons)$/,'');
     for(const s of appSignalFeed){
-      if(s.id===refId||s.id===base){s.outcome=oc;if(r!==null)s.rMultiple=r;s.edited=true;s.editedAt=new Date().toISOString();updated.feed++;}
+      if(s.id!==refId&&s.id!==base)continue;
+      const stillActive=activeQMRTrades.some(t=>t.sigId===s.id||t.sigId===s.id+'-agg'||t.sigId===s.id+'-cons'||t.sigId===base);
+      if(stillActive)continue;
+      s.outcome=oc;if(r!==null)s.rMultiple=r;s.edited=true;s.editedAt=new Date().toISOString();updated.feed++;
     }
   }
   if(!updated.history&&!updated.journals&&!updated.feed)return res.status(404).json({error:'No matching trade found'});
@@ -3096,6 +3099,15 @@ loadState().then(()=>{
   const before=appSignalFeed.length;
   appSignalFeed=appSignalFeed.filter(s=>!(s.system==='CRT'&&new Date(s.time)<cutoff));
   if(appSignalFeed.length!==before)log(`Startup cleanup: removed ${before-appSignalFeed.length} stale CRT signal(s) from previous day(s)`);
+  // Heal: a feed card marked closed via an admin result edit but whose trade is still running should be restored
+  var healed=0;
+  for(const s of appSignalFeed){
+    if(!s.outcome)continue;
+    const baseId=s.id.replace(/-(agg|cons)$/,'');
+    const running=activeQMRTrades.some(function(t){return t.sigId===s.id||t.sigId===baseId||t.sigId===s.id+'-agg'||t.sigId===s.id+'-cons';});
+    if(running){delete s.outcome;delete s.rMultiple;delete s.edited;delete s.editedAt;healed++;}
+  }
+  if(healed)log(`Startup heal: restored ${healed} feed card(s) still active (cleared admin-stamped outcome)`);
   // Remove stale trades from activeQMRTrades (signals already marked as closed or no longer in feed)
   const signalIds=new Set(appSignalFeed.map(s=>s.id));
   const signalOutcomes={};
