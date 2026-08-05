@@ -1771,13 +1771,13 @@ async function attemptLogin(){
   }catch(e){clearCode();renderLogin('Connection error.');}
 }
 
-window.setTab=function(t){if(_rp)closeReplay();state.tab=t;state.selected=null;render();if(t==='dash'||t==='journal')fetchAll(true);};
-window.openDetail=function(id){state.showCalc=false;for(var i=0;i<state.signals.length;i++)if(state.signals[i].id===id){state.selected=state.signals[i];break;}render();};
+window.setTab=function(t){if(_rp)closeReplay();if(!_wtStarting)dismissOnboarding();state.tab=t;state.selected=null;render();if(t==='dash'||t==='journal')fetchAll(true);};
+window.openDetail=function(id){dismissOnboarding();state.showCalc=false;for(var i=0;i<state.signals.length;i++)if(state.signals[i].id===id){state.selected=state.signals[i];break;}render();};
 window.closeDetail=function(){state.selected=null;state.showCalc=false;render();};
 window.toggleCalc=function(){state.showCalc=!state.showCalc;render();};
 window.toggleJournalExp=function(i){_journalExp[i]=!_journalExp[i];render();};
 window.toggleProgExp=function(sid,i){if(!_progExp[sid])_progExp[sid]={};_progExp[sid][i]=!_progExp[sid][i];render();};
-window.openScalpDetail=function(id){for(var i=0;i<state.scalpSignals.length;i++)if(state.scalpSignals[i].id===id){state.selected=state.scalpSignals[i];break;}render();};
+window.openScalpDetail=function(id){dismissOnboarding();for(var i=0;i<state.scalpSignals.length;i++)if(state.scalpSignals[i].id===id){state.selected=state.scalpSignals[i];break;}render();};
 window.logout=function(){if(confirm('Logout and clear code?')){clearCode();window.location.reload();}};
 window.calcPos=calcPos;
 window.toggleNotifPref=async function(key){
@@ -2330,6 +2330,15 @@ var _wtSteps=[
 var _wtIdx=-1;
 var _wtNavSub=0;
 var _wtTapEl=null;
+var _wtStarting=false;
+var _userInteracted=false;
+document.addEventListener('touchstart',function(){_userInteracted=true;},{passive:true});
+document.addEventListener('click',function(){_userInteracted=true;},true);
+
+function dismissOnboarding(){
+  if(!state.showOnboarding)return;
+  try{endOnboarding(true);}catch(e){}
+}
 
 function startOnboarding(){
   state.showOnboarding=true;
@@ -2337,7 +2346,9 @@ function startOnboarding(){
   state.selected=null;state.showCalc=false;
   try{localStorage.removeItem('wt_done');}catch(e){}
   try{fetch(withCode('/api/settings'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({settings:{onboarded:false}})}).catch(function(){});}catch(e){}
+  _wtStarting=true;
   if(state.tab!=='dash')setTab('dash');else render();
+  _wtStarting=false;
   var ov=document.getElementById('wtOverlay');
   if(!ov)return;
   ov.style.display='';
@@ -2591,7 +2602,7 @@ function maybeAutoOnboard(retries){
   try{
     if(localStorage.getItem('wt_done'))return;
     if(state.settings&&state.settings.onboarded){try{localStorage.setItem('wt_done','1');}catch(e){}return;}
-    if(state.selected||!document.hasFocus())return;
+    if(_userInteracted||state.selected||!document.hasFocus())return;
     if((_firstLoad||!state.settings)&&retries>0){setTimeout(function(){maybeAutoOnboard(retries-1);},1000);return;}
     startOnboarding();
   }catch(e){}
