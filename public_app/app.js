@@ -2163,9 +2163,13 @@ function formatDate(ts){
 function prepCardForCapture(){
   var el=document.getElementById('shareCardPreview');
   if(!el)return null;
-  // Clone off-screen to avoid scroll-container clipping (9:16 cards exceed modal height)
-  var clone=el.cloneNode(true);
-  var w=el.offsetWidth||360;
+  // Clone the .share-card element itself (all styling is inline) so the wrapper's
+  // max-width:360px clamp doesn't cap the export resolution.
+  var base=el.querySelector('.share-card')||el;
+  var clone=base.cloneNode(true);
+  // Render at a minimum CSS width so the exported canvas stays >= the phone's
+  // physical resolution (avoids upscaling blur when the saved image is displayed).
+  var w=Math.max(base.offsetWidth||360,340);
   clone.style.cssText='position:fixed;left:-9999px;top:0;width:'+w+'px;z-index:-1;';
   document.body.appendChild(clone);
   // Re-assign image sources so they load in the clone
@@ -2184,13 +2188,17 @@ function waitForEl(el){
   return Promise.all(ps);
 }
 
+// Export rasterization scale: match the device pixel ratio (>= 3x) so the saved
+// PNG's pixel dimensions meet or exceed the phone's physical resolution.
+var SHARE_SCALE=Math.max(3,window.devicePixelRatio||2);
+
 function captureAndDownload(){
   var el=document.getElementById('shareCardPreview');
   if(!el||!el.children.length)return;
   var clone=prepCardForCapture();
   if(!clone){showToast('Could not generate image');return;}
   waitForEl(clone).then(function(){
-    html2canvas(clone,{backgroundColor:'#0A0A0A',scale:3,useCORS:true,allowTaint:true,logging:false}).then(function(canvas){
+    html2canvas(clone,{backgroundColor:'#111111',width:clone.offsetWidth,height:clone.offsetHeight,scale:SHARE_SCALE,useCORS:true,allowTaint:true,logging:false}).then(function(canvas){
       cleanupCardClone(clone);
       var link=document.createElement('a');
       link.download='slayers-trade-'+_shareStyle+'.png';
@@ -2207,7 +2215,7 @@ function captureAndShare(){
   var clone=prepCardForCapture();
   if(!clone){showToast('Could not generate image');return;}
   waitForEl(clone).then(function(){
-    html2canvas(clone,{backgroundColor:'#0A0A0A',scale:3,useCORS:true,allowTaint:true,logging:false}).then(function(canvas){
+    html2canvas(clone,{backgroundColor:'#111111',width:clone.offsetWidth,height:clone.offsetHeight,scale:SHARE_SCALE,useCORS:true,allowTaint:true,logging:false}).then(function(canvas){
       cleanupCardClone(clone);
       canvas.toBlob(function(blob){
         if(!blob)return;
