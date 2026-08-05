@@ -364,20 +364,19 @@ function updateTradeTable(trades){
 
 // ===== SCALP =====
 let _scalpTrades=[];
+let _scalpState={};
 async function renderScalp(){
   renderShell('','Scalp Trades');
   const cont=document.getElementById('pageContent');
   cont.innerHTML='<div class="empty-state">Loading scalp trades...</div>';
   const data=await api('/api/admin/scalp-trades');
   if(!data)return;
+  _scalpState=data;
   _scalpTrades=data.trades||[];
-  if(!data.trades||!data.trades.length){
-    cont.innerHTML='<div class="empty-state">No active scalp trades. NY-open breakout runs 09:30–11:30 NY.</div>';
-    return
-  }
-  cont.innerHTML=`
-  <div class="section-header"><h2>Active Scalp Trades <span class="text-muted text-sm">(${data.count})</span></h2><div><button class="btn-secondary btn-sm" onclick="S.refresh()">${I.refresh} Refresh</button></div></div>
-  <div class="card" style="overflow-x:auto;padding:0">
+  const paused=!!data.paused;
+  const body=!data.trades||!data.trades.length
+    ? '<div class="empty-state">No active scalp trades. NY-open breakout runs 09:30–11:30 NY.</div>'
+    : `<div class="card" style="overflow-x:auto;padding:0">
     <table class="compact-table"><thead><tr><th>Pair</th><th>Type</th><th>Entry</th><th>SL</th><th>TP2</th><th>Session</th><th>Status</th><th>Actions</th></tr></thead>
     <tbody>${data.trades.map(t=>`<tr>
       <td style="font-weight:600">${t.name||t.pair}</td>
@@ -392,6 +391,13 @@ async function renderScalp(){
       </td>
     </tr>`).join('')}</tbody></table>
   </div>`;
+  cont.innerHTML=`
+  ${paused?'<div class="alert" style="margin-bottom:12px;background:rgba(249,115,22,0.12);border:0.5px solid rgba(249,115,22,0.35);color:#f97316;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:600">⏸ Scalp system is PAUSED — no new signals, pushes or trade management until you resume.</div>':''}
+  <div class="section-header"><h2>Active Scalp Trades <span class="text-muted text-sm">(${data.count})</span></h2><div>
+    <button class="btn-sm ${paused?'btn-primary':'btn-danger'}" onclick="S.toggleScalpPause()">${paused?'▶ Resume Scalp':'⏸ Pause Scalp'}</button>
+    <button class="btn-secondary btn-sm" onclick="S.refresh()">${I.refresh} Refresh</button>
+  </div></div>
+  ${body}`;
 }
 
 // ===== RESULTS =====
@@ -684,6 +690,13 @@ const S={
     const body={outcome:o};
     if(rv!=='')body.rMultiple=parseFloat(rv);
     api('/api/admin/scalp/'+sigId+'/close',{method:'POST',body:JSON.stringify(body)}).then(function(d){toast(d&&d.ok?'Closed as '+o+' ('+d.r+'R)':'Close failed',d&&d.ok?'success':'error');S.refresh();});
+  },
+  async toggleScalpPause(){
+    const cur=!!(_scalpState&&_scalpState.paused);
+    if(!await confirmDlg(cur?'Resume Scalp':'Pause Scalp',cur?'Re-enable the NY scalp system (new signals, pushes and trade management will resume)?':'Pause the NY scalp system now? This stops new signals, pushes and trade management until you resume.'))return;
+    const res=await api('/api/admin/scalp/pause',{method:'POST',body:JSON.stringify({paused:!cur})});
+    if(res&&res.ok){toast(res.paused?'Scalp system paused':'Scalp system resumed','success');renderScalp();}
+    else toast('Failed to update scalp pause state','error');
   },
   editResult(key,i){
     const t=_resultRows[i];

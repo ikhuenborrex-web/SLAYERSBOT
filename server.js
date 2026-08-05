@@ -201,6 +201,9 @@ function getDailyMsg(pool){return pool[Math.floor(Date.now()/86400000)%pool.leng
 let weeklyCache={},prevWeeklyCache={},qmrSeen=new Set();
 let scalpSignals=[],scalpSeen=new Set();
 let activeScalpTrades=[],scalpTradeHistory=[];
+// Hard pause for the NY scalp system: stops new signals, pushes, and trade
+// management while true. Toggled by the admin (persisted in state).
+let scalpPaused=false;
 let activeQMRTrades=[],lastBriefing=null,lastEOD=null,lastWeeklySummary=null,lastMonthlyRecap=null;
 let earlyEntryCache={}; // {pair+type+level: {entryPrice,sl,tp1,tp2,wickRatio}}
 let pairPerformance={}; // {instId:{wins,losses}} — accumulates across all weeks, never cleared
@@ -250,7 +253,7 @@ function saveState(){
       weeklyCache,prevWeeklyCache,recentQMRFires,qmr4HCache,suppressedPairs:[...suppressedPairs],
       lastBriefing,lastEOD,lastWeeklySummary,lastMonthlyRecap,pairPerformance,
       dailyAlertLog,dailyOutcomeLog,
-      qmrSeen:[...qmrSeen],scalpSeen:[...scalpSeen],earlyEntryCache,appSignalFeed,lastBriefingSnapshot,lastBriefingTime,lastIntelHash,lastIntelPushTime,lastIntelBriefing,lastIntelBriefingTime,      pushSubscriptions,memberCodes,trackedTrades,memberStats,weeklySummaryData,scalpSignals,activeScalpTrades,scalpTradeHistory,scanCount,lastScanTime,alertLog,chartCounter,
+      qmrSeen:[...qmrSeen],scalpSeen:[...scalpSeen],earlyEntryCache,appSignalFeed,lastBriefingSnapshot,lastBriefingTime,lastIntelHash,lastIntelPushTime,lastIntelBriefing,lastIntelBriefingTime,      pushSubscriptions,memberCodes,trackedTrades,memberStats,weeklySummaryData,scalpSignals,activeScalpTrades,scalpTradeHistory,scalpPaused,scanCount,lastScanTime,alertLog,chartCounter,
       savedAt:Date.now()
     };
     const json=JSON.stringify(state);
@@ -369,6 +372,7 @@ async function loadState(){
     if(Array.isArray(st.activeScalpTrades))activeScalpTrades=st.activeScalpTrades;
     if(Array.isArray(st.scalpTradeHistory))scalpTradeHistory=st.scalpTradeHistory;
     if(Array.isArray(st.scalpSeen))scalpSeen=new Set(st.scalpSeen);
+    if(typeof st.scalpPaused==='boolean')scalpPaused=st.scalpPaused;
     // Sweep: drop any restored active scalp trade whose sigId was already
     // closed (stale Redis restore) so it can't linger in the active list.
     if(Array.isArray(st.activeScalpTrades)&&Array.isArray(st.scalpTradeHistory)){
@@ -594,6 +598,7 @@ function nyExpiry(day){
   return day+'T'+hh+':'+mm+':00';
 }
 async function runNyScalp(){
+  if(scalpPaused)return;
   if(!getScalpsDb())return;
   const day=nyDayStr();
   // Clean expired trades first
@@ -1175,6 +1180,7 @@ async function checkQMRTrades(instId,price,cHigh,cLow){
   }
 }
 function checkNyTrades(){
+  if(scalpPaused)return;
   const now=Date.now();
   for(let i=activeScalpTrades.length-1;i>=0;i--){
     const t=activeScalpTrades[i];if(t.closed)continue;
@@ -1924,6 +1930,7 @@ async function sendPushToTrackers(signalId,title,body,level){
   if(dead.length){pushSubscriptions=pushSubscriptions.filter(s=>!dead.includes(s));saveState();}
 }
 async function sendScalpPushToAll(title,body,url){
+  if(scalpPaused)return;
   if(!webpush||!VAPID_PUBLIC||!VAPID_PRIVATE){log('Scalp push SKIPPED — web-push not configured (VAPID keys missing on server)');return;}
   // Always record the notification in the in-app bell queue, even if no device
   // is currently subscribed to web push — otherwise scalp signals are invisible
@@ -2290,7 +2297,19 @@ app.get('/api/admin/trades',async(req,res)=>{
 });
 app.get('/api/admin/scalp-trades',(req,res)=>{
   if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
-  res.json({trades:activeScalpTrades.filter(t=>!t.closed),count:activeScalpTrades.filter(t=>!t.closed).length});
+  res.json({trades:activeScalpTrades.filter(t=>!t.closed),count:activeScalpTrades.filter(t=>!t.closed).length,paused:scalpPaused});
+});
+// Pause/resume the NY scalp system — stops new signals, pushes and trade
+// management while paused. Persisted in state so it survives restarts.
+app.post('/api/admin/scalp/pause',(req,res)=>{
+  if(!checkAdmin(req))return res.status(401).json({error:'Unauthorized'});
+  const b=req.body||{};
+  const paused=!!b.paused;
+  if(paused===scalpPaused){res.json({ok:true,paused});return;}
+  scalpPaused=paused;
+  saveState();
+  log('Scalp system '+(paused?'PAUSED':'RESUMED')+' by admin');
+  res.json({ok:true,paused});
 });
 // Edit an open scalp trade (entry/SL/TP2) — backend control so the admin can
 // correct a bad signal or align levels before it closes.
