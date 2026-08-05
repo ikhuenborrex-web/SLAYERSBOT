@@ -354,7 +354,7 @@ function updateTradeTable(trades){
       <td class="text-muted text-sm">${fmtDur(t.age)}</td>
       <td>${progress?'<span class="badge badge-green">'+progress+'</span>':'<span class="badge badge-neutral">active</span>'}</td>
       <td style="white-space:nowrap">
-        <button class="btn-sm btn-primary" onclick="S.closeTrade('${t.sigId}','${t.instName}')" style="margin-right:4px">Close</button>
+        <button class="btn-sm btn-primary" onclick="S.closeTrade('${t.sigId}','${t.instName}',${t.rMultiple})" style="margin-right:4px">Close</button>
         ${!t.beFired?`<button class="btn-sm" style="background:var(--orange);color:#000" onclick="S.moveBE('${t.sigId}','${t.instName}')" style="margin-right:4px">BE</button>`:''}
         <button class="btn-sm btn-secondary" onclick="S.moveSL('${t.sigId}','${t.instName}')">SL</button>
       </td>
@@ -620,9 +620,15 @@ const S={
     const res=await api('/api/admin/ai-refresh',{method:'POST'});
     toast(res&&res.ok?'AI analysis refreshed':'AI refresh failed',res&&res.ok?'success':'error');
   },
-  async closeTrade(sigId,name){
-    if(!await confirmDlg('Close Trade','Force close '+name+'? This will record the outcome and notify members.'))return;
-    const res=await api('/api/admin/trades/'+encodeURIComponent(sigId)+'/close',{method:'POST',body:JSON.stringify({confirm:'yes'})});
+  async closeTrade(sigId,name,curR){
+    const prefill=(curR!=null&&isFinite(curR))?String(Math.round(curR*100)/100):'';
+    const rVal=await promptDlg('Close '+name,'Edit the R multiple this close is recorded at. Leave blank to auto-calculate from the current price. Telegram will show the value you enter here.','e.g. 2.5'+(prefill?' (current '+prefill+')':''));
+    if(rVal===null)return;
+    const rv=rVal.trim();
+    if(rv!==''&&!isFinite(parseFloat(rv))){toast('R must be a number (e.g. 2.5 or -1)','error');return;}
+    const body={confirm:'yes'};
+    if(rv!=='')body.rMultiple=parseFloat(rv);
+    const res=await api('/api/admin/trades/'+encodeURIComponent(sigId)+'/close',{method:'POST',body:JSON.stringify(body)});
     if(res)toast(res.ok?'Closed '+name+' — '+fmtR(res.rMultiple,2):(res.error||'Error'),res.ok?'success':'error');
     if(res&&res.ok)renderTrades()
   },
@@ -666,12 +672,18 @@ const S={
     if(tp2===null)return;
     api('/api/admin/scalp/'+sigId+'/edit',{method:'POST',body:JSON.stringify({entry:parseFloat(entry),sl:parseFloat(sl),tp2:parseFloat(tp2)})}).then(function(d){toast(d&&d.ok?'Scalp levels updated':'Edit failed',d&&d.ok?'success':'error');S.refresh();});
   },
-  closeScalp(sigId){
+  async closeScalp(sigId){
     const outcome=prompt('Outcome (WIN / LOSS / BE / TIME):','WIN');
     if(outcome===null)return;
     const o=(outcome||'').toUpperCase();
     if(!['WIN','LOSS','BE','TIME'].includes(o)){toast('Outcome must be WIN, LOSS, BE or TIME','error');return;}
-    api('/api/admin/scalp/'+sigId+'/close',{method:'POST',body:JSON.stringify({outcome:o})}).then(function(d){toast(d&&d.ok?'Closed as '+o+' ('+d.r+'R)':'Close failed',d&&d.ok?'success':'error');S.refresh();});
+    const rVal=await promptDlg('Close Scalp','Edit the R multiple? Leave blank for the default. Telegram will show the value you enter here.','e.g. 2.5');
+    if(rVal===null)return;
+    const rv=rVal.trim();
+    if(rv!==''&&!isFinite(parseFloat(rv))){toast('R must be a number','error');return;}
+    const body={outcome:o};
+    if(rv!=='')body.rMultiple=parseFloat(rv);
+    api('/api/admin/scalp/'+sigId+'/close',{method:'POST',body:JSON.stringify(body)}).then(function(d){toast(d&&d.ok?'Closed as '+o+' ('+d.r+'R)':'Close failed',d&&d.ok?'success':'error');S.refresh();});
   },
   editResult(key,i){
     const t=_resultRows[i];

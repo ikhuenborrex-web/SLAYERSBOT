@@ -2314,8 +2314,8 @@ app.post('/api/admin/scalp/:sigId/close',(req,res)=>{
   if(idx===-1)return res.status(404).json({error:'Open scalp trade not found'});
   const t=activeScalpTrades[idx];
   const outcome=(req.body&&req.body.outcome)||'WIN';
-  const risk=Math.abs(t.entry-t.origSL)||1;
-  const r=outcome==='WIN'?0.5:outcome==='LOSS'?-1:outcome==='BE'?0:0;
+  let r=parseFloat(req.body&&req.body.rMultiple);
+  if(!isFinite(r))r=outcome==='WIN'?0.5:outcome==='LOSS'?-1:0;
   t.closed=true;
   scalpTradeHistory.push({sigId:t.sigId,pair:t.pair,type:t.type,outcome,r,entry:t.entry,sl:t.origSL,tp2:t.tp2,session:t.session,atr14:t.atr14,openTime:t.openTime,closeTime:Date.now(),manual:true,refId:t.sigId});
   activeScalpTrades.splice(idx,1);saveState();
@@ -2484,19 +2484,25 @@ app.post('/api/admin/trades/:sigId/close',async(req,res)=>{
   const idx=activeQMRTrades.findIndex(t=>t.sigId===sigId&&!t.slFired);
   if(idx===-1)return res.status(404).json({error:'Active trade not found'});
   const t=activeQMRTrades[idx];
-  let price;
+  // Optional admin override of the R multiple (e.g. record TP2 close at 2.5R even if
+  // price is mid-range). When set, it is used verbatim in the result, stats and the
+  // Telegram/push message — no "edited" marker is added.
+  let rOverride=parseFloat(req.body&&req.body.rMultiple);
+  if(!isFinite(rOverride))rOverride=null;
+  let price=null;
   try{
     const allInsts=[...QMR_INSTS,...NY_INSTS,...CRT_INSTS];
     const inst=allInsts.find(i=>i.id===t.instId)||{sym:t.instId};
     const pRes=await fetch(`https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(inst.sym||t.instId)}&interval=1h&outputsize=1&apikey=${API_KEY}`);
     const pJson=await pRes.json();const c=parseC(pJson);
-    if(!c.length)return res.status(502).json({error:'Could not fetch current price'});
-    price=c[0].close;
-  }catch(e){return res.status(502).json({error:'Price fetch failed: '+e.message});}
+    if(c.length)price=c[0].close;
+  }catch(e){}
+  if(rOverride===null&&price===null)return res.status(502).json({error:'Could not fetch current price'});
   const isB=t.type==='BULLISH';
-  const rMultiple=computeR(t,price);
-  const inProfit=isB?price>=t.qmLevel:price<=t.qmLevel;
-  const outcome=inProfit?'WIN':'SL';
+  const rMultiple=rOverride!==null?rOverride:computeR(t,price);
+  let outcome;
+  if(rOverride!==null){outcome=rMultiple>0?'WIN':rMultiple<0?'SL':'BE';}
+  else{outcome=(isB?price>=t.qmLevel:price<=t.qmLevel)?'WIN':'SL';}
   const duration=t.openTime?Math.round((Date.now()-t.openTime)/60000):null;
   tradeHistory.push({instId:t.instId,type:t.type,tf:t.tf,outcome,rMultiple,time:new Date().toISOString(),duration,manualClose:true,refId:t.sigId});
   updateMemberStats(t.sigId,outcome,rMultiple);
@@ -2504,7 +2510,7 @@ app.post('/api/admin/trades/:sigId/close',async(req,res)=>{
   dailyOutcomeLog.push({id:t.instId,name:t.instName,tf:t.tf,type:t.type,outcome,time:new Date().toISOString()});
   if(outcome==='WIN'){lossStreak=0;winStreak++;}else{winStreak=0;lossStreak++;}
   const rStr=rMultiple>=0?'+'+rMultiple.toFixed(t.dec||2)+'R':rMultiple.toFixed(t.dec||2)+'R';
-  await tgSend('\uD83D\uDD04 MANUAL CLOSE - '+t.instId+'\n'+'='.repeat(28)+'\n\uD83D\uDCCA '+t.instName+' \u00B7 '+t.tf+' | '+(isB?'BUY':'SELL')+' QMR\n\n\uD83D\uDCCD Entry: '+t.qmLevel.toFixed(t.dec||5)+'\n\uD83C\uDF1F Exit: '+price.toFixed(t.dec||5)+'\n\uD83D\uDCB0 '+rStr+'\n\nTrade closed manually by admin.\n'+(outcome==='WIN'?'\u2705 Profit secured.':'Stay disciplined, next setup coming.')+'\n\n\u2014 The Slayers Model by Rexroz');
+  await tgSend('\uD83D\uDD04 MANUAL CLOSE - '+t.instId+'\n'+'='.repeat(28)+'\n\uD83D\uDCCA '+t.instName+' \u00B7 '+t.tf+' | '+(isB?'BUY':'SELL')+' QMR\n\n\uD83D\uDCCD Entry: '+t.qmLevel.toFixed(t.dec||5)+'\n\uD83C\uDF1F Exit: '+(price?price.toFixed(t.dec||5):'—')+'\n\uD83D\uDCB0 '+rStr+'\n\nTrade closed manually by admin.\n'+(outcome==='WIN'?'\u2705 Profit secured.':'Stay disciplined, next setup coming.')+'\n\n\u2014 The Slayers Model by Rexroz');
   try{sendPushToTrackers(t.sigId,'\uD83D\uDD04 Manual Close '+t.instName+' \u2014 '+rStr,t.instName,outcome==='WIN'?'tp2':'sl');}catch(e){}
   markFeedOutcome(t.sigId,outcome);
   clearAggBanner(t.sigId);
