@@ -1273,7 +1273,7 @@ function settingsScreen(){
   return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+';position:relative">'+
     '<div class="sc" style="flex:1;overflow-y:auto;padding:calc(30px + env(safe-area-inset-top)) 16px calc(100px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch">'+
     '<div style="font-size:22px;font-weight:700;color:#FFF;margin-bottom:2px">Settings</div>'+
-    '<div style="font-size:12px;color:#5F5F5F;margin-bottom:20px">v10</div>'+
+    '<div style="font-size:12px;color:#5F5F5F;margin-bottom:20px">v11</div>'+
     '<div style="margin-bottom:16px"><div style="font-size:10px;font-weight:600;color:#5F5F5F;text-transform:uppercase;margin-bottom:8px;padding:0 4px;letter-spacing:0.04em">Notifications</div>'+
     '<div style="background:#151515;border-radius:22px;overflow:hidden;border:0.5px solid rgba(255,255,255,0.04)">'+
     tp('tradeAlerts','Trade Alerts','New QMR signals')+
@@ -1772,12 +1772,12 @@ async function attemptLogin(){
 }
 
 window.setTab=function(t){if(_rp)closeReplay();if(!_wtStarting)dismissOnboarding();state.tab=t;state.selected=null;render();if(t==='dash'||t==='journal')fetchAll(true);};
-window.openDetail=function(id){dismissOnboarding();state.showCalc=false;for(var i=0;i<state.signals.length;i++)if(state.signals[i].id===id){state.selected=state.signals[i];break;}render();};
-window.closeDetail=function(){state.selected=null;state.showCalc=false;render();};
+window.openDetail=function(id){dismissOnboarding();forceHideWalkthrough();state.showCalc=false;for(var i=0;i<state.signals.length;i++)if(state.signals[i].id===id){state.selected=state.signals[i];break;}render();};
+window.closeDetail=function(){forceHideWalkthrough();state.selected=null;state.showCalc=false;render();};
 window.toggleCalc=function(){state.showCalc=!state.showCalc;render();};
 window.toggleJournalExp=function(i){_journalExp[i]=!_journalExp[i];render();};
 window.toggleProgExp=function(sid,i){if(!_progExp[sid])_progExp[sid]={};_progExp[sid][i]=!_progExp[sid][i];render();};
-window.openScalpDetail=function(id){dismissOnboarding();for(var i=0;i<state.scalpSignals.length;i++)if(state.scalpSignals[i].id===id){state.selected=state.scalpSignals[i];break;}render();};
+window.openScalpDetail=function(id){dismissOnboarding();forceHideWalkthrough();for(var i=0;i<state.scalpSignals.length;i++)if(state.scalpSignals[i].id===id){state.selected=state.scalpSignals[i];break;}render();};
 window.logout=function(){if(confirm('Logout and clear code?')){clearCode();window.location.reload();}};
 window.calcPos=calcPos;
 window.toggleNotifPref=async function(key){
@@ -2335,6 +2335,11 @@ var _userInteracted=false;
 document.addEventListener('touchstart',function(){_userInteracted=true;},{passive:true});
 document.addEventListener('click',function(){_userInteracted=true;},true);
 
+function forceHideWalkthrough(){
+  try{var ov=document.getElementById('wtOverlay');if(ov){ov.classList.remove('open');ov.style.display='none';}}catch(e){}
+  try{var fin=document.getElementById('wtFinal');if(fin)fin.classList.remove('open');}catch(e){}
+}
+
 function dismissOnboarding(){
   if(!state.showOnboarding)return;
   try{endOnboarding(true);}catch(e){}
@@ -2358,10 +2363,7 @@ function startOnboarding(){
 }
 
 function endOnboarding(completed){
-  var ov=document.getElementById('wtOverlay');
-  ov.classList.remove('open');
-  ov.style.display='none';
-  document.getElementById('wtFinal').classList.remove('open');
+  forceHideWalkthrough();
   state.showOnboarding=false;
   state.onboardingStep=-1;
   _wtNavSub=0;
@@ -2537,6 +2539,7 @@ function _wtDots(){
 }
 
 function _wtShowFinal(){
+  if(!state.showOnboarding)return;
   _wtRemoveTap();
   document.getElementById('wtOverlay').classList.remove('open');
   document.getElementById('wtFinal').classList.add('open');
