@@ -329,7 +329,10 @@ async function fetchAll(bg){
     var arts=d.articles||d.data||d.news||d.items||(Array.isArray(d)?d:[]);
     setArr('articles',Array.isArray(arts)?arts:[]);
   });}).catch(function(){}));
-  promises.push(ft(withCode('/api/settings')).then(function(r){if(!r.ok)return;return j(r).then(function(d){setObj('settings',d.settings||null);});}).catch(function(){}));
+  promises.push(ft(withCode('/api/settings')).then(function(r){if(!r.ok)return;return j(r).then(function(d){
+    setObj('settings',d.settings||null);
+    if(d.settings&&d.settings.onboarded){try{localStorage.setItem('wt_done','1');}catch(e){}}
+  });}).catch(function(){}));
   promises.push(ft(withCode('/api/trade-history')).then(function(r){if(!r.ok)return;return j(r).then(function(d){setArr('botHistory',d.outcomes||[]);});}).catch(function(){}));
   promises.push(ft(withCode('/api/weekly-summary')).then(function(r){if(!r.ok)return;return j(r).then(function(d){setObj('weeklySummary',d.summary||null);});}).catch(function(){}));
   promises.push(ft(withCode('/api/weekly-report')).then(function(r){if(!r.ok)return;return j(r).then(function(d){setObj('weeklyReportData',d);});}).catch(function(){}));
@@ -2331,8 +2334,10 @@ var _wtTapEl=null;
 function startOnboarding(){
   state.showOnboarding=true;
   state.onboardingStep=-1;
+  state.selected=null;state.showCalc=false;
   try{localStorage.removeItem('wt_done');}catch(e){}
-  if(state.tab!=='dash')setTab('dash');
+  try{fetch(withCode('/api/settings'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({settings:{onboarded:false}})}).catch(function(){});}catch(e){}
+  if(state.tab!=='dash')setTab('dash');else render();
   var ov=document.getElementById('wtOverlay');
   if(!ov)return;
   ov.style.display='';
@@ -2350,7 +2355,10 @@ function endOnboarding(completed){
   state.onboardingStep=-1;
   _wtNavSub=0;
   _wtRemoveTap();
-  if(completed)try{localStorage.setItem('wt_done','1');}catch(e){}
+  if(completed){
+    try{localStorage.setItem('wt_done','1');}catch(e){}
+    try{fetch(withCode('/api/settings'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({settings:{onboarded:true}})}).catch(function(){});}catch(e){}
+  }
 }
 
 function _wtGoTo(idx){
@@ -2576,8 +2584,19 @@ function startFlipAnim(){
 function checkHash(){
   if(location.hash==='#weekly-report'&&getCode()){state.tab='weekly-report';render();}
 }
-// Auto-start on first launch
-if(getCode()){preloadMascot();loadNotifs();checkHash();fetchAll();setTimeout(function(){try{if(!localStorage.getItem('wt_done'))startOnboarding();}catch(e){}},3000);}else{renderLogin();}
+// Auto-start on first launch — guarded so it never hijacks mid-navigation or
+// fires before the dashboard/settings are ready, and honors the server-side
+// "onboarded" flag (survives localStorage/origin changes).
+function maybeAutoOnboard(retries){
+  try{
+    if(localStorage.getItem('wt_done'))return;
+    if(state.settings&&state.settings.onboarded){try{localStorage.setItem('wt_done','1');}catch(e){}return;}
+    if(state.selected||!document.hasFocus())return;
+    if((_firstLoad||!state.settings)&&retries>0){setTimeout(function(){maybeAutoOnboard(retries-1);},1000);return;}
+    startOnboarding();
+  }catch(e){}
+}
+if(getCode()){preloadMascot();loadNotifs();checkHash();fetchAll();setTimeout(function(){try{maybeAutoOnboard(10);}catch(e){}},3000);}else{renderLogin();}
 setInterval(function(){if(getCode())refreshAuto();},300000);
 document.addEventListener('visibilitychange',function(){if(!document.hidden&&getCode())refreshAuto();});
 window.addEventListener('focus',function(){if(getCode())refreshAuto();});
