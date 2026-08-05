@@ -2163,14 +2163,18 @@ function formatDate(ts){
 function prepCardForCapture(){
   var el=document.getElementById('shareCardPreview');
   if(!el)return null;
-  // Clone the .share-card element itself (all styling is inline) so the wrapper's
-  // max-width:360px clamp doesn't cap the export resolution.
+  // Clone the .share-card element itself. All of its design lives in inline
+  // styles (background, aspect-ratio, overflow, border-radius...), so we must
+  // NOT touch style.cssText (that would wipe them). Only adjust position and
+  // width, and keep the card at the same CSS width it is shown at in the
+  // preview so proportions are identical.
   var base=el.querySelector('.share-card')||el;
   var clone=base.cloneNode(true);
-  // Render at a minimum CSS width so the exported canvas stays >= the phone's
-  // physical resolution (avoids upscaling blur when the saved image is displayed).
-  var w=Math.max(base.offsetWidth||360,340);
-  clone.style.cssText='position:fixed;left:-9999px;top:0;width:'+w+'px;z-index:-1;';
+  clone.style.position='fixed';
+  clone.style.left='-9999px';
+  clone.style.top='0';
+  clone.style.zIndex='-1';
+  clone.style.width=(base.offsetWidth||360)+'px';
   document.body.appendChild(clone);
   // Re-assign image sources so they load in the clone
   var imgs=clone.querySelectorAll('img');
@@ -2188,9 +2192,25 @@ function waitForEl(el){
   return Promise.all(ps);
 }
 
-// Export rasterization scale: match the device pixel ratio (>= 3x) so the saved
-// PNG's pixel dimensions meet or exceed the phone's physical resolution.
-var SHARE_SCALE=Math.max(3,window.devicePixelRatio||2);
+// Rasterization density (not output size): render at >= 4x so text/gradients are
+// crisp, then finalizeCanvas() normalizes the file to a standard width below.
+var SHARE_SCALE=Math.max(4,window.devicePixelRatio||2);
+// Normalize the saved image to a standard max width (1080px) regardless of the
+// internal render scale. High-density render is preserved by downscaling a
+// sharper source, so the file keeps its normal size but stays crisp.
+function finalizeCanvas(canvas){
+  var MAX_W=1080;
+  if(!canvas||canvas.width<=MAX_W)return canvas;
+  var ratio=MAX_W/canvas.width;
+  var out=document.createElement('canvas');
+  out.width=MAX_W;
+  out.height=Math.max(1,Math.round(canvas.height*ratio));
+  var ctx=out.getContext('2d');
+  ctx.imageSmoothingEnabled=true;
+  ctx.imageSmoothingQuality='high';
+  ctx.drawImage(canvas,0,0,out.width,out.height);
+  return out;
+}
 
 function captureAndDownload(){
   var el=document.getElementById('shareCardPreview');
@@ -2198,7 +2218,8 @@ function captureAndDownload(){
   var clone=prepCardForCapture();
   if(!clone){showToast('Could not generate image');return;}
   waitForEl(clone).then(function(){
-    html2canvas(clone,{backgroundColor:'#111111',width:clone.offsetWidth,height:clone.offsetHeight,scale:SHARE_SCALE,useCORS:true,allowTaint:true,logging:false}).then(function(canvas){
+    html2canvas(clone,{backgroundColor:'#111111',scale:SHARE_SCALE,useCORS:true,allowTaint:true,logging:false}).then(function(canvas){
+      canvas=finalizeCanvas(canvas);
       cleanupCardClone(clone);
       var link=document.createElement('a');
       link.download='slayers-trade-'+_shareStyle+'.png';
@@ -2215,7 +2236,8 @@ function captureAndShare(){
   var clone=prepCardForCapture();
   if(!clone){showToast('Could not generate image');return;}
   waitForEl(clone).then(function(){
-    html2canvas(clone,{backgroundColor:'#111111',width:clone.offsetWidth,height:clone.offsetHeight,scale:SHARE_SCALE,useCORS:true,allowTaint:true,logging:false}).then(function(canvas){
+    html2canvas(clone,{backgroundColor:'#111111',scale:SHARE_SCALE,useCORS:true,allowTaint:true,logging:false}).then(function(canvas){
+      canvas=finalizeCanvas(canvas);
       cleanupCardClone(clone);
       canvas.toBlob(function(blob){
         if(!blob)return;
