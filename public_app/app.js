@@ -319,8 +319,7 @@ async function fetchAll(bg){
     if(r.status!==200||!r.ok)return;
     return j(r).then(function(d){
       if(d&&d.myStats)state.myStats=d.myStats;
-      var local=JSON.parse(localStorage.getItem('notifPrefs')||'{}');
-      state.notifPrefs=Object.assign({},d.notifPrefs||{},local);
+      state.notifPrefs=Object.assign({},d.notifPrefs||{});
       scheduleRender();
     });
   }).catch(function(){}));
@@ -1779,13 +1778,17 @@ window.openScalpDetail=function(id){for(var i=0;i<state.scalpSignals.length;i++)
 window.logout=function(){if(confirm('Logout and clear code?')){clearCode();window.location.reload();}};
 window.calcPos=calcPos;
 window.toggleNotifPref=async function(key){
-  var prefs=state.notifPrefs||{},nv=!prefs[key];prefs[key]=nv;
-  localStorage.setItem('notifPrefs',JSON.stringify(prefs));
+  var prefs=state.notifPrefs||{},old=!!prefs[key],nv=!old;
+  var next=Object.assign({},prefs);next[key]=nv;
+  state.notifPrefs=next;render();
   try{
-    await fetch(withCode('/api/member/notif-prefs'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({notifPrefs:prefs})});
+    await fetch(withCode('/api/member/notif-prefs'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({notifPrefs:next})});
+    try{localStorage.setItem('notifPrefs',JSON.stringify(next));}catch(e){}
     showToast((nv?'On: ':'Off: ')+key.replace(/([A-Z])/g,' $1').replace(/^./,function(s){return s.toUpperCase();}));
-  }catch(e){showToast('Saved locally only');}
-  render();
+  }catch(e){
+    var revert=Object.assign({},next);revert[key]=old;state.notifPrefs=revert;render();
+    showToast('Could not save — check connection');
+  }
 };
 window.toggleTrack=async function(signalId,currentlyTracking){
   try{
@@ -2574,7 +2577,7 @@ function checkHash(){
   if(location.hash==='#weekly-report'&&getCode()){state.tab='weekly-report';render();}
 }
 // Auto-start on first launch
-if(getCode()){preloadMascot();try{var _localP=JSON.parse(localStorage.getItem('notifPrefs')||'{}');state.notifPrefs=Object.assign({},state.notifPrefs,_localP);}catch(e){}loadNotifs();checkHash();fetchAll();setTimeout(function(){try{if(!localStorage.getItem('wt_done'))startOnboarding();}catch(e){}},3000);}else{renderLogin();}
+if(getCode()){preloadMascot();loadNotifs();checkHash();fetchAll();setTimeout(function(){try{if(!localStorage.getItem('wt_done'))startOnboarding();}catch(e){}},3000);}else{renderLogin();}
 setInterval(function(){if(getCode())refreshAuto();},300000);
 document.addEventListener('visibilitychange',function(){if(!document.hidden&&getCode())refreshAuto();});
 window.addEventListener('focus',function(){if(getCode())refreshAuto();});
