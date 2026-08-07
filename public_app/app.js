@@ -1928,7 +1928,7 @@ var refreshPill={
 var _shareTradeIdx=-1;
 var _shareStyle='poster';
 
-function fmtR(n){return (n>=0?'+':'')+Math.abs(n).toFixed(2)+'R';}
+function fmtR(n){return (n>=0?'+':'')+n.toFixed(2)+'R';}
 
 function openShareModal(i){
   _shareTradeIdx=i;
@@ -2005,7 +2005,7 @@ function renderShareCard(){
   // Single source of truth so all card styles render the R value and badge
   // consistently (no hardcoded "+" prefix or static lime color).
   var isLoss=t.rNum<0;
-  var rTxt=(t.rNum>=0?'+':'')+Math.abs(t.rNum).toFixed(2)+'R';
+  var rTxt=(t.rNum>=0?'+':'')+t.rNum.toFixed(2)+'R';
   var rCol=isLoss?'#FF5252':'#C7FF38';
   var badgeBg=isLoss?'rgba(255,82,82,0.12)':'rgba(199,255,56,0.08)';
   var badgeBd=isLoss?'rgba(255,82,82,0.35)':'rgba(199,255,56,0.12)';
