@@ -2001,6 +2001,15 @@ function getShareTradeData(){
 function renderShareCard(){
   var t=getShareTradeData();
   if(!t){document.getElementById('shareCardWrap').innerHTML='';return;}
+  // Win/loss-driven sign and color: red for losses, lime for wins/break-even.
+  // Single source of truth so all card styles render the R value and badge
+  // consistently (no hardcoded "+" prefix or static lime color).
+  var isLoss=t.rNum<0;
+  var rTxt=(t.rNum>=0?'+':'')+Math.abs(t.rNum).toFixed(2)+'R';
+  var rCol=isLoss?'#FF5252':'#C7FF38';
+  var badgeBg=isLoss?'rgba(255,82,82,0.12)':'rgba(199,255,56,0.08)';
+  var badgeBd=isLoss?'rgba(255,82,82,0.35)':'rgba(199,255,56,0.12)';
+  var badgeCol=isLoss?'#FF5252':'#C7FF38';
 
   function barcodeSVG(){
     var bars='';
@@ -2024,10 +2033,10 @@ function renderShareCard(){
         '</div>'+
         '<div style="display:inline-flex;align-items:center;gap:4px;font-size:7px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:3px 10px;border-radius:99px;background:rgba(199,255,56,0.08);border:0.5px solid rgba(199,255,56,0.12);color:#C7FF38;align-self:flex-start;margin-bottom:14px">'+t.direction+'</div>'+
         '<div style="font-size:15px;font-weight:800;color:#FFF;letter-spacing:-0.03em;margin-bottom:8px">NEW HIGH</div>'+
-        '<div style="font-size:52px;font-weight:900;letter-spacing:-0.04em;line-height:1;color:#C7FF38;margin-bottom:6px">'+fmtR(t.rNum)+'</div>'+
+        '<div style="font-size:52px;font-weight:900;letter-spacing:-0.04em;line-height:1;color:'+rCol+';margin-bottom:6px">'+rTxt+'</div>'+
         '<div style="display:flex;align-items:center;gap:8px;margin-bottom:auto">'+
           '<span style="font-size:13px;font-weight:700;color:#FFF;letter-spacing:-0.02em">'+t.pair+'</span>'+
-          '<span style="display:inline-flex;align-items:center;gap:3px;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:2px 8px;border-radius:99px;background:rgba(199,255,56,0.1);color:#C7FF38">'+t.outcome+'</span>'+
+          '<span style="display:inline-flex;align-items:center;gap:3px;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:2px 8px;border-radius:99px;background:'+badgeBg+';color:'+badgeCol+'">'+t.outcome+'</span>'+
         '</div>'+
         '<div style="width:100%;height:0.5px;background:rgba(255,255,255,0.05);margin:12px 0 10px"></div>'+
         '<div style="display:flex;gap:24px">'+
@@ -2057,7 +2066,7 @@ function renderShareCard(){
         '<div style="font-size:9px;color:#8E8E8E;margin-bottom:2px">This certifies that</div>'+
         '<div style="font-size:20px;font-weight:800;color:#FFF;letter-spacing:-0.03em;margin:4px 0">'+t.pair+'</div>'+
         '<div style="font-size:9px;color:#8E8E8E;margin-bottom:2px">returned</div>'+
-        '<div style="font-size:44px;font-weight:900;letter-spacing:-0.04em;line-height:1;color:#C7FF38;margin:6px 0">'+fmtR(t.rNum)+'</div>'+
+        '<div style="font-size:44px;font-weight:900;letter-spacing:-0.04em;line-height:1;color:'+rCol+';margin:6px 0">'+rTxt+'</div>'+
         '<div style="font-size:9px;color:#5F5F5F;margin-bottom:2px">using</div>'+
         '<div style="font-size:12px;font-weight:700;color:#FFF;letter-spacing:0.02em;margin-bottom:3px">'+t.method+'</div>'+
         '<div style="width:36px;height:0.5px;background:rgba(199,255,56,0.12);margin:12px auto 10px"></div>'+
@@ -2075,9 +2084,9 @@ function renderShareCard(){
         '<div style="position:relative;z-index:1;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;text-align:center">'+
           '<div style="width:48px;height:48px;border-radius:99px;overflow:hidden;border:0.5px solid rgba(255,255,255,0.06);margin-bottom:14px"><img src="'+getMascotSrc()+'" style="width:100%;height:100%;object-fit:cover"></div>'+
           '<div style="font-size:8px;font-weight:600;color:#5F5F5F;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px">TRADE COMPLETED</div>'+
-          '<div style="font-size:60px;font-weight:900;letter-spacing:-0.05em;line-height:1;color:#FFF;margin-bottom:4px"><span style="color:#C7FF38">+</span>'+t.rNum.toFixed(2)+'<span style="font-size:28px;font-weight:700;color:#C7FF38">R</span></div>'+
+          '<div style="font-size:60px;font-weight:900;letter-spacing:-0.05em;line-height:1;color:'+rCol+';margin-bottom:4px">'+rTxt+'</div>'+
           '<div style="font-size:15px;font-weight:600;color:#8E8E8E;letter-spacing:0.02em;margin-bottom:10px">'+t.pair+'</div>'+
-          '<div style="display:inline-flex;align-items:center;gap:3px;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:3px 10px;border-radius:99px;background:rgba(199,255,56,0.08);border:0.5px solid rgba(199,255,56,0.12);color:#C7FF38">'+t.outcome+'</div>'+
+          '<div style="display:inline-flex;align-items:center;gap:3px;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:3px 10px;border-radius:99px;background:'+badgeBg+';border:0.5px solid '+badgeBd+';color:'+badgeCol+'">'+t.outcome+'</div>'+
         '</div>'+
         '<div style="position:relative;z-index:1;display:flex;justify-content:center;gap:28px;padding:14px 24px;border-top:0.5px solid rgba(255,255,255,0.04)">'+
           '<div style="text-align:center"><div style="font-size:7px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.06em">Risk</div><div style="font-size:10px;font-weight:700;color:#FFF;margin-top:2px">'+t.risk+'</div></div>'+
@@ -2093,7 +2102,7 @@ function renderShareCard(){
           '<div style="position:relative;z-index:1;display:flex;flex-direction:column;height:100%">'+
             '<div style="font-size:6px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#5F5F5F;margin-bottom:8px">THE SLAYERS &bull; TRADE COMPLETED</div>'+
             '<div style="font-size:18px;font-weight:800;color:#FFF;letter-spacing:-0.03em;margin-bottom:4px">'+t.pair+'</div>'+
-            '<div style="font-size:32px;font-weight:900;letter-spacing:-0.04em;line-height:1;color:#C7FF38;margin-bottom:auto">'+fmtR(t.rNum)+'</div>'+
+            '<div style="font-size:32px;font-weight:900;letter-spacing:-0.04em;line-height:1;color:'+rCol+';margin-bottom:auto">'+rTxt+'</div>'+
             '<div style="font-size:8px;color:#5F5F5F;font-style:italic;letter-spacing:0.02em">"'+t.notes.replace(/ \u2014 .*/,'')+'."</div>'+
           '</div>'+
         '</div>'+
@@ -2116,9 +2125,9 @@ function renderShareCard(){
     minimal:function(){
       return '<div class="share-card" style="background:#111111;border-radius:24px;border:1px solid rgba(255,255,255,0.06);overflow:hidden;position:relative;width:100%;aspect-ratio:1/1;display:flex;flex-direction:column;align-items:center;padding:40px 32px;text-align:center">'+
         '<div style="font-size:7px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#5F5F5F;margin-bottom:auto;padding-top:12px">THE SLAYERS</div>'+
-        '<div style="font-size:64px;font-weight:200;letter-spacing:-0.06em;line-height:1;color:#FFF;margin-bottom:4px"><span style="font-weight:200;color:#C7FF38">+</span>'+t.rNum.toFixed(2)+'R</div>'+
+        '<div style="font-size:64px;font-weight:200;letter-spacing:-0.06em;line-height:1;color:'+rCol+';margin-bottom:4px">'+rTxt+'</div>'+
         '<div style="font-size:14px;font-weight:400;color:#5F5F5F;letter-spacing:0.02em;margin-bottom:10px">'+t.pair+'</div>'+
-        '<div style="display:inline-flex;align-items:center;gap:3px;font-size:8px;font-weight:600;color:#C7FF38;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:auto">'+t.outcome+'</div>'+
+        '<div style="display:inline-flex;align-items:center;gap:3px;font-size:8px;font-weight:600;color:'+badgeCol+';letter-spacing:0.08em;text-transform:uppercase;margin-bottom:auto">'+t.outcome+'</div>'+
         '<div style="width:24px;height:0.5px;background:rgba(255,255,255,0.06);margin:0 auto 16px"></div>'+
         '<div style="display:flex;gap:28px;margin-bottom:12px">'+
           '<div><div style="font-size:7px;font-weight:600;color:#5F5F5F;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:2px">Status</div><div style="font-size:10px;font-weight:500;color:#8E8E8E">'+t.logged+'</div></div>'+
@@ -2139,9 +2148,9 @@ function renderShareCard(){
         '<div style="position:absolute;top:50%;left:0;right:0;bottom:0;background:linear-gradient(180deg,transparent 0%,#0E0E0E 50%);pointer-events:none"></div>'+
         '<div style="position:absolute;top:40%;left:50%;transform:translateX(-50%);width:240px;height:200px;background:radial-gradient(ellipse at center,rgba(199,255,56,0.03) 0%,transparent 60%);pointer-events:none"></div>'+
         '<div style="position:relative;z-index:1;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:0 24px 28px;text-align:center">'+
-          '<div style="font-size:52px;font-weight:900;letter-spacing:-0.05em;line-height:1;color:#FFF;margin-bottom:2px"><span style="color:#C7FF38">+</span>'+t.rNum.toFixed(2)+'<span style="font-size:24px;font-weight:700;color:#C7FF38">R</span></div>'+
+          '<div style="font-size:52px;font-weight:900;letter-spacing:-0.05em;line-height:1;color:'+rCol+';margin-bottom:2px">'+rTxt+'</div>'+
           '<div style="font-size:13px;font-weight:600;color:#8E8E8E;letter-spacing:0.02em;margin-bottom:8px">'+t.pair+'</div>'+
-          '<div style="display:inline-flex;align-items:center;gap:3px;font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:3px 10px;border-radius:99px;background:rgba(199,255,56,0.08);border:0.5px solid rgba(199,255,56,0.12);color:#C7FF38;margin-bottom:20px">'+t.outcome+'</div>'+
+          '<div style="display:inline-flex;align-items:center;gap:3px;font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:3px 10px;border-radius:99px;background:'+badgeBg+';border:0.5px solid '+badgeBd+';color:'+badgeCol+';margin-bottom:20px">'+t.outcome+'</div>'+
           '<div style="font-size:8px;color:#5F5F5F;margin-bottom:2px">'+t.date+'</div>'+
           '<div style="font-size:7px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:#5F5F5F">THE SLAYERS</div>'+
         '</div>'+
