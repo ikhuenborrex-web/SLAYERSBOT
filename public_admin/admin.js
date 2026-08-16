@@ -135,7 +135,7 @@ function renderShell(content,title='Dashboard'){
   const nav=[
     {id:'dashboard',icon:I.dashboard,label:'Dashboard'},
     {id:'trades',icon:I.trades,label:'Trade Management'},
-    {id:'scalp',icon:I.scalp,label:'Scalp Trades'},
+    {id:'scalp',icon:I.scalp,label:'SMC Trades'},
     {id:'results',icon:I.report,label:'Results'},
     {id:'logs',icon:I.logs,label:'System Logs'},
     {id:'members',icon:I.members,label:'Users'},
@@ -366,25 +366,25 @@ function updateTradeTable(trades){
 let _scalpTrades=[];
 let _scalpState={};
 async function renderScalp(){
-  renderShell('','Scalp Trades');
+  renderShell('','SMC Trades');
   const cont=document.getElementById('pageContent');
-  cont.innerHTML='<div class="empty-state">Loading scalp trades...</div>';
+  cont.innerHTML='<div class="empty-state">Loading SMC trades...</div>';
   const data=await api('/api/admin/scalp-trades');
   if(!data)return;
   _scalpState=data;
   _scalpTrades=data.trades||[];
   const paused=!!data.paused;
   const body=!data.trades||!data.trades.length
-    ? '<div class="empty-state">No active scalp trades. NY-open breakout runs 09:30–11:30 NY.</div>'
+    ? '<div class="empty-state">No active SMC trades. A-list swing signals are detected on M15 as they confirm (sweep → CHoCH → zone).</div>'
     : `<div class="card" style="overflow-x:auto;padding:0">
-    <table class="compact-table"><thead><tr><th>Pair</th><th>Type</th><th>Entry</th><th>SL</th><th>TP2</th><th>Session</th><th>Status</th><th>Actions</th></tr></thead>
+    <table class="compact-table"><thead><tr><th>Pair</th><th>Type</th><th>Entry</th><th>SL</th><th>TP</th><th>Session</th><th>Status</th><th>Actions</th></tr></thead>
     <tbody>${data.trades.map(t=>`<tr>
       <td style="font-weight:600">${t.name||t.pair}</td>
       <td class="${t.type==='BULLISH'?'text-green':'text-red'}">${t.type==='BULLISH'?'BUY':'SELL'}</td>
       <td class="mono">${fmtN(t.entry,5)}</td><td class="mono text-muted">${fmtN(t.sl,5)}</td>
       <td class="mono text-muted">${fmtN(t.tp2,5)}</td>
       <td class="text-muted text-sm">${t.session||'—'}</td>
-      <td>${t.expiry?'<span class="text-muted text-sm">exp '+new Date(t.expiry).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:true})+'</span> ':''}<span class="badge badge-green">open</span></td>
+      <td><span class="badge badge-green">open</span></td>
       <td style="white-space:nowrap">
         <button class="btn-secondary btn-sm" onclick="S.editScalp('${t.sigId}')">Edit</button>
         <button class="btn-secondary btn-sm" onclick="S.closeScalp('${t.sigId}')">Close</button>
@@ -392,9 +392,9 @@ async function renderScalp(){
     </tr>`).join('')}</tbody></table>
   </div>`;
   cont.innerHTML=`
-  ${paused?'<div class="alert" style="margin-bottom:12px;background:rgba(249,115,22,0.12);border:0.5px solid rgba(249,115,22,0.35);color:#f97316;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:600">⏸ Scalp system is PAUSED — no new signals, pushes or trade management until you resume.</div>':''}
-  <div class="section-header"><h2>Active Scalp Trades <span class="text-muted text-sm">(${data.count})</span></h2><div>
-    <button class="btn-sm ${paused?'btn-primary':'btn-danger'}" onclick="S.toggleScalpPause()">${paused?'▶ Resume Scalp':'⏸ Pause Scalp'}</button>
+  ${paused?'<div class="alert" style="margin-bottom:12px;background:rgba(249,115,22,0.12);border:0.5px solid rgba(249,115,22,0.35);color:#f97316;padding:10px 14px;border-radius:12px;font-size:13px;font-weight:600">⏸ SMC system is PAUSED — no new signals, pushes or trade management until you resume.</div>':''}
+  <div class="section-header"><h2>Active SMC Trades <span class="text-muted text-sm">(${data.count})</span></h2><div>
+    <button class="btn-sm ${paused?'btn-primary':'btn-danger'}" onclick="S.toggleScalpPause()">${paused?'▶ Resume SMC':'⏸ Pause SMC'}</button>
     <button class="btn-secondary btn-sm" onclick="S.refresh()">${I.refresh} Refresh</button>
   </div></div>
   ${body}`;
@@ -498,7 +498,7 @@ async function renderMembers(){
   </div></div>`:''}
   <div class="card" style="overflow:hidden">
     ${_members.length?_members.map(m=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border)">
-      <div><div style="font-weight:600">${m.name}</div><div class="mono text-muted text-sm">${m.code}</div>${m.boundDevice?`<div class="text-xs text-accent" style="margin-top:2px">● Device locked</div>`:'<div class="text-xs text-muted2">Not activated</div>'}<div class="text-xs" style="margin-top:2px;color:${m.notifPrefs&&m.notifPrefs.scalpAlerts===false?'var(--red)':'var(--green)'}">Scalp push (server): ${m.notifPrefs&&m.notifPrefs.scalpAlerts===false?'OFF':'ON'}</div><div class="text-xs text-muted2" style="margin-top:2px">Push subs: ${m.pushSubs||0}</div></div>
+      <div><div style="font-weight:600">${m.name}</div><div class="mono text-muted text-sm">${m.code}</div>${m.boundDevice?`<div class="text-xs text-accent" style="margin-top:2px">● Device locked</div>`:'<div class="text-xs text-muted2">Not activated</div>'}<div class="text-xs" style="margin-top:2px;color:${m.notifPrefs&&m.notifPrefs.scalpAlerts===false?'var(--red)':'var(--green)'}">SMC push (server): ${m.notifPrefs&&m.notifPrefs.scalpAlerts===false?'OFF':'ON'}</div><div class="text-xs text-muted2" style="margin-top:2px">Push subs: ${m.pushSubs||0}</div></div>
       <div class="flex gap-2">${m.boundDevice?`<button class="btn-sm" style="background:var(--orange);color:#000" onclick="S.resetDevice('${m.code}')">Reset Device</button>`:''}<button class="btn-sm btn-secondary" onclick="S.removeMember('${m.code}')" style="color:var(--red)">Remove</button></div>
     </div>`).join(''):'<div class="empty-state">No members registered. Generate a code above to get started.</div>'}
   </div>`;
@@ -674,16 +674,16 @@ const S={
     if(entry===null)return;
     const sl=prompt('SL price',t?t.sl:'');
     if(sl===null)return;
-    const tp2=prompt('TP2 price',t?t.tp2:'');
+    const tp2=prompt('TP price',t?t.tp2:'');
     if(tp2===null)return;
-    api('/api/admin/scalp/'+sigId+'/edit',{method:'POST',body:JSON.stringify({entry:parseFloat(entry),sl:parseFloat(sl),tp2:parseFloat(tp2)})}).then(function(d){toast(d&&d.ok?'Scalp levels updated':'Edit failed',d&&d.ok?'success':'error');S.refresh();});
+    api('/api/admin/scalp/'+sigId+'/edit',{method:'POST',body:JSON.stringify({entry:parseFloat(entry),sl:parseFloat(sl),tp2:parseFloat(tp2)})}).then(function(d){toast(d&&d.ok?'SMC levels updated':'Edit failed',d&&d.ok?'success':'error');S.refresh();});
   },
   async closeScalp(sigId){
-    const outcome=prompt('Outcome (WIN / LOSS / BE / TIME):','WIN');
+    const outcome=prompt('Outcome (WIN / LOSS / BE):','WIN');
     if(outcome===null)return;
     const o=(outcome||'').toUpperCase();
-    if(!['WIN','LOSS','BE','TIME'].includes(o)){toast('Outcome must be WIN, LOSS, BE or TIME','error');return;}
-    const rVal=await promptDlg('Close Scalp','Edit the R multiple? Leave blank for the default. Telegram will show the value you enter here.','e.g. 2.5');
+    if(!['WIN','LOSS','BE'].includes(o)){toast('Outcome must be WIN, LOSS or BE','error');return;}
+    const rVal=await promptDlg('Close SMC Trade','Edit the R multiple? Leave blank for the default. Telegram will show the value you enter here.','e.g. 2.5');
     if(rVal===null)return;
     const rv=rVal.trim();
     if(rv!==''&&!isFinite(parseFloat(rv))){toast('R must be a number','error');return;}
@@ -693,10 +693,10 @@ const S={
   },
   async toggleScalpPause(){
     const cur=!!(_scalpState&&_scalpState.paused);
-    if(!await confirmDlg(cur?'Resume Scalp':'Pause Scalp',cur?'Re-enable the NY scalp system (new signals, pushes and trade management will resume)?':'Pause the NY scalp system now? This stops new signals, pushes and trade management until you resume.'))return;
+    if(!await confirmDlg(cur?'Resume SMC':'Pause SMC',cur?'Re-enable the SMC system (new signals, pushes and trade management will resume)?':'Pause the SMC system now? This stops new signals, pushes and trade management until you resume.'))return;
     const res=await api('/api/admin/scalp/pause',{method:'POST',body:JSON.stringify({paused:!cur})});
-    if(res&&res.ok){toast(res.paused?'Scalp system paused':'Scalp system resumed','success');renderScalp();}
-    else toast('Failed to update scalp pause state','error');
+    if(res&&res.ok){toast(res.paused?'SMC system paused':'SMC system resumed','success');renderScalp();}
+    else toast('Failed to update SMC pause state','error');
   },
   editResult(key,i){
     const t=_resultRows[i];

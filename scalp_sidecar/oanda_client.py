@@ -1,137 +1,106 @@
-"""Oanda v20 REST client — historical candle fetcher.
+"""Oanda v20 candle puller with backwards pagination.
 
-Pure data access. No strategy logic.
-Uses only the Python standard library (urllib) so no pip install is needed
-on the deploy host.
+Reads historical candles for (instrument, granularity) in blocks of up to
+5000, walking backwards in time towards START_DATE, and returns them in
+oldest->newest order. Rate-limit friendly: sleeps between requests and
+backs off on HTTP 429.
 """
+import json
+import socket
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
-from config import (
-    OANDA_BASE,
-    OANDA_CANDLE_CHUNK,
-    OANDA_TOKEN,
-    DECIMALS,
-)
-
-# Rate limit: be gentle to avoid 429s.
-MIN_INTERVAL = 0.25  # ~4 requests/sec
+import config
 
 
-def _iso(dt: datetime) -> str:
-    """RFC3339 string Oanda expects."""
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+class OandaError(Exception):
+    pass
 
 
-def _parse_time(ts: str) -> datetime:
-    """Parse Oanda's RFC3339 timestamp (may have 9-digit fractional secs)."""
-    # Truncate fractional seconds beyond microseconds.
-    if "." in ts:
-        head, frac = ts.split(".", 1)
-        frac = frac.rstrip("Z")
-        frac = frac[:6]
-        ts = f"{head}.{frac}Z"
-    return datetime.fromisoformat(ts.replace("Z", "+00:00"))
+def parse_time(s):
+    """Parse an Oanda nanosecond ISO time with py3.9's fromisoformat."""
+    s = s.replace("Z", "+00:00")
+    if "." in s:
+        head, _, frac = s.partition(".")
+        s = head + "." + frac[:6] + "+00:00"
+    return datetime.fromisoformat(s)
 
 
-def fetch_candles(instrument: str, granularity: str,
-                  start: datetime, end: datetime,
-                  chunk=OANDA_CANDLE_CHUNK):
-    """Yield lists of candles in chronological order.
+def _parse_time(s):
+    return parse_time(s)
 
-    Args:
-        instrument: Oanda instrument id, e.g. "EUR_USD".
-        granularity: "M1", "M5", etc.
-        start/end: aware datetimes (UTC).
-        chunk: max candles per API call.
 
-    Yields:
-        lists of dicts: {"time": iso, "volume": int, "mid": {o,h,l,c}}
+def _get(path, params, retries=6):
+    url = config.OANDA_BASE + path
+    if params:
+        url += "?" + urllib.parse.urlencode(params)
+    req = urllib.request.Request(url, headers={"Authorization": "Bearer " + config.OANDA_TOKEN})
+    for attempt in range(retries):
+        try:
+            with urllib.request.urlopen(req, timeout=90) as r:
+                return json.loads(r.read().decode())
+        except (urllib.error.HTTPError, urllib.error.URLError, socket.timeout, TimeoutError) as e:
+            if isinstance(e, urllib.error.HTTPError):
+                if e.code == 429:  # rate limited
+                    time.sleep(5 + attempt * 5)
+                    continue
+                if e.code == 404:
+                    raise OandaError(f"GET {path} -> 404 (instrument/timeframe not available)")
+                if e.code >= 500:
+                    time.sleep(3)
+                    continue
+                raise OandaError(f"GET {path} -> HTTP {e.code}: {e.read().decode()[:300]}")
+            # network / socket timeout / transient TLS drop
+            time.sleep(3 + attempt * 3)
+            continue
+    raise OandaError(f"GET {path} failed after {retries} retries")
+
+
+def pull_candles(instrument, granularity, start, end=None, price="M"):
+    """Return oldest->newest list of {time, open, high, low, close, volume}.
+
+    Walks backwards in blocks of `count` ending before `to` each round;
+    stops once the earliest retrieved candle is older than `start`.
     """
-    if not OANDA_TOKEN:
-        raise RuntimeError(
-            "OANDA_TOKEN not set. Export it in the shell before running: "
-            "export OANDA_TOKEN=..."
+    if end is None:
+        end = datetime.now(timezone.utc)
+    chunk = config.OANDA_CANDLE_CHUNK
+    to = end.strftime("%Y-%m-%dT%H:%M:%SZ")
+    out = []
+    while True:
+        data = _get(
+            f"/instruments/{instrument}/candles",
+            {"granularity": granularity, "count": chunk, "to": to, "price": price},
         )
-
-    headers = {
-        "Authorization": f"Bearer {OANDA_TOKEN}",
-        "Content-Type": "application/json",
-    }
-
-    cursor = start
-    while cursor < end:
-        url = f"{OANDA_BASE}/instruments/{instrument}/candles"
-        # Oanda forbids 'count' alongside 'to'; paginate via 'from' + 'count'
-        # only. Cap 'count' so we never overshoot the requested end window.
-        params = {
-            "granularity": granularity,
-            "from": _iso(cursor),
-            "price": "M",  # mid prices
-            "count": str(chunk),
-        }
-        resp = urllib.request.Request(
-            f"{url}?{urllib.parse.urlencode(params)}",
-            headers=headers,
-        )
-        try:
-            with urllib.request.urlopen(resp, timeout=30) as r:
-                body = r.read()
-                status = r.status
-        except urllib.error.HTTPError as e:
-            status = e.code
-            if status == 429:
-                time.sleep(5)
-                continue
-            raise RuntimeError(f"Oanda HTTP {status}: {e.reason}")
-        except urllib.error.URLError as e:
-            raise RuntimeError(f"Oanda connection error: {e.reason}")
-        if status != 200:
-            raise RuntimeError(f"Oanda HTTP {status}")
-
-        try:
-            candles = _json(body).get("candles", [])
-        except Exception:
-            raise RuntimeError("Oanda returned non-JSON response")
-        if not candles:
+        batch = [c for c in data.get("candles", []) if c.get("complete", True)]
+        if not batch:
+            break
+        rows = [
+            {
+                "time": c["time"],
+                "open": float(c["mid"]["o"]),
+                "high": float(c["mid"]["h"]),
+                "low": float(c["mid"]["l"]),
+                "close": float(c["mid"]["c"]),
+                "volume": int(c.get("volume", 0)),
+            }
+            for c in batch
+        ]
+        rows.sort(key=lambda r: r["time"])
+        out = rows + out
+        first_t = _parse_time(out[0]["time"])
+        if first_t <= start:
+            break
+        to = (first_t - timedelta(seconds=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        time.sleep(config.OANDA_SLEEP)
+        # Safety valve: if Oanda returned fewer than a full chunk, we've hit
+        # the account's history limit for this instrument.
+        if len(batch) < chunk and first_t <= start + timedelta(days=1):
             break
 
-        # Keep only candles within our requested window (we can't pass 'to').
-        within = [c for c in candles if c["time"] < _iso(end)]
-        if not within:
-            break
-
-        # Oanda returns candles oldest-first; advance cursor past the last one.
-        last_t = within[-1]["time"]
-        cursor = _parse_time(last_t)
-        yield within
-
-        # Stop if we've reached the end window or the API gave fewer than
-        # requested (no more history in this range).
-        if len(within) < chunk:
-            break
-        time.sleep(MIN_INTERVAL)
-
-
-def _step(granularity: str) -> timedelta:
-    """Approximate candle step size in seconds for a granularity."""
-    unit = granularity[0]
-    num = int(granularity[1:])
-    secs = {"S": 1, "M": 60, "H": 3600, "D": 86400, "W": 604800}[unit]
-    return timedelta(seconds=secs * num)
-
-
-def _json(data: bytes):
-    """Parse JSON from response bytes."""
-    import json
-    return json.loads(data.decode("utf-8"))
-
-
-def clean_number(value):
-    """Round a float to the instrument's decimal places."""
-    return value
+    # Prune anything older than the requested start
+    out = [r for r in out if _parse_time(r["time"]) >= start]
+    return out

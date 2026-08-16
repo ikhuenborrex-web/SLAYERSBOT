@@ -342,7 +342,7 @@ async function fetchAll(bg){
     if(notifs.length)scheduleRender();
   });}).catch(function(){}));
   promises.push(ft(withCode('/api/scalp')).then(function(r){if(!r.ok)return;return j(r).then(function(d){var ss=Array.isArray(d.signals)?d.signals:[];
-    if(lastScalpIds.length&&ss.length>lastScalpIds.length&&!bg){for(var si=0;si<ss.length;si++){if(lastScalpIds.indexOf(ss[si].id)===-1){showToast('\u26A1 Scalp '+(ss[si].type==='BULLISH'?'\uD83D\uDCC8 ':'\uD83D\uDCC9 ')+(ss[si].name||ss[si].pair)+' \u00b7 NY-open breakout');break;}}}
+    if(lastScalpIds.length&&ss.length>lastScalpIds.length&&!bg){for(var si=0;si<ss.length;si++){if(lastScalpIds.indexOf(ss[si].id)===-1){showToast('\u26A1 SMC '+(ss[si].type==='BULLISH'?'\uD83D\uDCC8 ':'\uD83D\uDCC9 ')+(ss[si].name||ss[si].pair)+' \u00b7 SMC swing');break;}}}
     lastScalpIds=ss.map(function(s){return s.id;});setArr('scalpSignals',ss);});}).catch(function(){}));
   promises.push(ft(withCode('/api/scalp/active')).then(function(r){if(!r.ok)return;return j(r).then(function(d){setArr('scalpActive',d.trades||[]);});}).catch(function(){}));
   promises.push(ft(withCode('/api/scalp/stats')).then(function(r){if(!r.ok)return;return j(r).then(function(d){setObj('scalpStats',d);});}).catch(function(){}));
@@ -439,7 +439,8 @@ function miniChart(entries){
 function scalpSvgChart(s){
   var isB=s.type==='BULLISH';
   var entry=s.entry!=null?s.entry:null,sl=s.sl!=null?s.sl:null,tp=s.tp2!=null?s.tp2:null;
-  var orH=s.orHigh!=null?s.orHigh:null,orL=s.orLow!=null?s.orLow:null;
+  var orH=s.orHigh!=null?s.orHigh:s.zone_top!=null?s.zone_top:null;
+  var orL=s.orLow!=null?s.orLow:s.zone_bott!=null?s.zone_bott:null;
   var vals=[entry,sl,tp,orH,orL].filter(function(v){return v!=null;});
   if(!vals.length)return '<div style="height:160px;background:#0C0C0C;display:flex;align-items:center;justify-content:center;color:#5F5F5F;font-size:11px;font-weight:500">Chart unavailable</div>';
   var min=Math.min.apply(null,vals),max=Math.max.apply(null,vals);
@@ -602,7 +603,7 @@ function overviewScreen(){
 function navBar(){
   var tabs=['dash','journal','scalp','intel','settings'];
   var icons={dash:I.dash,journal:I.journal,scalp:I.pulse,intel:I.intel,settings:I.gear};
-  var labels={dash:'Dash',journal:'Journal',scalp:'Scalp',intel:'Intel',settings:'Settings'};
+  var labels={dash:'Dash',journal:'Journal',scalp:'SMC',intel:'Intel',settings:'Settings'};
   var html='<div class="nav-wrap"><div class="nav-inner">'+
     '<div class="nav-indicator" id="nvi" style="left:8px"></div>';
   for(var i=0;i<tabs.length;i++){
@@ -621,7 +622,7 @@ function scalpScreen(){
   var pulse=state.scalpPulse||[];
   var pulseHtml=pulse.length?'<div class="h-scroll" style="margin-bottom:14px">'+pulse.map(function(p){
     var isB=p.direction==='BULLISH'||p.direction==='LONG';var col=isB?C.lime:C.red;
-    return '<div class="card" style="flex-shrink:0;width:150px;padding:12px;margin-bottom:0"><div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:12px;font-weight:700;color:#FFF">'+(p.name||p.id)+'</span><span style="width:6px;height:6px;border-radius:50%;background:'+col+'"></span></div><div style="font-size:16px;font-weight:800;color:#FFF;margin-top:6px;font-variant-numeric:tabular-nums">'+fmt(p.price)+'</div><div style="font-size:8px;color:'+col+';font-weight:600;margin-top:2px">'+(p.direction==='NEUTRAL'?'Pre-market / no signal yet':isB?'BULLISH':'BEARISH')+'</div></div>';
+    return '<div class="card" style="flex-shrink:0;width:150px;padding:12px;margin-bottom:0"><div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:12px;font-weight:700;color:#FFF">'+(p.name||p.id)+'</span><span style="width:6px;height:6px;border-radius:50%;background:'+col+'"></span></div><div style="font-size:16px;font-weight:800;color:#FFF;margin-top:6px;font-variant-numeric:tabular-nums">'+fmt(p.price)+'</div><div style="font-size:8px;color:'+col+';font-weight:600;margin-top:2px">'+(p.direction==='NEUTRAL'?'No active signal':isB?'BULLISH':'BEARISH')+'</div></div>';
   }).join('')+'</div>':'';
   var statsHtml='<div style="display:flex;gap:8px;margin-bottom:14px;margin-top:8px">'+
     '<div class="card" style="flex:1;text-align:center;padding:12px 8px;animation-delay:0s"><div style="font-size:9px;color:'+C.text2+'">WR</div><div class="count-up" style="font-size:18px;font-weight:800;color:'+C.lime+';margin-top:4px">'+(ss.winRate||0)+'%</div></div>'+
@@ -649,7 +650,7 @@ function scalpScreen(){
           '<div><div style="font-size:8px;font-weight:600">SL</div><div style="font-size:12px;font-weight:700;color:'+C.red+'">'+fmt(t.sl)+'</div></div>'+
           '<div><div style="font-size:8px;font-weight:600">TP2</div><div style="font-size:12px;font-weight:700;color:'+C.lime+'">'+fmt(t.tp2)+'</div></div>'+
           '<div style="margin-left:auto;text-align:right"><div style="font-size:8px;color:'+C.text3+'">P/L</div><div style="font-size:12px;font-weight:800;color:'+(t.curR>=0?C.lime:C.red)+'">'+rVal+'</div></div></div>'+
-          '<div style="display:flex;justify-content:space-between;font-size:8px;color:rgba(255,255,255,0.3)"><span>'+(t.minsLeft!=null?'⏱ '+t.minsLeft+'m left':'')+'</span><span style="color:'+col+'">NY-open breakout</span></div></div>';
+          '<div style="display:flex;justify-content:space-between;font-size:8px;color:rgba(255,255,255,0.3)"><span></span><span style="color:'+col+'">SMC swing</span></div></div>';
       }).join('')+'</div>';
   }
   var actHtml=act.length?'<div style="display:flex;align-items:center;justify-content:space-between;margin:18px 0 10px"><span style="font-size:12px;font-weight:600;color:#8E8E8E;letter-spacing:0.04em;text-transform:uppercase">Live Trades</span><span style="font-size:10px;color:'+C.lime+';opacity:0.6;font-weight:600">'+act.length+' active</span></div>'+act.map(function(t){
@@ -668,7 +669,7 @@ function scalpScreen(){
       '<div><div style="font-size:8px;color:'+C.text3+'">TP2</div><div style="font-size:12px;font-weight:700;color:'+C.lime+'">'+fmt(t.tp2)+'</div></div>'+
       '<div style="margin-left:auto;text-align:right"><div style="font-size:8px;color:'+C.text3+'">P/L</div><div style="font-size:12px;font-weight:800;color:'+(t.curR>=0?C.lime:C.red)+'">'+rVal+'</div></div></div>'+
       '<div style="height:2px;border-radius:1px;background:rgba(255,255,255,0.06);margin:8px 0 6px;overflow:hidden"><div style="height:100%;background:'+col+';width:'+pct+'%"></div></div>'+
-      '<div style="display:flex;justify-content:space-between;font-size:8px;color:rgba(255,255,255,0.3)"><span>'+(t.minsLeft!=null?'⏱ '+t.minsLeft+'m left':'')+'</span><span>NY-open breakout</span></div></div>';
+      '<div style="display:flex;justify-content:space-between;font-size:8px;color:rgba(255,255,255,0.3)"><span></span><span>SMC swing</span></div></div>';
   }).join(''):'';
   var sigs=(state.scalpSignals||[]).map(function(s,i){
     var isB=s.type==='BULLISH'||s.direction==='LONG';var col=isB?C.lime:C.red;var bg=isB?C.limeSoft:C.redSoft;
@@ -676,19 +677,19 @@ function scalpScreen(){
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+
       '<div style="display:flex;align-items:center;gap:6px"><span style="font-weight:800;font-size:14px;color:#FFF">'+(s.name||s.pair)+'</span>'+
       '<span style="font-size:8px;font-weight:700;padding:2px 6px;border-radius:3px;background:'+bg+';color:'+col+'">'+(isB?'BUY':'SELL')+'</span></div>'+
-      '<span style="font-size:9px;color:'+C.text2+'">NY open</span></div>'+
+      '<span style="font-size:9px;color:'+C.text2+'">SMC</span></div>'+
       '<div style="display:flex;gap:6px;font-size:10px;color:rgba(255,255,255,0.4)">'+
       '<span>Entry: <b style="color:#FFF">'+fmt(s.entry)+'</b></span><span>SL: <b style="color:'+C.red+'">'+fmt(s.sl)+'</b></span><span>TP: <b style="color:'+C.lime+'">'+fmt(s.takeProfit||s.tp2)+'</b></span></div>'+
-      (s.atr14?'<div style="font-size:9px;color:'+C.lime+';margin-top:4px">Daily ATR: '+fmt(s.atr14)+'</div>':'')+
+      (s.atr14?'<div style="font-size:9px;color:'+C.lime+';margin-top:4px">ATR14: '+fmt(s.atr14)+'</div>':'')+
       '<div style="display:flex;justify-content:space-between;margin-top:6px;padding-top:6px;border-top:0.5px solid rgba(255,255,255,0.04)">'+
       '<span style="font-size:8px;color:'+C.text3+'">'+timeAgo(s.time)+'</span>'+
       '<button onclick="event.stopPropagation();toggleTrack(&#39;'+s.id+'&#39;,'+!!(s.isTracked)+')" style="display:inline-flex;align-items:center;gap:3px;background:'+(s.isTracked?C.limeSoft:C.surface)+';border:0.5px solid '+(s.isTracked?C.lime:C.border)+';border-radius:99px;padding:3px 10px;font-size:8px;color:'+(s.isTracked?C.lime:C.text2)+';cursor:pointer;font-family:inherit;font-weight:600">'+icon(I.crosshair,s.isTracked?C.lime:C.text2,10)+(s.isTracked?'Tracking':'Track')+'</button></div></div>';
   }).join('');
   return '<div style="display:flex;flex-direction:column;height:100%;background:'+C.bg+';position:relative">'+
     '<div class="sc" style="flex:1;overflow-y:auto;padding:calc(30px + env(safe-area-inset-top)) 16px calc(100px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch">'+
-    '<div style="font-size:22px;font-weight:700;color:#FFF;margin-bottom:2px">Scalp</div>'+
-    '<div style="font-size:12px;color:#5F5F5F;margin-bottom:20px">US30 · NAS100 — NY-open breakout</div>'+
-    pulseHtml+statsHtml+myActHtml+actHtml+(sigs||emptyState('No scalp signals yet'))+
+    '<div style="font-size:22px;font-weight:700;color:#FFF;margin-bottom:2px">SMC</div>'+
+    '<div style="font-size:12px;color:#5F5F5F;margin-bottom:20px">A-list pairs — H4 structure + M15 entries (liquidity sweep → CHoCH → zone)</div>'+
+    pulseHtml+statsHtml+myActHtml+actHtml+(sigs||emptyState('No SMC signals yet'))+
     '</div>'+navBar()+'</div>';
 }
 
@@ -1277,7 +1278,7 @@ function settingsScreen(){
     '<div style="margin-bottom:16px"><div style="font-size:10px;font-weight:600;color:#5F5F5F;text-transform:uppercase;margin-bottom:8px;padding:0 4px;letter-spacing:0.04em">Notifications</div>'+
     '<div style="background:#151515;border-radius:22px;overflow:hidden;border:0.5px solid rgba(255,255,255,0.04)">'+
     tp('tradeAlerts','Trade Alerts','New QMR signals')+
-    tp('scalpAlerts','Scalp Alerts','New scalp signals')+
+    tp('scalpAlerts','SMC Alerts','New SMC swing signals')+
     tp('newsAlerts','News Alerts','Daily news digest')+'</div>'+pushBtns+'</div>'+
     '<div style="margin-bottom:16px"><div style="font-size:10px;font-weight:600;color:#5F5F5F;text-transform:uppercase;margin-bottom:8px;padding:0 4px;letter-spacing:0.04em">Account</div>'+
     '<div style="background:#151515;border-radius:22px;overflow:hidden;border:0.5px solid rgba(255,255,255,0.04)">'+
@@ -1564,12 +1565,12 @@ function positionNavIndicator(){
 }
 
 function detailPage(s){
-  var isB=s.type==='BULLISH'||s.type==='BUY',isE=s.tier==='ELITE',isD=s.dualEntry,isNY=s.session==='NY';
+  var isB=s.type==='BULLISH'||s.type==='BUY',isE=s.tier==='ELITE',isD=s.dualEntry,isNY=s.session==='NY',isSMC=s.session==='SMC'||s.system==='SMC';
   var dir=isB?'BUY':'SELL',dirCol=isB?'#B7FF2A':'#FF5252',dirBg=isB?'rgba(183,255,42,0.12)':'rgba(255,82,82,0.12)';
   var entry=fmt(isD?s.aggEntry:s.entry),sl=fmt(isD?s.aggSl:s.sl);
   var tp1=fmt(s.tp1||(isD?s.aggTp1:null)),tp2=fmt(s.tp2||(isD?s.aggTp2:null));
   var eNum=parseFloat(entry),slNum=parseFloat(sl),tp1Num=parseFloat(tp1),tp2Num=parseFloat(tp2);
-  var riskPips=Math.abs(eNum-slNum),rr=riskPips&&(isNY?tp2Num:tp1Num)?Math.abs((isNY?tp2Num:tp1Num)-eNum)/riskPips:0;
+  var riskPips=Math.abs(eNum-slNum),rr=riskPips&&(isNY||isSMC?tp2Num:tp1Num)?Math.abs((isNY||isSMC?tp2Num:tp1Num)-eNum)/riskPips:0;
 
   // Criteria explanations
   var critChips=(s.criteria||[]).map(function(c){return '<span class="chip" style="cursor:default">'+c+'</span>';}).join('');
@@ -1577,7 +1578,14 @@ function detailPage(s){
   // Progress timeline
   var activeTrade=null;
   for(var ai=0;ai<state.active.length;ai++){if(state.active[ai].sigId===s.id){activeTrade=state.active[ai];break;}}
-  var progressSteps=isNY?[
+  if(!activeTrade)for(var ai2=0;ai2<(state.scalpActive||[]).length;ai2++){if(state.scalpActive[ai2].sigId===s.id){activeTrade=state.scalpActive[ai2];break;}}
+  var progressSteps=isSMC?[
+    {label:'Signal Generated',desc:'SMC sequence confirmed (sweep → CHoCH → zone).',done:true,ts:timeAgo(s.time)},
+    {label:'Entry Triggered',desc:'Price returned into the zone after CHoCH.',done:!!s.isTracked,ts:activeTrade?timeAgo(activeTrade.openTime):''},
+    {label:'TP1 (+1.5R partial)',desc:activeTrade&&activeTrade.partialFired?'Partial target hit — scale out 50%.':'Waiting for partial target.',done:!!(activeTrade&&activeTrade.partialFired)},
+    {label:'Runner trailed',desc:activeTrade&&activeTrade.partialFired?'SL moved to entry, runner trailed by 1.5×ATR.':'Pending partial target.',done:!!(activeTrade&&activeTrade.partialFired)},
+    {label:'Runner closed',desc:'Runner closed by trailing stop.','done':false,ts:''}
+  ]:isNY?[
     {label:'Signal Generated',desc:'NY-open breakout signal created.',done:true,ts:timeAgo(s.time)},
     {label:'Entry Triggered',desc:'Price entered the execution zone.',done:!!s.isTracked,ts:activeTrade?timeAgo(activeTrade.entryTime):''},
     {label:'TP2 Target',desc:activeTrade&&activeTrade.tp2Fired?'TP2 hit — runner closed.':'Waiting for target ('+(s.tp2!==undefined?'0.10× daily ATR':'')+').',done:!!(activeTrade&&activeTrade.tp2Fired)},
@@ -1622,7 +1630,9 @@ function detailPage(s){
     if(s.criteria.indexOf('Daily OB')>-1)strategyParts.push('the daily order block aligned with the direction');
     if(s.criteria.indexOf('Weekly Discount')>-1)strategyParts.push('price was in the weekly discount zone');
   }
-  var strategy=isNY
+  var strategy=isSMC
+    ?'SMC swing: liquidity swept (HH/LH extreme) → CHoCH on H4 → entry on the M15 pullback into the FVG zone (zone top/bottom). Exit model: take '+(s.atr14?('partial at +1.5R (50% out) — SL to breakeven, runner trailed 1.5×ATR ('+s.atr14.toFixed(2)+'), runner closed by trail;'):'partial at +1.5R, SL to breakeven, runner trailed;')+' full R measured on the trail. Data from the live Oanda practice feed (smc.sqlite).'
+    :isNY
     ?'NY-open breakout: entry at the opening-range boundary (09:30–09:45 NY) once price closes beyond it on M5. Target 0.10× daily ATR, stop 0.20× daily ATR, max hold 60 min (hard stop 11:30 NY). Data from the live Oanda feed (scalps.sqlite).'
     :strategyParts.length
     ?'Price action triggered this '+(isD?'dual-entry ':'')+s.tf+' QMR signal. '+strategyParts.join(', ')+'. '+(s.score?'Score: '+s.score+'/4 criteria confirmed.':'')+' This setup follows The Slayers model — combining liquidity, structure, and momentum for high-probability entries.'
@@ -1662,7 +1672,7 @@ function detailPage(s){
       '</div>';
   }else{
     chartImg='<div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">'+
-      (s.chartUrl?'<img src="'+withCode(s.chartUrl)+'" style="width:100%;display:block">':(isNY?scalpSvgChart(s):'<div style="height:160px;background:#0C0C0C;display:flex;align-items:center;justify-content:center;color:#5F5F5F;font-size:11px;font-weight:500">Chart</div>'))+
+      (s.chartUrl?'<img src="'+withCode(s.chartUrl)+'" style="width:100%;display:block">':(isNY||isSMC?scalpSvgChart(s):'<div style="height:160px;background:#0C0C0C;display:flex;align-items:center;justify-content:center;color:#5F5F5F;font-size:11px;font-weight:500">Chart</div>'))+
       '</div>';
   }
 
@@ -1672,8 +1682,8 @@ function detailPage(s){
     // Header
     '<div style="display:flex;align-items:center;gap:12px;padding:0 20px 16px">'+
     '<button onclick="closeDetail()" style="background:#121212;border:0.5px solid rgba(255,255,255,0.06);border-radius:99px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#FFF;font-size:16px;flex-shrink:0">\u2190</button>'+
-    '<div style="flex:1"><div style="font-weight:700;font-size:22px;color:#FFF;letter-spacing:-0.03em">'+s.pair+'<span style="font-weight:400;font-size:14px;color:#5F5F5F;margin-left:6px">'+(s.tf||(s.session==='NY'?'NY Open':''))+'</span></div>'+
-    '<div style="font-size:11px;color:#5F5F5F;margin-top:1px">'+timeAgo(s.time)+' \u00b7 '+(s.system||(s.session==='NY'?'NY-Open Scalp':'QMR'))+'</div></div>'+
+    '<div style="flex:1"><div style="font-weight:700;font-size:22px;color:#FFF;letter-spacing:-0.03em">'+s.pair+'<span style="font-weight:400;font-size:14px;color:#5F5F5F;margin-left:6px">'+(s.tf||(s.session==='SMC'?'SMC':(s.session==='NY'?'NY Open':'')))+'</span></div>'+
+    '<div style="font-size:11px;color:#5F5F5F;margin-top:1px">'+timeAgo(s.time)+' \u00b7 '+(s.system||(s.session==='SMC'?'SMC Swing':(s.session==='NY'?'NY-Open Scalp':'QMR')))+'</div></div>'+
     '<div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">'+
     '<span style="font-size:8px;font-weight:700;padding:4px 10px;border-radius:6px;background:'+dirBg+';color:'+dirCol+'">'+dir+'</span>'+
     (isE?'<span style="font-size:8px;font-weight:600;padding:3px 8px;border-radius:6px;background:rgba(255,255,255,0.08);color:#FFF">ELITE</span>':'')+
@@ -1685,11 +1695,11 @@ function detailPage(s){
     '<div class="card" style="margin-bottom:16px;padding:0;overflow:hidden">'+
     '<div style="padding:20px;position:relative;overflow:hidden">'+
     '<div style="position:absolute;top:-40px;right:-40px;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle,rgba(183,255,42,0.06),transparent 70%);pointer-events:none"></div>'+
-    '<div class="row-l" style="padding:0 0 12px;border-bottom:0.5px solid rgba(255,255,255,0.04)"><span style="font-size:15px;font-weight:600;color:#FFF">'+s.pair+'</span><span style="font-size:11px;color:#5F5F5F">'+(isNY?'NY-Open':(isD?'Dual Entry':s.tier))+'</span></div>'+
+    '<div class="row-l" style="padding:0 0 12px;border-bottom:0.5px solid rgba(255,255,255,0.04)"><span style="font-size:15px;font-weight:600;color:#FFF">'+s.pair+'</span><span style="font-size:11px;color:#5F5F5F">'+(isNY?'NY-Open':(isSMC?'SMC Swing':(isD?'Dual Entry':s.tier)))+'</span></div>'+
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding-top:12px">'+
     '<div><div style="font-size:9px;color:#5F5F5F;font-weight:500;margin-bottom:2px">Entry</div><div style="font-size:16px;font-weight:700;color:#FFF">'+entry+'</div></div>'+
     '<div><div style="font-size:9px;color:#5F5F5F;font-weight:500;margin-bottom:2px">Stop Loss</div><div style="font-size:16px;font-weight:600;color:#FF5252">'+sl+'</div></div>'+
-    '<div><div style="font-size:9px;color:#5F5F5F;font-weight:500;margin-bottom:2px">'+((isNY||s.atr14!=null)?(isB?'OR High':'OR Low'):'TP1')+'</div><div style="font-size:16px;font-weight:600;color:'+(isNY?s.orHigh!=null?'#3B82F6':'#5F5F5F':(tp1Num?'#B7FF2A':'#5F5F5F'))+'">'+((isNY||s.atr14!=null)?fmt(isB?s.orHigh:s.orLow):(tp1||'—'))+'</div></div>'+
+    '<div><div style="font-size:9px;color:#5F5F5F;font-weight:500;margin-bottom:2px">'+((isNY||s.atr14!=null)?(isSMC?'TP1 (partial)':(isB?'OR High':'OR Low')):'TP1')+'</div><div style="font-size:16px;font-weight:600;color:'+(isSMC?(tp1Num?'#B7FF2A':'#5F5F5F'):(isNY?s.orHigh!=null?'#3B82F6':'#5F5F5F':(tp1Num?'#B7FF2A':'#5F5F5F')))+'">'+(isSMC?(tp1||'—'):((isNY||s.atr14!=null)?fmt(isB?s.orHigh:s.orLow):(tp1||'—')))+'</div></div>'+
     '<div><div style="font-size:9px;color:#5F5F5F;font-weight:500;margin-bottom:2px">TP2</div><div style="font-size:16px;font-weight:600;color:'+(tp2Num?'#B7FF2A':'#5F5F5F')+'">'+(tp2||'—')+'</div></div>'+
     '</div>'+
     (rr>0?'<div style="display:flex;gap:20px;margin-top:14px;padding-top:12px;border-top:0.5px solid rgba(255,255,255,0.04)">'+
@@ -2359,7 +2369,7 @@ var _wtSteps=[
     items:[
       {tab:'dash',label:'Dashboard',desc:'Your trading home.'},
       {tab:'journal',label:'Journal',desc:'Track every trade.'},
-      {tab:'scalp',label:'Scalp',desc:'Fast opportunities.'},
+      {tab:'scalp',label:'SMC',desc:'Swing setups on A-list pairs.'},
       {tab:'intel',label:'Intel',desc:'Market news and analysis.'},
       {tab:'settings',label:'Settings',desc:'Customize your experience.'}
     ]
