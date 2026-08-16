@@ -17,11 +17,21 @@ if [ -n "${SMC_DB_PATH:-}" ]; then
   fi
 fi
 
-# Sidecar needs numpy/pandas/smartmoneyconcepts (installed via requirements.txt).
+# Sidecar needs numpy/pandas/smartmoneyconcepts. The postinstall hook in
+# package.json pip-installs them at build time; fall back to a boot-time
+# install if that didn't happen (e.g. build image lacked pip).
 if command -v python3 >/dev/null 2>&1; then
-  (cd scalp_sidecar && exec python3 live_scan.py --every 60) &
-  SIDECAR_PID=$!
-  echo "sidecar started (pid $SIDECAR_PID)"
+  if ! python3 -c "import numpy, pandas, smartmoneyconcepts" >/dev/null 2>&1; then
+    echo "sidecar: python deps missing — installing from requirements.txt..."
+    (cd scalp_sidecar && python3 -m pip install -r requirements.txt >/dev/null 2>&1) || echo "WARNING: pip install failed — SMC scan DISABLED. Bot runs without SMC signals."
+  fi
+  if python3 -c "import numpy, pandas, smartmoneyconcepts" >/dev/null 2>&1; then
+    (cd scalp_sidecar && exec python3 live_scan.py --every 60) &
+    SIDECAR_PID=$!
+    echo "sidecar started (pid $SIDECAR_PID)"
+  else
+    echo "WARNING: python deps unavailable — SMC live scan DISABLED. Bot runs without SMC signals."
+  fi
 else
   echo "WARNING: python3 not available on this host — SMC live scan DISABLED. Bot runs without SMC signals."
 fi

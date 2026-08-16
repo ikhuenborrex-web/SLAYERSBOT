@@ -4,7 +4,8 @@
   "description": "The Slayers Alert System by Rex Roz — CRT + QMR automated trading alerts",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "postinstall": "python3 -m pip install -r scalp_sidecar/requirements.txt || true"
   },
   "engines": {
     "node": ">=18.0.0"
