@@ -29,6 +29,7 @@ from main import DEFAULTS
 # few weeks of structure, so every scan is fast (~0.3s/pair).
 H4_WINDOW = 800
 M15_WINDOW = 3000
+SEED_DAYS = 200
 # A signal is "fresh" (worth emitting) if it confirmed within FRESH_HOURS of
 # now (wall clock). Time-based, not bar-based, so a setup that confirms right
 # before the close or a weekend still gets emitted when the bot next scans.
@@ -99,8 +100,12 @@ def sync_all():
                 (instrument, gran)).fetchone()
             last = row[0] if row else None
             if last is None:
-                continue
-            start = oanda_client.parse_time(last)
+                # Empty cache (fresh deploy): seed the trailing window only.
+                # The rolling detect uses H4_WINDOW (800 ~ 133d) + M15_WINDOW
+                # (3000 ~ 31d), so ~200d back covers it without a 2023 backfill.
+                start = datetime.now(timezone.utc) - timedelta(days=SEED_DAYS)
+            else:
+                start = oanda_client.parse_time(last)
             try:
                 rows = oanda_client.pull_candles(instrument, gran, start)
             except oanda_client.OandaError as e:

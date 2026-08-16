@@ -4,17 +4,27 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-if [ -n "${SMC_DB_PATH:-}" ]; then
-  if mkdir -p "$(dirname "$SMC_DB_PATH")" 2>/dev/null; then
-    export SMC_DB_PATH
-    echo "sidecar: using SMC_DB_PATH=$SMC_DB_PATH"
+# The bot and sidecar MUST agree on where smc.sqlite lives. If SMC_DB_PATH
+# isn't provided, default to a persistent disk mount (/data) or HOME so a
+# fresh deploy still has a shared, writable location instead of the two
+# processes silently diverging (sidecar->scalp_sidecar/data, bot->local path).
+if [ -z "${SMC_DB_PATH:-}" ]; then
+  if [ -d /data ] && [ -w /data ]; then
+    export SMC_DB_PATH=/data/smc.sqlite
   else
+    export SMC_DB_PATH="${HOME:-/tmp}/smc.sqlite"
+  fi
+  echo "sidecar: SMC_DB_PATH unset — defaulting to $SMC_DB_PATH"
+fi
+if mkdir -p "$(dirname "$SMC_DB_PATH")" 2>/dev/null; then
+  export SMC_DB_PATH
+  echo "sidecar: using SMC_DB_PATH=$SMC_DB_PATH"
+else
     # Directory not writable (e.g. no Render Disk mounted at /data yet).
     # Fall back to a writable location and export the SAME path so the bot
     # reads the identical DB file. History is lost on redeploy without a Disk.
     export SMC_DB_PATH="${HOME:-/tmp}/smc.sqlite"
     echo "WARNING: cannot create dir for SMC_DB_PATH — falling back to $SMC_DB_PATH (mount a Render Disk at /data to persist history)"
-  fi
 fi
 
 # Sidecar needs numpy/pandas/smartmoneyconcepts. The postinstall hook in
